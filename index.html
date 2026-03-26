@@ -559,7 +559,16 @@ function loadFirebase(cb){
     cb();
   }).catch(()=>{setFB(false);cb();});
 }
-function saveMeta(){fbSet('/meta',{clientes:state.clientes,empresasIVA:state.empresasIVA,nomesSAFT:state.nomesSAFT});}
+function saveMeta(){
+  fbSet('/meta',{
+    clientes:state.clientes,
+    empresasIVA:state.empresasIVA,
+    nomesSAFT:state.nomesSAFT,
+    declarantes:state.declarantes,
+    trabalhadores:state.trabalhadores,
+    empresasDMR:state.empresasDMR,
+  });
+}
 
 // ── NAVEGAÇÃO ──
 function showTab(n){
@@ -1100,17 +1109,31 @@ function startApp(){
     ?'<span class="badge-admin">⭐ Admin</span>'
     :'<span class="badge-equipa">👤 Equipa</span>';
   loadFirebase(()=>{
-    // Carregar também ss e dmr
-    Promise.all([fbGet('/ss'),fbGet('/ssdecl'),fbGet('/dmr')]).then(([ss,ssdecl,dmr])=>{
+    // Carregar TODOS os dados antes de renderizar
+    Promise.all([
+      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/meta')
+    ]).then(([ss,ssdecl,dmr,meta])=>{
       if(ss) state.ss=ss;
       if(ssdecl) state.ssdecl=ssdecl;
       if(dmr) state.dmr=dmr;
-      // Carregar trabalhadores e empresasDMR do meta se existir
+      if(meta){
+        if(meta.clientes) state.clientes=meta.clientes;
+        if(meta.empresasIVA) state.empresasIVA=meta.empresasIVA;
+        if(meta.nomesSAFT) state.nomesSAFT=meta.nomesSAFT;
+        if(meta.declarantes) state.declarantes=meta.declarantes;
+        if(meta.trabalhadores) state.trabalhadores=meta.trabalhadores;
+        if(meta.empresasDMR) state.empresasDMR=meta.empresasDMR;
+      }
+      // Só renderiza depois de TUDO carregado
+      renderDash();renderIVA();renderSAFT();renderREC();
+      renderSSDecl();renderSS();renderSSPrint();renderDMR();
+      lastHash = JSON.stringify({meta,iva:state.iva,saft:state.saft,rec:state.rec});
+      startPolling();
+    }).catch(()=>{
+      renderDash();renderIVA();renderSAFT();renderREC();
+      renderSSDecl();renderSS();renderSSPrint();renderDMR();
+      startPolling();
     });
-    renderDash();renderIVA();renderSAFT();renderREC();
-    renderSSDecl();renderSS();renderSSPrint();renderDMR();
-    lastHash = JSON.stringify({meta:null,iva:state.iva,saft:state.saft,rec:state.rec});
-    startPolling();
   });
 }
 
@@ -1435,7 +1458,7 @@ function renderSSPrint(){
         body{background:#fff;}
         .content{padding:0!important;}
         table{font-size:11pt!important;}
-        @page{margin:1.5cm;}
+        @page{margin:1.5cm;size:A4 landscape;}
       }
     </style>
     <div class="print-area table-wrap">
@@ -1673,20 +1696,26 @@ let lastHash = '';
 
 async function pollFirebase(){
   try{
-    const [meta,iva,saft,rec] = await Promise.all([
-      fbGet('/meta'), fbGet('/iva'), fbGet('/saft'), fbGet('/rec')
+    const [meta,iva,saft,rec,ss,ssdecl,dmr] = await Promise.all([
+      fbGet('/meta'), fbGet('/iva'), fbGet('/saft'), fbGet('/rec'),
+      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr')
     ]);
-    const newHash = JSON.stringify({meta,iva,saft,rec});
+    const newHash = JSON.stringify({meta,iva,saft,rec,ss,ssdecl,dmr});
     if(newHash !== lastHash && lastHash !== ''){
-      // Dados mudaram — atualizar state e re-renderizar
       if(meta){
         if(meta.clientes) state.clientes = meta.clientes;
         if(meta.empresasIVA) state.empresasIVA = meta.empresasIVA;
         if(meta.nomesSAFT) state.nomesSAFT = meta.nomesSAFT;
+        if(meta.declarantes) state.declarantes = meta.declarantes;
+        if(meta.trabalhadores) state.trabalhadores = meta.trabalhadores;
+        if(meta.empresasDMR) state.empresasDMR = meta.empresasDMR;
       }
       if(iva) state.iva = iva;
       if(saft) state.saft = saft;
       if(rec) state.rec = rec;
+      if(ss) state.ss = ss;
+      if(ssdecl) state.ssdecl = ssdecl;
+      if(dmr) state.dmr = dmr;
       // Re-renderizar só o separador activo para não interromper o utilizador
       const secAtiva = document.querySelector('.section.active');
       if(secAtiva){
@@ -1695,6 +1724,10 @@ async function pollFirebase(){
         else if(id==='sec-iva') renderIVA();
         else if(id==='sec-saft') renderSAFT();
         else if(id==='sec-rec' && !recLocked) renderREC();
+        else if(id==='sec-ssdecl') renderSSDecl();
+        else if(id==='sec-ss') renderSS();
+        else if(id==='sec-ssprint') renderSSPrint();
+        else if(id==='sec-dmr') renderDMR();
       }
       renderDash();
       setFB(true);
