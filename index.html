@@ -641,11 +641,14 @@ function renderDash(){
   const iva26=state.iva['2026']||{};
   let ivaEnv=0,ivaPend=0;
   state.empresasIVA.filter(e=>e.ativa==='Sim'&&e.periodo==='Trimestral').forEach(e=>{
-    ['T1','T2','T3','T4'].forEach(t=>{const td=(iva26[e.nome]||{})[t]||{};if(td.dataEnvio)ivaEnv++;else ivaPend++;});
+    ['T1','T2','T3','T4'].forEach(t=>{const td=(iva26[safeKey(e.nome)]||{})[t]||{};if(td.dataEnvio)ivaEnv++;else ivaPend++;});
+  });
+  state.empresasIVA.filter(e=>e.ativa==='Sim'&&e.periodo==='Mensal').forEach(e=>{
+    for(let m=1;m<=12;m++){const td=(iva26[safeKey(e.nome)]||{})['M'+m]||{};if(td.dataEnvio)ivaEnv++;else ivaPend++;}
   });
   const saft26=state.saft['2026']||{};
   let saftOk=0,saftPend=0;
-  state.nomesSAFT.forEach(n=>{const ms=saft26[safeKey(n)]||[];for(let i=0;i<12;i++){if(ms[i*2])saftOk++;else saftPend++;}});
+  state.nomesSAFT.forEach(n=>{const msObj=saft26[safeKey(n)]||{};const estados=Array.isArray(msObj)?msObj:(msObj.estados||{});const ms=estados;for(let i=0;i<12;i++){if(ms[i*2]||ms[String(i*2)])saftOk++;else saftPend++;}});
 
   const hoje=new Date();
   const prazos=[
@@ -962,23 +965,7 @@ function renderREC(){
     const falta=ms.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
-      const dataRec=datas[mi]||'';
-      const nomeEsc=c.nome.replace(/'/g,"\\'");
-      const cor=recColor(val);
-      // Construir select com opções correctas
-      let opts='<option value=""'+(val?'':' selected')+'>—</option>';
-      TIPOS.forEach(function(t){
-        opts+='<option value="'+t+'"'+(val===t?' selected':'')+'>'+t+'</option>';
-      });
-      // Data se existir
-      let dataHtml='';
-      if(dataRec){
-        const dl=new Date(dataRec).toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-        dataHtml='<br><small style="color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\''+dataRec+'\')">'+dl+'</small>';
-      } else if(val){
-        dataHtml='<br><small style="color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\'\')">📅</small>';
-      }
-      h+='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px"><select class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" onchange="saveRec(\''+nomeEsc+'\','+mi+',this.value,\''+recAno+'\')">'+opts+'</select>'+dataHtml+'</td>';
+      h+=buildRecCell(c.nome,mi,val,datas[mi]||'',recAno);
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
@@ -996,6 +983,34 @@ function renderREC(){
   el.innerHTML=h;
 }
 
+function buildRecCell(nome,mi,val,dataRec,ano){
+  const id='rc_'+mi+'_'+Math.random().toString(36).substr(2,5);
+  const nomeB64=btoa(unescape(encodeURIComponent(nome)));
+  const cor=recColor(val);
+  const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
+  let s='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px">';
+  s+='<select id="'+id+'" class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" ';
+  s+='onchange="saveRecFromId(\''+id+'\',\''+nomeB64+'\','+mi+',\''+ano+'\')"><option value=""'+(val?'':' selected')+'>—</option>';
+  ['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'].forEach(function(t){
+    s+='<option value="'+t+'"'+(val===t?' selected':'')+'>'+t+'</option>';
+  });
+  s+='</select>';
+  if(dataRec){
+    const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+    s+='<br><input type="date" value="'+dataRec+'" style="font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer" onchange="saveRecData(\''+nomeB64+'\','+mi+',this.value,\''+ano+'\',true)">';
+  } else if(val){
+    s+='<br><input type="date" placeholder="data" style="font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer" onchange="saveRecData(\''+nomeB64+'\','+mi+',this.value,\''+ano+'\',true)">';
+  }
+  s+='</td>';
+  return s;
+}
+function saveRecFromId(id,nomeB64,mi,ano){
+  const sel=document.getElementById(id);
+  if(!sel) return;
+  const nome=decodeURIComponent(escape(atob(nomeB64)));
+  saveRec(nome,mi,sel.value,ano);
+}
+
 function recColor(v){if(!v)return'var(--red)';if(v==='Transferência')return'var(--blue)';if(v==='MBWay')return'var(--purple)';if(v==='Numerário')return'var(--amber)';if(v==='Débito Direto')return'var(--green)';return'var(--text3)';}
 function unlockRec(){if(document.getElementById('recPass').value===PASS_ADMIN){recLocked=false;renderREC();}else document.getElementById('recPassErr').textContent='Senha incorreta.';}
 function saveRec(nome,mi,val,ano){
@@ -1006,12 +1021,13 @@ function saveRec(nome,mi,val,ano){
   renderDash();
 }
 function promptRecData(nome,mi,ano,atual){
-  const nova=prompt('Data de receção (AAAA-MM-DD):', atual||'');
-  if(nova===null) return;
-  saveRecData(nome,mi,nova,ano);
-  renderREC();
+  // mantido para compatibilidade
 }
-function saveRecData(nome,mi,val,ano){
+function saveRecData(nomeOrB64,mi,val,ano,isB64){
+  const nome=isB64?decodeURIComponent(escape(atob(nomeOrB64))):nomeOrB64;
+  _saveRecDataImpl(nome,mi,val,ano);
+}
+function _saveRecDataImpl(nome,mi,val,ano){
   if(!state.rec[ano])state.rec[ano]={};
   if(!state.rec[ano][safeKey(nome)])state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
   if(!state.rec[ano][safeKey(nome)].datas)state.rec[ano][safeKey(nome)].datas={};
