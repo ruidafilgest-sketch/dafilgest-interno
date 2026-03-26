@@ -398,6 +398,7 @@ function doLogin(){
   else document.getElementById('loginErr').textContent='Senha incorreta.';
 }
 function doLogout(){
+  stopPolling();
   userRole=null;recLocked=true;
   document.getElementById('app').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
@@ -410,7 +411,11 @@ function startApp(){
   document.getElementById('userBadge').innerHTML=userRole==='admin'?
     '<span class="badge-admin">⭐ Admin</span>':
     '<span class="badge-equipa">👤 Equipa</span>';
-  loadFirebase(()=>{renderDash();renderIVA();renderSAFT();renderREC();});
+  loadFirebase(()=>{
+    renderDash();renderIVA();renderSAFT();renderREC();
+    lastHash = JSON.stringify({meta:null,iva:state.iva,saft:state.saft,rec:state.rec});
+    startPolling();
+  });
 }
 
 // ── FIREBASE ──
@@ -924,6 +929,51 @@ function addClienteREC(){
 function removeClienteREC(nome){confirmAction('Remover Cliente',`Confirma a remoção de "${nome}"?`,()=>{state.clientes=state.clientes.filter(c=>c.nome!==nome);ANOS.forEach(a=>{if(state.rec[a])delete state.rec[a][nome];});saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();});}
 
 document.getElementById('loginPass').focus();
+
+// ── POLLING TEMPO REAL ──
+let pollingTimer = null;
+let lastHash = '';
+
+async function pollFirebase(){
+  try{
+    const [meta,iva,saft,rec] = await Promise.all([
+      fbGet('/meta'), fbGet('/iva'), fbGet('/saft'), fbGet('/rec')
+    ]);
+    const newHash = JSON.stringify({meta,iva,saft,rec});
+    if(newHash !== lastHash && lastHash !== ''){
+      // Dados mudaram — atualizar state e re-renderizar
+      if(meta){
+        if(meta.clientes) state.clientes = meta.clientes;
+        if(meta.empresasIVA) state.empresasIVA = meta.empresasIVA;
+        if(meta.nomesSAFT) state.nomesSAFT = meta.nomesSAFT;
+      }
+      if(iva) state.iva = iva;
+      if(saft) state.saft = saft;
+      if(rec) state.rec = rec;
+      // Re-renderizar só o separador activo para não interromper o utilizador
+      const secAtiva = document.querySelector('.section.active');
+      if(secAtiva){
+        const id = secAtiva.id;
+        if(id==='sec-dash') renderDash();
+        else if(id==='sec-iva') renderIVA();
+        else if(id==='sec-saft') renderSAFT();
+        else if(id==='sec-rec' && !recLocked) renderREC();
+      }
+      renderDash();
+      setFB(true);
+    }
+    if(newHash !== '') lastHash = newHash;
+    setFB(meta!==null||iva!==null||saft!==null||rec!==null);
+  } catch(e){ setFB(false); }
+}
+
+function startPolling(){
+  if(pollingTimer) clearInterval(pollingTimer);
+  pollingTimer = setInterval(pollFirebase, 30000);
+}
+function stopPolling(){
+  if(pollingTimer){ clearInterval(pollingTimer); pollingTimer=null; }
+}
 </script>
 </body>
 </html>
