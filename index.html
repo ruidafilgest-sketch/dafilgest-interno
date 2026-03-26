@@ -1393,13 +1393,22 @@ function renderSSPrint(){
     11:'out',12:'out',1:'out'
   };
 
-  const dadosAno=state.ss[ssPrintAno]||{};
+  const dadosSS=state.ss[ssPrintAno]||{};
+  const dadosDecl=state.ssdecl[ssPrintAno]||{};
   const trimKey=MES_TRIM[ssPrintMes];
 
   // Construir lista para o mês seleccionado
+  // Fonte de valor: 1º tenta state.ss (valor inserido manualmente no separador Pagamentos)
+  //                 2º tenta state.ssdecl via declIdx (valor vindo da Declaração)
   const lista=state.trabalhadores.map(t=>{
-    const d=(dadosAno[t.num]||{})[trimKey]||{};
-    const valor=d.valor||0;
+    // Tentar valor manual no separador Pagamentos
+    const dSS=(dadosSS[t.num]||{})[trimKey]||{};
+    let valor=dSS.valor||0;
+    // Se não tem valor manual, tentar via ligação à Declaração
+    if(!valor && t.declIdx!==null && t.declIdx!==undefined){
+      const dDecl=(dadosDecl[t.declIdx]||{});
+      valor=dDecl[trimKey+'_val']||0;
+    }
     return {...t, valor, trimKey};
   }).filter(t=>t.valor>0);
 
