@@ -514,8 +514,8 @@ function renderDash(){
   const rec26=state.rec['2026']||{};
   let totalRec=0,totalFalta=0;
   state.clientes.forEach(c=>{
-    const ms=(rec26[c.nome]||{}).meses||Array(12).fill(null);
-    const av=(rec26[c.nome]||{}).avenca||c.avenca||0;
+    const ms=(rec26[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const av=(rec26[safeKey(c.nome)]||{}).avenca||c.avenca||0;
     ms.forEach((m,i)=>{if(m)totalRec+=av;else if(i<=mesAtual)totalFalta+=av;});
   });
   const iva26=state.iva['2026']||{};
@@ -525,7 +525,7 @@ function renderDash(){
   });
   const saft26=state.saft['2026']||{};
   let saftOk=0,saftPend=0;
-  state.nomesSAFT.forEach(n=>{const ms=saft26[n]||[];for(let i=0;i<12;i++){if(ms[i*2])saftOk++;else saftPend++;}});
+  state.nomesSAFT.forEach(n=>{const ms=saft26[safeKey(n)]||[];for(let i=0;i<12;i++){if(ms[i*2])saftOk++;else saftPend++;}});
 
   const hoje=new Date();
   const prazos=[
@@ -584,7 +584,7 @@ function renderIVA(){
     if(ivaPag>totPag)ivaPag=1;
     const pag=lista.slice((ivaPag-1)*IVA_PP,ivaPag*IVA_PP);
     let enviadas=0;
-    lista.forEach(e=>{TRIMS.forEach(t=>{if((dadosAno[e.nome]||{})[t]?.dataEnvio)enviadas++;});});
+    lista.forEach(e=>{TRIMS.forEach(t=>{if((dadosAno[safeKey(e.nome)]||{})[t]?.dataEnvio)enviadas++;});});
 
     let h=`<div class="table-wrap">
       <div class="toolbar">
@@ -609,7 +609,7 @@ function renderIVA(){
       </thead><tbody>`;
 
     pag.forEach(emp=>{
-      const d=dadosAno[emp.nome]||{};
+      const d=dadosAno[safeKey(emp.nome)]||{};
       h+=`<tr><td class="td-num">${emp.num}</td><td class="td-nome">${emp.nome}</td>`;
       TRIMS.forEach(t=>{
         const td=d[t]||{};
@@ -641,7 +641,7 @@ function renderIVA(){
         <tr><th></th><th></th>${MESES.map(()=>`<th class="center" style="border-left:2px solid var(--border);font-size:9px">Trat.</th><th class="center" style="font-size:9px">Data Env.</th>`).join('')}</tr>
       </thead><tbody>`;
     lista.forEach(emp=>{
-      const d=dadosAno[emp.nome]||{};
+      const d=dadosAno[safeKey(emp.nome)]||{};
       h+=`<tr><td class="td-num">${emp.num}</td><td class="td-nome">${emp.nome}</td>`;
       MESES.forEach((_,i)=>{
         const key='M'+(i+1);
@@ -679,26 +679,26 @@ function ivaBadge(val,nome,trim,campo,ano){
 function toggleIVA(nome,trim,campo,ano){
   const est=[null,'Sim','Não','N/A'];
   if(!state.iva[ano])state.iva[ano]={};
-  if(!state.iva[ano][nome])state.iva[ano][nome]={};
-  if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
-  const cur=state.iva[ano][nome][trim][campo]??null;
-  state.iva[ano][nome][trim][campo]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/${campo}`,state.iva[ano][nome][trim][campo]);
+  if(!state.iva[ano][safeKey(nome)])state.iva[ano][safeKey(nome)]={};
+  if(!state.iva[ano][safeKey(nome)][trim])state.iva[ano][safeKey(nome)][trim]={};
+  const cur=state.iva[ano][safeKey(nome)][trim][campo]??null;
+  state.iva[ano][safeKey(nome)][trim][campo]=est[(est.indexOf(cur)+1)%est.length];
+  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/${campo}`,state.iva[ano][safeKey(nome)][trim][campo]);
   renderIVA();renderDash();
 }
 function saveIVADate(nome,trim,val,ano){
   if(!state.iva[ano])state.iva[ano]={};
-  if(!state.iva[ano][nome])state.iva[ano][nome]={};
-  if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
-  state.iva[ano][nome][trim].dataEnvio=val||null;
+  if(!state.iva[ano][safeKey(nome)])state.iva[ano][safeKey(nome)]={};
+  if(!state.iva[ano][safeKey(nome)][trim])state.iva[ano][safeKey(nome)][trim]={};
+  state.iva[ano][safeKey(nome)][trim].dataEnvio=val||null;
   fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/dataEnvio`,val||null);
   renderIVA();renderDash();
 }
 function saveIVAObs(nome,trim,val,ano){
   if(!state.iva[ano])state.iva[ano]={};
-  if(!state.iva[ano][nome])state.iva[ano][nome]={};
-  if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
-  state.iva[ano][nome][trim].obs=val;
+  if(!state.iva[ano][safeKey(nome)])state.iva[ano][safeKey(nome)]={};
+  if(!state.iva[ano][safeKey(nome)][trim])state.iva[ano][safeKey(nome)][trim]={};
+  state.iva[ano][safeKey(nome)][trim].obs=val;
   fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/obs`,val);
 }
 
@@ -737,7 +737,7 @@ function renderSAFT(){
     </thead><tbody>`;
 
   pag.forEach((nome,i)=>{
-    const ms=dadosAno[nome]||{};
+    const ms=dadosAno[safeKey(nome)]||{};
     const msArr=Array.isArray(ms)?ms:Array(24).fill(null);
     const datas=ms.datas||{};
     h+=`<tr><td class="td-num">${(saftPag-1)*SAFT_PP+i+1}</td><td class="td-nome">${nome}</td>`;
@@ -769,17 +769,17 @@ function saftBadge(val,nome,idx,ano){
 function toggleSAFT(nome,idx,ano){
   const est=[null,'S','N','NA','V','C'];
   if(!state.saft[ano])state.saft[ano]={};
-  if(!state.saft[ano][nome]||!Array.isArray(state.saft[ano][nome]))state.saft[ano][nome]=Array(24).fill(null);
-  const cur=state.saft[ano][nome][idx]??null;
-  state.saft[ano][nome][idx]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/saft/${ano}/${safeKey(nome)}/${idx}`,state.saft[ano][nome][idx]);
+  if(!state.saft[ano][safeKey(nome)]||!Array.isArray(state.saft[ano][safeKey(nome)]))state.saft[ano][safeKey(nome)]=Array(24).fill(null);
+  const cur=state.saft[ano][safeKey(nome)][idx]??null;
+  state.saft[ano][safeKey(nome)][idx]=est[(est.indexOf(cur)+1)%est.length];
+  fbSet(`/saft/${ano}/${safeKey(nome)}/${idx}`,state.saft[ano][safeKey(nome)][idx]);
   renderSAFT();
 }
 function saveSAFTDate(nome,mes,val,ano){
   if(!state.saft[ano])state.saft[ano]={};
-  if(!state.saft[ano][nome]||!Array.isArray(state.saft[ano][nome]))state.saft[ano][nome]=Array(24).fill(null);
-  if(!state.saft[ano][nome].datas)state.saft[ano][nome].datas={};
-  state.saft[ano][nome].datas[mes]=val||null;
+  if(!state.saft[ano][safeKey(nome)]||!Array.isArray(state.saft[ano][safeKey(nome)]))state.saft[ano][safeKey(nome)]=Array(24).fill(null);
+  if(!state.saft[ano][safeKey(nome)].datas)state.saft[ano][safeKey(nome)].datas={};
+  state.saft[ano][safeKey(nome)].datas[mes]=val||null;
   fbSet(`/saft/${ano}/${safeKey(nome)}/datas/${mes}`,val||null);
 }
 
@@ -805,8 +805,8 @@ function renderREC(){
   const pag=lista.slice((recPag-1)*REC_PP,recPag*REC_PP);
   let totalRec=0,totalFalta=0;
   lista.forEach(c=>{
-    const ms=(dadosAno[c.nome]||{}).meses||Array(12).fill(null);
-    const av=(dadosAno[c.nome]||{}).avenca||c.avenca||0;
+    const ms=(dadosAno[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const av=(dadosAno[safeKey(c.nome)]||{}).avenca||c.avenca||0;
     ms.forEach(m=>{if(m)totalRec+=av;else totalFalta+=av;});
   });
 
@@ -831,7 +831,7 @@ function renderREC(){
     </thead><tbody>`;
 
   pag.forEach((c,i)=>{
-    const dCliente=dadosAno[c.nome]||{};
+    const dCliente=dadosAno[safeKey(c.nome)]||{};
     const ms=dCliente.meses||Array(12).fill(null);
     const datas=dCliente.datas||{};
     const av=dCliente.avenca||c.avenca||0;
@@ -866,16 +866,16 @@ function recColor(v){if(!v)return'var(--red)';if(v==='Transferência')return'var
 function unlockRec(){if(document.getElementById('recPass').value===PASS_ADMIN){recLocked=false;renderREC();}else document.getElementById('recPassErr').textContent='Senha incorreta.';}
 function saveRec(nome,mi,val,ano){
   if(!state.rec[ano])state.rec[ano]={};
-  if(!state.rec[ano][nome])state.rec[ano][nome]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
-  state.rec[ano][nome].meses[mi]=val||null;
+  if(!state.rec[ano][safeKey(nome)])state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+  state.rec[ano][safeKey(nome)].meses[mi]=val||null;
   fbSet(`/rec/${ano}/${safeKey(nome)}/meses/${mi}`,val||null);
   renderDash();
 }
 function saveRecData(nome,mi,val,ano){
   if(!state.rec[ano])state.rec[ano]={};
-  if(!state.rec[ano][nome])state.rec[ano][nome]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
-  if(!state.rec[ano][nome].datas)state.rec[ano][nome].datas={};
-  state.rec[ano][nome].datas[mi]=val||null;
+  if(!state.rec[ano][safeKey(nome)])state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+  if(!state.rec[ano][safeKey(nome)].datas)state.rec[ano][safeKey(nome)].datas={};
+  state.rec[ano][safeKey(nome)].datas[mi]=val||null;
   fbSet(`/rec/${ano}/${safeKey(nome)}/datas/${mi}`,val||null);
 }
 
