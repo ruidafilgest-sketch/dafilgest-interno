@@ -261,12 +261,21 @@ tbody td.center{text-align:center;}
       <div class="sb-item" id="sb-iva" onclick="showTab('iva')"><span class="sb-icon">🟡</span>Mapa IVA<span class="sb-count">78</span></div>
       <div class="sb-item" id="sb-saft" onclick="showTab('saft')"><span class="sb-icon">📁</span>SAFT<span class="sb-count">90</span></div>
       <div class="sb-item" id="sb-rec" onclick="showTab('rec')"><span class="sb-icon">💶</span>Recebimentos<span class="sb-count">85</span></div>
+      <div class="sb-group-label">Seg. Social</div>
+      <div class="sb-item" id="sb-ssdecl" onclick="showTab('ssdecl')"><span class="sb-icon">📋</span>Independentes Decl.<span class="sb-count">37</span></div>
+      <div class="sb-item" id="sb-ss" onclick="showTab('ss')"><span class="sb-icon">💳</span>Independentes Pag.<span class="sb-count">29</span></div>
+      <div class="sb-item" id="sb-ssprint" onclick="showTab('ssprint')"><span class="sb-icon">🖨️</span>Relação SS</div>
+      <div class="sb-item" id="sb-dmr" onclick="showTab('dmr')"><span class="sb-icon">📤</span>DMR / DRI<span class="sb-count">51</span></div>
     </div>
     <div class="content">
       <div class="section active" id="sec-dash"></div>
       <div class="section" id="sec-iva"></div>
       <div class="section" id="sec-saft"></div>
       <div class="section" id="sec-rec"></div>
+      <div class="section" id="sec-ssdecl"></div>
+      <div class="section" id="sec-ss"></div>
+      <div class="section" id="sec-ssprint"></div>
+      <div class="section" id="sec-dmr"></div>
     </div>
   </div>
 </div>
@@ -306,6 +315,98 @@ tbody td.center{text-align:center;}
   <input class="mgmt-search" id="recMgmtSearch" placeholder="🔍 Filtrar..." oninput="renderRECMgmt()">
   <div class="mgmt-list" id="recMgmtList"></div>
 </div></div>
+
+<!-- MODAL SENHAS DMR -->
+<div class="modal-overlay" id="modalSenhas">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <div class="modal-title">🔐 Senhas AT e SS — Acesso Admin</div>
+      <button class="modal-close" onclick="closeModal('modalSenhas')">✕</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Informação confidencial. Não partilhar.</div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;font-size:12px;border-collapse:collapse">
+      <thead><tr>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">Nº</th>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">Empresa</th>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">NIF</th>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">Senha AT</th>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">NISS</th>
+        <th style="padding:7px 10px;background:var(--bg2);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);text-align:left">Senha SS</th>
+      </tr></thead>
+      <tbody id="senhasBody"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GESTÃO DECLARANTES -->
+<div class="modal-overlay" id="modalSSDecl">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Gerir Declarantes Independentes</div>
+      <button class="modal-close" onclick="closeModal('modalSSDecl')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>Nome</label><input type="text" id="ssDeclNewNome" placeholder="Nome completo..."></div>
+      <div class="form-group"><label>Mês início</label>
+        <select id="ssDeclNewMes">
+          <option value="">Janeiro (normal)</option>
+          <option value="ABRIL">Abril</option>
+          <option value="JULHO">Julho</option>
+          <option value="OUTUBRO">Outubro</option>
+        </select>
+      </div>
+      <div><button class="btn-primary" onclick="addDeclarante()" style="margin-top:18px">+ Adicionar</button></div>
+    </div>
+    <div class="form-err" id="ssDeclAddErr"></div>
+    <input class="mgmt-search" id="ssDeclMgmtSearch" placeholder="🔍 Filtrar..." oninput="renderSSDeclMgmt()">
+    <div class="mgmt-list" id="ssDeclMgmtList"></div>
+  </div>
+</div>
+
+<!-- MODAL GESTÃO INDEPENDENTES -->
+<div class="modal-overlay" id="modalSS">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Gerir Trabalhadores Independentes</div>
+      <button class="modal-close" onclick="closeModal('modalSS')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nº Beneficiário</label><input type="text" id="ssNewNum" placeholder="Ex: 10293150915"></div>
+      <div class="form-group" style="flex:2"><label>Nome</label><input type="text" id="ssNewNome" placeholder="Nome completo..."></div>
+      <div class="form-group"><label>TPA?</label><select id="ssNewTpa"><option value="false">Não</option><option value="true">TPA</option></select></div>
+      <div><button class="btn-primary" onclick="addTrabalhador()" style="margin-top:18px">+ Adicionar</button></div>
+    </div>
+    <div class="form-err" id="ssAddErr"></div>
+    <input class="mgmt-search" id="ssMgmtSearch" placeholder="🔍 Filtrar..." oninput="renderSSMgmt()">
+    <div class="mgmt-list" id="ssMgmtList"></div>
+  </div>
+</div>
+
+<!-- MODAL GESTÃO DMR -->
+<div class="modal-overlay" id="modalDMR">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Gerir Empresas — DMR/DRI</div>
+      <button class="modal-close" onclick="closeModal('modalDMR')">✕</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Nº</label><input type="number" id="dmrNewNum" placeholder="Nº"></div>
+      <div class="form-group" style="flex:2"><label>Nome</label><input type="text" id="dmrNewNome" placeholder="Nome..."></div>
+      <div class="form-group"><label>NIF</label><input type="text" id="dmrNewNif" placeholder="NIF"></div>
+      <div class="form-group"><label>NISS</label><input type="text" id="dmrNewNiss" placeholder="NISS"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Senha AT</label><input type="text" id="dmrNewSenhaAT" placeholder="Senha AT"></div>
+      <div class="form-group"><label>Senha SS</label><input type="text" id="dmrNewSenhaSS" placeholder="Senha SS"></div>
+      <div><button class="btn-primary" onclick="addEmpresaDMR()" style="margin-top:18px">+ Adicionar</button></div>
+    </div>
+    <div class="form-err" id="dmrAddErr"></div>
+    <input class="mgmt-search" id="dmrMgmtSearch" placeholder="🔍 Filtrar..." oninput="renderDMRMgmt()">
+    <div class="mgmt-list" id="dmrMgmtList"></div>
+  </div>
+</div>
 
 <div class="modal-overlay" id="modalConfirm"><div class="modal" style="width:380px;text-align:center">
   <div class="modal-header" style="justify-content:center"><div class="modal-title" id="confirmTitle"></div></div>
@@ -958,6 +1059,602 @@ function addClienteREC(){
   saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();
 }
 function removeClienteREC(nome){confirmAction('Remover Cliente',`Confirma a remoção de "${nome}"?`,()=>{state.clientes=state.clientes.filter(c=>c.nome!==nome);ANOS.forEach(a=>{if(state.rec[a])delete state.rec[a][nome];});saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();});}
+
+// ═══════════════════════════════════════
+// DADOS NOVOS MÓDULOS
+// ═══════════════════════════════════════
+const DECLARANTES_INIT   = [{"nome": "ADÃO CARLOS FERREIRA PEREIRA", "mesInicio": null}, {"nome": "AGOSTINHO EDUARDO SILVA MAGALHÃES", "mesInicio": null}, {"nome": "ALCINA DE JESUS PEREIRA ALVES", "mesInicio": null}, {"nome": "ANA CRISTINA FERREIRA SANTOS", "mesInicio": null}, {"nome": "ANDRÉ MACEDO", "mesInicio": null}, {"nome": "BRUNO MACEDO", "mesInicio": null}, {"nome": "CAFÉ TAGILDE BEATRIZ", "mesInicio": "ABRIL"}, {"nome": "CARLA CONCEIÇÃO M. GOMES", "mesInicio": null}, {"nome": "DANIEL JOSE DA COSTA FERREIRA", "mesInicio": null}, {"nome": "DOMINGOS MARTINS DA SILVA", "mesInicio": null}, {"nome": "ELSA JULIANA B FERREIRA", "mesInicio": null}, {"nome": "FLORINDA HELENA DO VALE MONTEIRO", "mesInicio": null}, {"nome": "GORETI", "mesInicio": null}, {"nome": "JOÃO PEDRO COELHO MAGALHÃES", "mesInicio": null}, {"nome": "JOSE ANDRE RIBAS RIBEIRO", "mesInicio": null}, {"nome": "JOSÉ CARLOS FERREIRA MAGALHÃES", "mesInicio": "JUNHO"}, {"nome": "JUSTINA PEREIRA DA COSTA", "mesInicio": null}, {"nome": "MANUEL ANTONIO MENDES RIBEIRO", "mesInicio": null}, {"nome": "MARCO PAULO RIBEIRO ALVES", "mesInicio": null}, {"nome": "MARIA ADELAIDE SILVA RIBEIRO", "mesInicio": null}, {"nome": "MARIA ADELINA SILVA COELHO", "mesInicio": null}, {"nome": "MARIA DO CARMO FERREIRA NUNES", "mesInicio": null}, {"nome": "MARIA FATIMA VAZ", "mesInicio": null}, {"nome": "MARIANA GABRIELA F. GOMES", "mesInicio": null}, {"nome": "MARINA - SORRISO DE ALGODÃO", "mesInicio": null}, {"nome": "MAURA MARLENE FERREIRA SILVA", "mesInicio": null}, {"nome": "NELSON FERNANDO GOMES SILVA", "mesInicio": null}, {"nome": "PAULA MARTINS", "mesInicio": null}, {"nome": "PAULO JOAQUIM FARIA LEITE", "mesInicio": null}, {"nome": "ROGÉRIO CARNEIRO", "mesInicio": null}, {"nome": "ROSA SILVA", "mesInicio": null}, {"nome": "SARA OLIVEIRA", "mesInicio": null}, {"nome": "SILVIA CRISTINA CARNEIRO MAGALHÃES (Danyfil)", "mesInicio": null}, {"nome": "SILVIA PATRICIA PINHAO GOMES", "mesInicio": null}, {"nome": "SR. ALBERTO", "mesInicio": null}, {"nome": "SUSANA FILIPA OLIVEIRA NOVAIS", "mesInicio": null}, {"nome": "TANIA PATRICIA SILVA PINTO", "mesInicio": null}];
+const TRABALHADORES_INIT = [{"num": "10293150915", "nome": "ADÃO CARLOS FERREIRA PEREIRA", "tpa": true}, {"num": "10294740523", "nome": "ALCINA DE JESUS PEREIRA ALVES", "tpa": false}, {"num": "10294809614", "nome": "MARCO PAULO RIBEIRO ALVES", "tpa": false}, {"num": "10294045240", "nome": "MANUEL ANTONIO MENDES RIBEIRO", "tpa": false}, {"num": "11322566794", "nome": "DOMINGOS MARTINS DA  SILVA", "tpa": true}, {"num": "10293106855", "nome": "JUSTINA PEREIRA COSTA", "tpa": false}, {"num": "10296661309", "nome": "TANIA PATRICIA SILVA PINTO", "tpa": false}, {"num": "10184711583", "nome": "MARIA ADELAIDE SILVA RIBEIRO SOUSA", "tpa": true}, {"num": "10295523115", "nome": "CARLA CONCEIÇÃO MACHADO GOMES", "tpa": false}, {"num": "10295411422", "nome": "AGOSTINHO EDUARDO SILVA MAGALHÃES", "tpa": false}, {"num": "10294503269", "nome": "FERNANDO FARIA DA SILVA", "tpa": true}, {"num": "11916066156", "nome": "FILIPA MANUELA CASTRO BARBOSA", "tpa": false}, {"num": "10294864609", "nome": "MARIA FATIMA MIRANDA VAZ", "tpa": true}, {"num": "11914764121", "nome": "SILVIA PATRICIA PINHAO GOMES", "tpa": true}, {"num": "11323931997", "nome": "SILVIA  CRISTINA  CARNEIRO  MAGALHAES", "tpa": false}, {"num": "11327137757", "nome": "NELSON FERNANDO GOMES SILVA", "tpa": false}, {"num": "10293025823", "nome": "MARIA DO CARMO FERREIRA NUNES", "tpa": false}, {"num": "10294933515", "nome": "MARIA  FERNANDA LEITE  MONTEIRO", "tpa": false}, {"num": "12010324597", "nome": "JOAO PEDRO COELHO MAGALHÃES", "tpa": true}, {"num": "10295618873", "nome": "MARIA ADELINA SILVA COELHO", "tpa": false}, {"num": "11323733818", "nome": "PAULO JOAQUIM FARIA LEITE", "tpa": true}, {"num": "12036248704", "nome": "DANIEL  JOSE DA COSTA FERREIRA", "tpa": true}, {"num": "10297535374", "nome": "ROSA MARIA GOMES SILVA", "tpa": false}, {"num": "10297310317", "nome": "SUSANA FILIPA OLIVEIRA NOVAIS", "tpa": true}, {"num": "10184856628", "nome": "MARIA  GORETTI MELO CARNEIRO", "tpa": false}, {"num": "12021505706", "nome": "ELSA JULIANA BARBOSA FERREIRA", "tpa": true}, {"num": "11910271370", "nome": "MARIANA GABRIALA DE FREITAS GOMES", "tpa": true}, {"num": "10295800789", "nome": "FLORINDA HELENA DO VALE MONTEIRO", "tpa": false}, {"num": "12018441098", "nome": "ANDRE FILIPE  MACEDO", "tpa": false}];
+const EMPRESAS_DMR_INIT  = [{"num": 2, "nome": "MANUEL COSTA & FILHOS LDA", "nif": "502217677", "senhaAT": "COSTAVINHOS", "niss": "20008830511", "senhaSS": "Costa2023*"}, {"num": 12, "nome": "DAFILGEST LDA", "nif": "505403447", "senhaAT": "DAFILGESTLDA", "niss": "20003693618", "senhaSS": "Dafilgest23*"}, {"num": 5, "nome": "H C ARAUJO LDA", "nif": "506027104", "senhaAT": "HCARAUJO", "niss": "20005104958", "senhaSS": "HCaraujo2023*"}, {"num": 42, "nome": "FANVICLIMA LDA", "nif": "504518879", "senhaAT": "DAFILFANVICLIMA", "niss": "20006130514", "senhaSS": "Fanviclima23*"}, {"num": 48, "nome": "MENDES DE FREITAS LDA", "nif": "507209710", "senhaAT": "MENDESFREITAS", "niss": "20017042005", "senhaSS": "Mendes2023*"}, {"num": 3, "nome": "SUPERMERCADOS VILELA LDA", "nif": "507550200", "senhaAT": "SUPERVILELA", "niss": "20017404237", "senhaSS": "Super2023*"}, {"num": 29, "nome": "ALESCKDOOM LDA", "nif": "507620178", "senhaAT": "ALEXANDRE1980", "niss": "20017474686", "senhaSS": "Alex2023*"}, {"num": 36, "nome": "ASSOCIACAO CAMPO DA VINHA", "nif": "506223434", "senhaAT": "DAFILCAMPOVINHA", "niss": "20003022391", "senhaSS": "David2023*"}, {"num": 6, "nome": "ALBINO RICARDO CARVALHO LDA", "nif": "509309127", "senhaAT": "DAFILALBINO", "niss": "25093091276", "senhaSS": "Albino2023*"}, {"num": 46, "nome": "LUIS MANUEL COSTA UNIPESSOAL LDA", "nif": "509842054", "senhaAT": "LUISCOSTA", "niss": "25098420548", "senhaSS": "Luis2023*"}, {"num": 9, "nome": "DOCE FORUM LDA", "nif": "510247717", "senhaAT": "DOCEFORUM", "niss": "25102477176", "senhaSS": "Doce2023*"}, {"num": 4, "nome": "HELDER CARNEIRO UNIPESSOAL LDA", "nif": "510397859", "senhaAT": "DAFILHELDER", "niss": "25103978597", "senhaSS": "Helder2023*"}, {"num": 7, "nome": "CALCULO VIBRANTE LDA", "nif": "510360858", "senhaAT": "DAFILCALCULO", "niss": "25103608581", "senhaSS": "Calculo23*"}, {"num": 45, "nome": "JOAQUIM DAVID, LDA", "nif": "510513719", "senhaAT": "JOAQUIMDAVID", "niss": "25105137194", "senhaSS": "Joaquim23*"}, {"num": 21, "nome": "MARIA MACHADO ALMEIDA LDA", "nif": "510557759", "senhaAT": "MARIAMACHADO", "niss": "25105577590", "senhaSS": "Machado23*"}, {"num": 37, "nome": "ASSOCIACAO PAIS SÃO JOAO", "nif": "506844226", "senhaAT": "QLCVGBRHSVZQ", "niss": "20016982726", "senhaSS": "APjiSJ2023*"}, {"num": 19, "nome": "DIAMANTINO ALONSO UNIPESSOAL LDA", "nif": "513074805", "senhaAT": "QQGGTNU5SEUK", "niss": "25130748051", "senhaSS": "Diamantino23*"}, {"num": 10, "nome": "FERNANDO BRAS MARTINS UNIP LDA", "nif": "513363696", "senhaAT": "A6M36TZJ2Q7B", "niss": "25133636961", "senhaSS": "Fernando2023*"}, {"num": 17, "nome": "FILIPE SILVA LOPES UNIPESSOAL LDA", "nif": "513360212", "senhaAT": "8P2NB4CTYYXZ", "niss": "25133602124", "senhaSS": "Filipe2023*"}, {"num": 18, "nome": "MAURA MARLENE F. SILVA UNIP.,LDA", "nif": "513415076", "senhaAT": "513415076DAFIL", "niss": "25134150765", "senhaSS": "Maura2023*"}, {"num": 44, "nome": "JOAO PEDRO COELHO MAGALHAES", "nif": "243304293", "senhaAT": "PEDROCOELHO", "niss": "12010324597", "senhaSS": "Joao2023*"}, {"num": 49, "nome": "MERITO INALTERAVEL LDA", "nif": "513659099", "senhaAT": "J7AU2F7S63M8", "niss": "25136590995", "senhaSS": "Merito2023*"}, {"num": 56, "nome": "T C MENDES TEXTIL LDA", "nif": "514182628", "senhaAT": "GPZGKHITGJPK", "niss": "25141826282", "senhaSS": "Tcmendes23*"}, {"num": 54, "nome": "RICARDO MENDES FERNANDES UNIP.LDA", "nif": "514263890", "senhaAT": "JFVGKCBYPJAZ", "niss": "25142638909", "senhaSS": "Ricardo23*"}, {"num": 53, "nome": "POSTURA DE FADA UNIPESSOAL LDA", "nif": "514857501", "senhaAT": "POSTURA2020", "niss": "25148575014", "senhaSS": "Postura23*"}, {"num": 14, "nome": "CONSTRUCOES PEDRO VAZ FERREIRA LDA", "nif": "505102498", "senhaAT": "505102498DAFIL", "niss": "20006096953", "senhaSS": "Pvaz2020@"}, {"num": 8, "nome": "CASUAL E BREVE CONST UNIP.LDA", "nif": "515279293", "senhaAT": "CASUAL2020", "niss": "25152792933", "senhaSS": "Casual68@"}, {"num": 58, "nome": "WELCOME GENIALITY UNIPESSOAL LDA", "nif": "515100803", "senhaAT": "DAFILWELCOME", "niss": "25151008033", "senhaSS": "Welcome23*"}, {"num": 52, "nome": "PAULO JORGE FELIX UNIPESSOAL LDA", "nif": "515473154", "senhaAT": "PAULO2020", "niss": "25154731544", "senhaSS": "Paulo2023@"}, {"num": 20, "nome": "JOAQUIM CUNHA FARIA UNIP. LDA", "nif": "513030425", "senhaAT": "DAFILCUNHAFARIA", "niss": "25130304257", "senhaSS": "Cunha2020@"}, {"num": 57, "nome": "URBOOST CREA. SOL. LDA", "nif": "516152467", "senhaAT": "URBOOST2022", "niss": "25161524671", "senhaSS": "Urboost2023*"}, {"num": 55, "nome": "SOC.AGRICOLA SOCALCOS TRESOURAS LDA", "nif": "513713182", "senhaAT": "SOCALCOS2022", "niss": "25137131820", "senhaSS": "Socalcos2023*"}, {"num": 11, "nome": "ENJOY VIEW GESTÃO ADM BENS S A", "nif": "513033556", "senhaAT": "513033556DAFIL", "niss": "25130335560", "senhaSS": "Enjoy2022@"}, {"num": 30, "nome": "ANDRE FILIPE DE OLIVEIRA MOUTAS MACEDO", "nif": "242550789", "senhaAT": "FQGNEUINNWQP", "niss": "12018441098", "senhaSS": "Andre1986@"}, {"num": 47, "nome": "MARIA FATIMA MIRANDA VAZ", "nif": "193639190", "senhaAT": "DAFILFATIMA", "niss": "10294864609", "senhaSS": "Fatima23*"}, {"num": 59, "nome": "MOTIVOS UNIVERSAIS UNIP., LDA", "nif": "517110008", "senhaAT": "JH6F7PTP47T2", "niss": "25171100088", "senhaSS": "Motivos2022@"}, {"num": 50, "nome": "ORIGINAL FLAME LDA", "nif": "517384825", "senhaAT": "ORIGINAL23*", "niss": "25173848257", "senhaSS": "Original2023*"}, {"num": 22, "nome": "1996 A EVOLUÇÃO DO PARQUET UNIP.,LDA", "nif": "517502070", "senhaAT": "MVYE1HQ1FSLA", "niss": "2517502070", "senhaSS": "Evolucao23*"}, {"num": 38, "nome": "BRUNO ANTONIO OLIVEIRA MOUTAS MACEDO", "nif": "226566773", "senhaAT": "OPAVORRGZKXT", "niss": "12014134825", "senhaSS": "Brunomacedo8*"}, {"num": 43, "nome": "FERNANDO FARIA SILVA", "nif": "186833237", "senhaAT": "FERNANDOFARIA", "niss": "10294503269", "senhaSS": "962305"}, {"num": 16, "nome": "FEYDOM SOFA SYSTEMS UNIPESSOAL LDA", "nif": "517260255", "senhaAT": "XSW8SN23QKDF", "niss": "25172602551", "senhaSS": "Feydom2023***"}, {"num": 39, "nome": "CONQUISTA CONVICTA IMOBILIÁRIA LDA", "nif": "518017230", "senhaAT": "7J2XYLA3D5AD", "niss": "25180172302", "senhaSS": "Conquista2024*"}, {"num": 40, "nome": "CRISTINA MOITA UNIPESSOAL, LDA.", "nif": "518124665", "senhaAT": "BWB8W659DG42", "niss": "25181246650", "senhaSS": "Cristinamoita24*"}, {"num": 41, "nome": "DIGNIDADE GARRIDA TRANSPORTES UNIPESSOAL LDA", "nif": "518242226", "senhaAT": "TLTHWCDRGFZ3", "niss": "25182422269", "senhaSS": "Dignidade2024*"}, {"num": 79, "nome": "FRANCISCO DANIEL PEDROSA SILVA UNIP. LDA", "nif": "518529347", "senhaAT": "HBK7SLY4F8SF", "niss": "25185293470", "senhaSS": "Francisco2025*"}, {"num": 80, "nome": "SPORTCALCAR LDA.", "nif": "517437538", "senhaAT": "VJHEZ5TYVMK5", "niss": "25174375384", "senhaSS": "Sportcalcar24*"}, {"num": 87, "nome": "CARLOS SILVA & RUI SILVA LDA", "nif": "518928560", "senhaAT": "X72DNJNP976T", "niss": "25189285603", "senhaSS": "Carlosilva2025*"}, {"num": 88, "nome": "JP INOVAÇÕES UNIPESSOAL LDA", "nif": "518373212", "senhaAT": "518373312.Jp", "niss": "25183733122", "senhaSS": "Jpinovacoes2025*"}, {"num": 89, "nome": "PORTAL FUSHIA LDA", "nif": "510102662", "senhaAT": "510PORTAL", "niss": "25101026628", "senhaSS": "510Portallda*"}, {"num": 90, "nome": "PEDRO ABREU LDA", "nif": "510937330", "senhaAT": "5109373301959", "niss": "25109373304", "senhaSS": "Pedroabreu*2025"}, {"num": 91, "nome": "VENGON Precision Engineering, Unipessoal, Lda.", "nif": "519289129", "senhaAT": "VKQHJ6G1LNSQ", "niss": "25192891298", "senhaSS": "Vengon2026***"}];
+
+// Integrar no state
+state.declarantes   = JSON.parse(JSON.stringify(DECLARANTES_INIT));
+state.trabalhadores = JSON.parse(JSON.stringify(TRABALHADORES_INIT));
+state.ssdecl = {}; // {ano:{idx:{jan:bool,abr:bool,jul:bool,out:bool}}}
+state.empresasDMR   = JSON.parse(JSON.stringify(EMPRESAS_DMR_INIT));
+state.ss  = {}; // {ano: {numBen: {jan:{valor,tpa}, abr:{...}, jul:{...}, out:{...}}}}
+state.dmr = {}; // {ano: {nif: {1:{ss,at}, 2:{ss,at}, ...}}}
+
+// Carregar do Firebase no loadFirebase
+const _origLoad = loadFirebase;
+
+// Actualizar saveMeta para incluir novos dados
+const _origSaveMeta = saveMeta;
+function saveMeta(){
+  fbSet('/meta',{
+    clientes:state.clientes,
+    empresasIVA:state.empresasIVA,
+    nomesSAFT:state.nomesSAFT,
+    declarantes:state.declarantes,
+    trabalhadores:state.trabalhadores,
+    empresasDMR:state.empresasDMR,
+  });
+}
+
+// Carregar SS e DMR no arranque
+const _origStartApp = startApp;
+function startApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('userBadge').innerHTML=userRole==='admin'
+    ?'<span class="badge-admin">⭐ Admin</span>'
+    :'<span class="badge-equipa">👤 Equipa</span>';
+  loadFirebase(()=>{
+    // Carregar também ss e dmr
+    Promise.all([fbGet('/ss'),fbGet('/ssdecl'),fbGet('/dmr')]).then(([ss,ssdecl,dmr])=>{
+      if(ss) state.ss=ss;
+      if(ssdecl) state.ssdecl=ssdecl;
+      if(dmr) state.dmr=dmr;
+      // Carregar trabalhadores e empresasDMR do meta se existir
+    });
+    renderDash();renderIVA();renderSAFT();renderREC();
+    renderSSDecl();renderSS();renderSSPrint();renderDMR();
+    lastHash = JSON.stringify({meta:null,iva:state.iva,saft:state.saft,rec:state.rec});
+    startPolling();
+  });
+}
+
+// ═══════════════════════════════════════
+// MESES SS
+// ═══════════════════════════════════════
+const SS_TRIMESTRES = {
+  jan: {label:'Jan (Enquadramento)', meses:[2,3,4],   mesLabel:['Fev','Mar','Abr']},
+  abr: {label:'Abr (Enquadramento)', meses:[5,6,7],   mesLabel:['Mai','Jun','Jul']},
+  jul: {label:'Jul (Enquadramento)', meses:[8,9,10],  mesLabel:['Ago','Set','Out']},
+  out: {label:'Out (Enquadramento)', meses:[11,12,1],  mesLabel:['Nov','Dez','Jan']},
+};
+
+let ssAno='2026', ssPag=1; const SS_PP=35;
+let dmrAno='2026', dmrBusca='', dmrPag=1; const DMR_PP=35;
+
+// ═══════════════════════════════════════
+// INDEPENDENTES — DECLARAÇÃO
+// ═══════════════════════════════════════
+let ssDeclAno='2026', ssDeclPag=1; const SSDECL_PP=40;
+
+function renderSSDecl(){
+  const el=document.getElementById('sec-ssdecl');
+  const dadosAno=state.ssdecl[ssDeclAno]||{};
+  const TRIMS=['jan','abr','jul','out'];
+  const TRIM_LABEL={jan:'Jan',abr:'Abr',jul:'Jul',out:'Out'};
+  const TRIM_MESES={jan:'Jan·Fev·Mar',abr:'Abr·Mai·Jun',jul:'Jul·Ago·Set',out:'Out·Nov·Dez'};
+  const NA_MAP={ABRIL:['jan'],JULHO:['jan','abr'],OUTUBRO:['jan','abr','jul']};
+
+  let feitas=0,total=0;
+  state.declarantes.forEach((_,idx)=>{
+    TRIMS.forEach(t=>{total++;if((dadosAno[idx]||{})[t])feitas++;});
+  });
+
+  const totPag=Math.ceil(state.declarantes.length/SSDECL_PP)||1;
+  if(ssDeclPag>totPag)ssDeclPag=1;
+  const pag=state.declarantes.slice((ssDeclPag-1)*SSDECL_PP,ssDeclPag*SSDECL_PP);
+
+  let h=`<div class="ph">
+    <div class="ph-left"><h1>Independentes — Declaração Trimestral</h1><p>Controlo de envio · ${ssDeclAno} · ${feitas}/${total} declarações concluídas</p></div>
+    <div class="ph-right">
+      <select class="ctrl-sel" onchange="ssDeclAno=this.value;ssDeclPag=1;renderSSDecl()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssDeclAno?' selected':''}>${a}</option>`).join('')}</select>
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoSSDecl()">⚙️ Gerir</button>`:''}
+    </div>
+  </div>
+  <div style="background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+    ℹ️ Insere os valores de enquadramento trimestral. Os valores propagam automaticamente para o separador de Pagamentos em quem estiver ligado.
+  </div>
+  <div class="table-wrap">
+    <div class="toolbar"><div class="toolbar-title">Declarantes <span class="toolbar-count">(${state.declarantes.length} entidades)</span></div></div>
+    <div class="tbl-scroll"><table><thead>
+      <tr>
+        <th>#</th><th>Nome / Empresa</th>
+        ${TRIMS.map(t=>`<th colspan="2" class="center" style="border-left:2px solid var(--border)">${TRIM_LABEL[t]}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">${TRIM_MESES[t]}</span></th>`).join('')}
+      </tr>
+      <tr>
+        <th></th><th></th>
+        ${TRIMS.map(()=>'<th class="center" style="border-left:2px solid var(--border);font-size:9px">Valor €</th><th class="center" style="font-size:9px">Enviada</th>').join('')}
+      </tr>
+    </thead><tbody>`;
+
+  pag.forEach((d,pi)=>{
+    const idx=(ssDeclPag-1)*SSDECL_PP+pi;
+    const dd=dadosAno[idx]||{};
+    const naList=NA_MAP[d.mesInicio]||[];
+    const nomeE=d.nome.replace(/'/g,"\\'");
+    h+=`<tr><td class="td-num">${idx+1}</td>
+      <td class="td-nome">${d.nome}${d.mesInicio?` <span style="font-size:10px;color:var(--amber);font-weight:600">(início ${d.mesInicio})</span>`:''}</td>`;
+    TRIMS.forEach(t=>{
+      if(naList.includes(t)){
+        h+=`<td class="center" style="border-left:2px solid var(--border)"><span class="badge b-na" style="cursor:default;font-size:10px">N/A</span></td><td></td>`;
+      } else {
+        const v=dd[t+'_val']||'';
+        h+=`<td style="border-left:2px solid var(--border)">
+          <input type="number" step="0.01" min="0" value="${v}" placeholder="0.00"
+            style="width:78px;padding:3px 6px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);font-size:11px;outline:none;color:${v?'var(--green)':'var(--text2)'}"
+            onchange="saveSSDecl(${idx},'${t}',this.value,'${ssDeclAno}')"
+            onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+        </td>`;
+        h+=`<td class="center">${ssDeclBadge(dd[t],idx,t,ssDeclAno)}</td>`;
+      }
+    });
+    h+=`</tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+  if(totPag>1){
+    h+=`<div class="pagination"><span class="pg-info">Pág ${ssDeclPag}/${totPag}</span>`;
+    for(let p=1;p<=totPag;p++) h+=`<button class="pg-btn${p===ssDeclPag?' active':''}" onclick="ssDeclPag=${p};renderSSDecl()">${p}</button>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  el.innerHTML=h;
+}
+
+function ssDeclBadge(val,idx,trim,ano){
+  const cls=val?'b-sim':'b-empty';
+  const lbl=val?'✓':'—';
+  return `<span class="badge ${cls}" style="min-width:28px" onclick="toggleSSDecl(${idx},'${trim}','${ano}')">${lbl}</span>`;
+}
+function saveSSDecl(idx,trim,val,ano){
+  if(!state.ssdecl[ano])state.ssdecl[ano]={};
+  if(!state.ssdecl[ano][idx])state.ssdecl[ano][idx]={};
+  state.ssdecl[ano][idx][trim+'_val']=val?parseFloat(val):null;
+  fbSet(`/ssdecl/${ano}/${idx}/${trim}_val`,val?parseFloat(val):null);
+  renderSSDecl();
+  renderSS(); // actualiza pagamentos
+}
+function toggleSSDecl(idx,trim,ano){
+  if(!state.ssdecl[ano])state.ssdecl[ano]={};
+  if(!state.ssdecl[ano][idx])state.ssdecl[ano][idx]={};
+  state.ssdecl[ano][idx][trim]=!state.ssdecl[ano][idx][trim];
+  fbSet(`/ssdecl/${ano}/${idx}/${trim}`,state.ssdecl[ano][idx][trim]);
+  renderSSDecl();
+}
+
+// Gestão declarantes
+function openGestaoSSDecl(){document.getElementById('ssDeclNewNome').value='';document.getElementById('ssDeclAddErr').textContent='';openModal('modalSSDecl');renderSSDeclMgmt();}
+function renderSSDeclMgmt(){
+  const q=(document.getElementById('ssDeclMgmtSearch').value||'').toLowerCase();
+  const lista=state.declarantes.filter(d=>!q||d.nome.toLowerCase().includes(q));
+  document.getElementById('ssDeclMgmtList').innerHTML=lista.map((d,i)=>`
+    <div class="mgmt-item">
+      <span class="mgmt-nome">${d.nome}</span>
+      ${d.mesInicio?`<span class="mgmt-meta" style="color:var(--amber)">${d.mesInicio}</span>`:''}
+      <button class="btn-danger" onclick="removeDeclarante(${state.declarantes.indexOf(d)});" style="font-size:11px;padding:3px 8px">✕</button>
+    </div>`).join('')||'<div style="padding:12px;color:var(--text4);font-size:12px">Sem resultados.</div>';
+}
+function addDeclarante(){
+  const nome=document.getElementById('ssDeclNewNome').value.trim();
+  const mesInicio=document.getElementById('ssDeclNewMes').value||null;
+  const err=document.getElementById('ssDeclAddErr');
+  if(!nome){err.textContent='Introduza o nome.';return;}
+  if(state.declarantes.find(d=>d.nome.toLowerCase()===nome.toLowerCase())){err.textContent='Já existe.';return;}
+  state.declarantes.push({nome,mesInicio,declIdx:null});
+  err.textContent='';document.getElementById('ssDeclNewNome').value='';
+  saveMeta();renderSSDeclMgmt();renderSSDecl();
+}
+function removeDeclarante(idx){
+  confirmAction('Remover Declarante',`Confirma a remoção de "${state.declarantes[idx]?.nome}"?`,()=>{
+    state.declarantes.splice(idx,1);
+    saveMeta();renderSSDeclMgmt();renderSSDecl();
+  });
+}
+
+// ═══════════════════════════════════════
+// INDEPENDENTES SS — PAGAMENTOS
+// ═══════════════════════════════════════
+function renderSS(){
+  const el=document.getElementById('sec-ss');
+  const dadosAno=state.ss[ssAno]||{};
+  const TRIM_KEYS=['jan','abr','jul','out'];
+  const TRIM_LABELS={jan:'1º (Jan)',abr:'2º (Abr)',jul:'3º (Jul)',out:'4º (Out)'};
+  const TRIM_MESES={jan:['Fev','Mar','Abr'],abr:['Mai','Jun','Jul'],jul:['Ago','Set','Out'],out:['Nov','Dez','Jan']};
+
+  const totPag=Math.ceil(state.trabalhadores.length/SS_PP)||1;
+  if(ssPag>totPag)ssPag=1;
+  const pag=state.trabalhadores.slice((ssPag-1)*SS_PP,ssPag*SS_PP);
+
+  let h=`<div class="ph">
+    <div class="ph-left"><h1>Trabalhadores Independentes — SS</h1><p>Enquadramento trimestral · ${ssAno}</p></div>
+    <div class="ph-right">
+      <select class="ctrl-sel" onchange="ssAno=this.value;ssPag=1;renderSS()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssAno?' selected':''}>${a}</option>`).join('')}</select>
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoSS()">⚙️ Gerir</button>`:''}
+    </div>
+  </div>
+  <div style="background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);">
+    ℹ️ Insere o valor calculado pela Segurança Social nos <strong>meses de enquadramento</strong> (Jan, Abr, Jul, Out). O valor propaga automaticamente para os 3 meses seguintes.
+  </div>
+  <div class="table-wrap">
+    <div class="toolbar">
+      <div class="toolbar-title">Enquadramento <span class="toolbar-count">(${state.trabalhadores.length} trabalhadores)</span></div>
+      <div class="toolbar-right">
+        <button class="btn-secondary" onclick="showTab('ssprint')" style="font-size:12px">🖨️ Ver Relação para Impressão</button>
+      </div>
+    </div>
+    <div class="tbl-scroll"><table><thead>
+      <tr>
+        <th>#</th><th>Nº Beneficiário</th><th>Nome</th><th class="center">TPA</th>
+        ${TRIM_KEYS.map(t=>`<th colspan="4" class="center" style="border-left:2px solid var(--border)">${TRIM_LABELS[t]}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">${TRIM_MESES[t].join(' · ')}</span></th>`).join('')}
+      </tr>
+      <tr>
+        <th></th><th></th><th></th><th></th>
+        <th></th>
+        ${TRIM_KEYS.map(t=>`
+          <th style="border-left:2px solid var(--border);font-size:9px;text-align:center">Valor €</th>
+          ${TRIM_MESES[t].map(m=>`<th style="font-size:9px;text-align:center">${m}</th>`).join('')}
+        `).join('')}
+      </tr>
+    </thead><tbody>`;
+
+  pag.forEach((t,i)=>{
+    const d=dadosAno[t.num]||{};
+    h+=`<tr>
+      <td class="td-num">${(ssPag-1)*SS_PP+i+1}</td>
+      <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3)">${t.num}</td>
+      <td class="td-nome">${t.nome}</td>
+      <td class="center"><span class="badge ${t.tpa?'b-v':'b-empty'}" style="font-size:10px;cursor:default">${t.tpa?'TPA':'—'}</span></td>
+      <td class="center">
+        <select class="inline-sel" style="font-size:10px;max-width:130px"
+          onchange="linkDeclarante('${t.num.replace(/'/g,"\'")}',this.value,'${ssAno}')">
+          <option value="">— sem ligação —</option>
+          ${state.declarantes.map((d,di)=>`<option value="${di}"${t.declIdx===di?' selected':''}>${d.nome.substring(0,22)}</option>`).join('')}
+        </select>
+      </td>`;
+
+    TRIM_KEYS.forEach(tk=>{
+      const td=d[tk]||{};
+      // Puxar valor da declaração se estiver ligado
+      let valor=td.valor||'';
+      if(!valor && t.declIdx!==null && t.declIdx!==undefined){
+        const dadosDecl=(state.ssdecl[ssAno]||{})[t.declIdx]||{};
+        const vDecl=dadosDecl[tk+'_val'];
+        if(vDecl) valor=vDecl;
+      }
+      const tNum=t.num.replace(/'/g,"\'");
+      const fromDecl=!td.valor&&valor; // veio da declaração
+      h+=`<td style="border-left:2px solid var(--border)">
+        <input type="number" step="0.01" min="0"
+          style="width:80px;padding:3px 6px;background:${fromDecl?'var(--blue-light)':'var(--bg2)'};border:1px solid ${fromDecl?'var(--blue-mid)':'var(--border)'};border-radius:var(--r);font-size:11px;outline:none;color:${valor?'var(--green)':'var(--text2)'}"
+          value="${valor}" placeholder="0.00"
+          title="${fromDecl?'Valor automático da declaração — podes substituir':''}"
+          onchange="saveSSValor('${tNum}','${tk}',this.value,'${ssAno}')"
+          onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+        ${fromDecl?'<span style="font-size:9px;color:var(--blue)">auto</span>':''}
+      </td>`;
+      TRIM_MESES[tk].forEach(m=>{
+        const v=valor?parseFloat(valor).toFixed(2):'—';
+        h+=`<td class="center" style="font-size:11px;color:${valor?'var(--text)':'var(--text4)'};font-weight:${valor?'500':'400'}">${v}</td>`;
+      });
+    });
+
+    h+=`</tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+  if(totPag>1){
+    h+=`<div class="pagination"><span class="pg-info">Pág ${ssPag}/${totPag}</span>`;
+    for(let p=1;p<=totPag;p++) h+=`<button class="pg-btn${p===ssPag?' active':''}" onclick="ssPag=${p};renderSS()">${p}</button>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  el.innerHTML=h;
+}
+
+function linkDeclarante(num,idxStr,ano){
+  const t=state.trabalhadores.find(x=>x.num===num);
+  if(!t)return;
+  t.declIdx=idxStr===''?null:parseInt(idxStr);
+  saveMeta();renderSS();
+}
+
+function saveSSValor(num,trimKey,val,ano){
+  if(!state.ss[ano])state.ss[ano]={};
+  if(!state.ss[ano][num])state.ss[ano][num]={};
+  if(!state.ss[ano][num][trimKey])state.ss[ano][num][trimKey]={};
+  state.ss[ano][num][trimKey].valor=val?parseFloat(val):null;
+  fbSet(`/ss/${ano}/${num}/${trimKey}/valor`,val?parseFloat(val):null);
+  renderSS();
+}
+
+// ═══════════════════════════════════════
+// RELAÇÃO SS PARA IMPRESSÃO
+// ═══════════════════════════════════════
+let ssPrintAno='2026', ssPrintMes=new Date().getMonth()+1;
+
+function renderSSPrint(){
+  const el=document.getElementById('sec-ssprint');
+  const MESES_FULL_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  // Mapeamento mês → trimestre e valor
+  // Jan=enquadramento jan→meses fev,mar,abr
+  // Abr=enquadramento abr→meses mai,jun,jul
+  // Jul=enquadramento jul→meses ago,set,out
+  // Out=enquadramento out→meses nov,dez,jan
+  const MES_TRIM = {
+    2:'jan',3:'jan',4:'jan',
+    5:'abr',6:'abr',7:'abr',
+    8:'jul',9:'jul',10:'jul',
+    11:'out',12:'out',1:'out'
+  };
+
+  const dadosAno=state.ss[ssPrintAno]||{};
+  const trimKey=MES_TRIM[ssPrintMes];
+
+  // Construir lista para o mês seleccionado
+  const lista=state.trabalhadores.map(t=>{
+    const d=(dadosAno[t.num]||{})[trimKey]||{};
+    const valor=d.valor||0;
+    return {...t, valor, trimKey};
+  }).filter(t=>t.valor>0);
+
+  const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
+  const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
+
+  let h=`<div class="ph">
+    <div class="ph-left"><h1>Relação SS para Impressão</h1><p>${MESES_FULL_PT[ssPrintMes-1]} ${ssPrintAno}</p></div>
+    <div class="ph-right">
+      <select class="ctrl-sel" onchange="ssPrintAno=this.value;renderSSPrint()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssPrintAno?' selected':''}>${a}</option>`).join('')}</select>
+      <select class="ctrl-sel" onchange="ssPrintMes=parseInt(this.value);renderSSPrint()">${MESES.map((m,i)=>`<option value="${i+1}"${i+1===ssPrintMes?' selected':''}>${m}</option>`).join('')}</select>
+      <button class="btn-primary" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+  </div>`;
+
+  if(lista.length===0){
+    h+=`<div class="table-wrap"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Sem valores registados para ${MESES_FULL_PT[ssPrintMes-1]} ${ssPrintAno}.<br>Insere os valores no separador <strong>Independentes</strong> primeiro.</div></div>`;
+  } else {
+    h+=`
+    <style>
+      @media print {
+        .sidebar,.topbar,.ph,.no-print{display:none!important;}
+        .print-area{display:block!important;}
+        body{background:#fff;}
+        .content{padding:0!important;}
+        table{font-size:11pt!important;}
+        @page{margin:1.5cm;}
+      }
+    </style>
+    <div class="print-area table-wrap">
+      <!-- CABEÇALHO IMPRESSÃO -->
+      <div style="padding:18px 20px;border-bottom:2px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)">DAFILGEST — GABINETE DE CONTABILIDADE, UNIPESSOAL, LDA.</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">RELAÇÃO DOS PAGAMENTOS À SEG. SOCIAL DOS TRABALHADORES INDEPENDENTES</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:13px;font-weight:700;color:var(--blue)">MÊS DE ${MESES_FULL_PT[ssPrintMes-1].toUpperCase()}</div>
+            <div style="font-size:11px;color:var(--text3)">${ssPrintAno}</div>
+          </div>
+        </div>
+      </div>
+      <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Nº BENEFICIÁRIO</th>
+            <th>NOME</th>
+            <th class="center">ANO / MÊS</th>
+            <th class="center">VALOR €</th>
+            <th class="center">PAGAMENTO</th>
+            <th class="center">DATA</th>
+            <th class="center">CONFIRMAÇÃO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${lista.map(t=>`
+          <tr>
+            <td style="font-family:'JetBrains Mono',monospace;font-size:11px">${t.num}</td>
+            <td class="td-nome">${t.nome}</td>
+            <td class="center">${mesStr}</td>
+            <td class="center" style="font-weight:600;color:var(--green)">€ ${t.valor.toFixed(2)}</td>
+            <td class="center">${t.tpa?'<span class="badge b-v" style="cursor:default">TPA</span>':'—'}</td>
+            <td class="center" style="min-width:90px"></td>
+            <td class="center" style="min-width:90px"></td>
+          </tr>`).join('')}
+          <tr style="border-top:2px solid var(--border);background:var(--bg2)">
+            <td colspan="3" style="font-weight:700;text-align:right;padding-right:16px">TOTAL</td>
+            <td class="center" style="font-weight:700;color:var(--blue);font-size:13px">€ ${totalGeral.toFixed(2)}</td>
+            <td colspan="3"></td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+      <div style="padding:12px 20px;font-size:11px;color:var(--text4);border-top:1px solid var(--border2);display:flex;justify-content:space-between">
+        <span>Dafilgest, Lda. · NIF 505403447 · OCC 46003</span>
+        <span>Documento gerado em ${new Date().toLocaleDateString('pt-PT')}</span>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
+// DMR / DRI
+// ═══════════════════════════════════════
+function renderDMR(){
+  const el=document.getElementById('sec-dmr');
+  const dadosAno=state.dmr[dmrAno]||{};
+  let lista=state.empresasDMR;
+  if(dmrBusca)lista=lista.filter(e=>e.nome.toLowerCase().includes(dmrBusca)||String(e.nif).includes(dmrBusca));
+  const totPag=Math.ceil(lista.length/DMR_PP)||1;
+  if(dmrPag>totPag)dmrPag=1;
+  const pag=lista.slice((dmrPag-1)*DMR_PP,dmrPag*DMR_PP);
+
+  let enviSS=0,enviAT=0;
+  lista.forEach(e=>{
+    MESES.forEach((_,i)=>{
+      const d=(dadosAno[safeKey(e.nif)]||{})[i+1]||{};
+      if(d.ss)enviSS++;
+      if(d.at)enviAT++;
+    });
+  });
+
+  let h=`<div class="ph">
+    <div class="ph-left"><h1>Checklist DMR / DRI</h1><p>Envio mensal ficheiros Seg. Social e AT · ${dmrAno}</p></div>
+    <div class="ph-right">
+      <select class="ctrl-sel" onchange="dmrAno=this.value;dmrPag=1;renderDMR()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===dmrAno?' selected':''}>${a}</option>`).join('')}</select>
+      <input class="ctrl-inp" placeholder="🔍 Pesquisar empresa/NIF…" oninput="dmrBusca=this.value.toLowerCase();dmrPag=1;renderDMR()">
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoSenhas()" style="margin-right:4px">🔐 Senhas</button>`:''}
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoDMR()">⚙️ Gerir</button>`:''}
+    </div>
+  </div>
+  <div style="font-size:12px;color:var(--text3);margin-bottom:14px;display:flex;gap:16px;flex-wrap:wrap">
+    <span>SS enviadas: <strong style="color:var(--green)">${enviSS}</strong></span>
+    <span>AT enviadas: <strong style="color:var(--blue)">${enviAT}</strong></span>
+    <span style="color:var(--text4)">Clica nos badges para alternar: — → ✓ → ✗</span>
+  </div>
+  <div class="table-wrap">
+    <div class="tbl-scroll"><table><thead>
+      <tr>
+        <th style="width:32px">#</th><th>NIF</th><th>Empresa</th>
+        ${MESES.map(m=>`<th colspan="2" class="center" style="border-left:2px solid var(--border)">${m}</th>`).join('')}
+      </tr>
+      <tr>
+        <th></th><th></th><th></th>
+        ${MESES.map(()=>`<th class="center" style="border-left:2px solid var(--border);font-size:9px">SS</th><th class="center" style="font-size:9px">AT</th>`).join('')}
+      </tr>
+    </thead><tbody>`;
+
+  pag.forEach((e,i)=>{
+    const sk=safeKey(String(e.nif));
+    const d=dadosAno[sk]||{};
+    h+=`<tr>
+      <td class="td-num">${(dmrPag-1)*DMR_PP+i+1}</td>
+      <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3)">${e.nif}</td>
+      <td class="td-nome">${e.nome}</td>`;
+    MESES.forEach((_,mi)=>{
+      const mes=mi+1;
+      const md=d[mes]||{};
+      const nifE=String(e.nif).replace(/'/g,"\'");
+      h+=`<td class="center" style="border-left:2px solid var(--border)">${dmrBadge(md.ss,nifE,mes,'ss',dmrAno)}</td>`;
+      h+=`<td class="center">${dmrBadge(md.at,nifE,mes,'at',dmrAno)}</td>`;
+    });
+    h+=`</tr>`;
+  });
+
+  h+=`</tbody></table></div>`;
+  if(totPag>1){
+    h+=`<div class="pagination"><span class="pg-info">Pág ${dmrPag}/${totPag} (${lista.length})</span>`;
+    for(let p=1;p<=totPag;p++) h+=`<button class="pg-btn${p===dmrPag?' active':''}" onclick="dmrPag=${p};renderDMR()">${p}</button>`;
+    h+=`</div>`;
+  }
+  h+=`</div>`;
+  el.innerHTML=h;
+}
+
+function dmrBadge(val,nif,mes,tipo,ano){
+  const est=[null,true,false];
+  const cls={null:'b-empty',true:'b-sim',false:'b-nao'};
+  const lbl={null:'—',true:'✓',false:'✗'};
+  const cur=val===undefined?null:val;
+  return `<span class="badge ${cls[cur]}" style="min-width:28px" onclick="toggleDMR('${nif}',${mes},'${tipo}','${ano}')">${lbl[cur]}</span>`;
+}
+
+function toggleDMR(nif,mes,tipo,ano){
+  const est=[null,true,false];
+  if(!state.dmr[ano])state.dmr[ano]={};
+  const sk=safeKey(String(nif));
+  if(!state.dmr[ano][sk])state.dmr[ano][sk]={};
+  if(!state.dmr[ano][sk][mes])state.dmr[ano][sk][mes]={};
+  const cur=state.dmr[ano][sk][mes][tipo]??null;
+  const next=est[(est.indexOf(cur)+1)%est.length];
+  state.dmr[ano][sk][mes][tipo]=next;
+  fbSet(`/dmr/${ano}/${sk}/${mes}/${tipo}`,next);
+  renderDMR();
+}
+
+// ═══════════════════════════════════════
+// GESTÃO INDEPENDENTES
+// ═══════════════════════════════════════
+function openGestaoSS(){document.getElementById('ssNewNum').value='';document.getElementById('ssNewNome').value='';document.getElementById('ssAddErr').textContent='';openModal('modalSS');renderSSMgmt();}
+function renderSSMgmt(){
+  const q=(document.getElementById('ssMgmtSearch').value||'').toLowerCase();
+  const lista=state.trabalhadores.filter(t=>!q||t.nome.toLowerCase().includes(q)||t.num.includes(q));
+  document.getElementById('ssMgmtList').innerHTML=lista.map(t=>`
+    <div class="mgmt-item">
+      <span class="mgmt-meta">${t.num}</span>
+      <span class="mgmt-nome">${t.nome}</span>
+      <span class="mgmt-meta">${t.tpa?'TPA':'—'}</span>
+      <button class="btn-danger" onclick="removeTrabalhador('${t.num.replace(/'/g,"\'")}');" style="font-size:11px;padding:3px 8px">✕</button>
+    </div>`).join('')||'<div style="padding:12px;color:var(--text4);font-size:12px">Sem resultados.</div>';
+}
+function addTrabalhador(){
+  const num=document.getElementById('ssNewNum').value.trim().replace(/\s/g,'');
+  const nome=document.getElementById('ssNewNome').value.trim();
+  const tpa=document.getElementById('ssNewTpa').value==='true';
+  const err=document.getElementById('ssAddErr');
+  if(!num||!nome){err.textContent='Preenche todos os campos.';return;}
+  if(state.trabalhadores.find(t=>t.num===num)){err.textContent='Nº Beneficiário já existe.';return;}
+  state.trabalhadores.push({num,nome,tpa});
+  err.textContent='';document.getElementById('ssNewNum').value='';document.getElementById('ssNewNome').value='';
+  saveMeta();renderSSMgmt();renderSS();
+}
+function removeTrabalhador(num){confirmAction('Remover Trabalhador',`Confirma a remoção de "${num}"?`,()=>{state.trabalhadores=state.trabalhadores.filter(t=>t.num!==num);saveMeta();renderSSMgmt();renderSS();});}
+
+// ═══════════════════════════════════════
+// GESTÃO DMR
+// ═══════════════════════════════════════
+function openGestaoDMR(){document.getElementById('dmrNewNome').value='';document.getElementById('dmrAddErr').textContent='';openModal('modalDMR');renderDMRMgmt();}
+function renderDMRMgmt(){
+  const q=(document.getElementById('dmrMgmtSearch').value||'').toLowerCase();
+  const lista=state.empresasDMR.filter(e=>!q||e.nome.toLowerCase().includes(q));
+  document.getElementById('dmrMgmtList').innerHTML=lista.map(e=>`
+    <div class="mgmt-item">
+      <span class="mgmt-meta">${e.nif}</span>
+      <span class="mgmt-nome">${e.nome}</span>
+      <button class="btn-danger" onclick="removeEmpresaDMR('${String(e.nif).replace(/'/g,"\'")}');" style="font-size:11px;padding:3px 8px">✕</button>
+    </div>`).join('')||'<div style="padding:12px;color:var(--text4);font-size:12px">Sem resultados.</div>';
+}
+function addEmpresaDMR(){
+  const num=parseInt(document.getElementById('dmrNewNum').value)||0;
+  const nome=document.getElementById('dmrNewNome').value.trim();
+  const nif=document.getElementById('dmrNewNif').value.trim();
+  const niss=document.getElementById('dmrNewNiss').value.trim();
+  const senhaAT=document.getElementById('dmrNewSenhaAT').value.trim();
+  const senhaSS=document.getElementById('dmrNewSenhaSS').value.trim();
+  const err=document.getElementById('dmrAddErr');
+  if(!nome||!nif){err.textContent='Nome e NIF são obrigatórios.';return;}
+  if(state.empresasDMR.find(e=>String(e.nif)===String(nif))){err.textContent='NIF já existe.';return;}
+  state.empresasDMR.push({num,nome,nif,senhaAT,niss,senhaSS});
+  err.textContent='';['dmrNewNum','dmrNewNome','dmrNewNif','dmrNewNiss','dmrNewSenhaAT','dmrNewSenhaSS'].forEach(id=>document.getElementById(id).value='');
+  saveMeta();renderDMRMgmt();renderDMR();
+}
+function removeEmpresaDMR(nif){confirmAction('Remover Empresa',`Confirma a remoção de NIF ${nif}?`,()=>{state.empresasDMR=state.empresasDMR.filter(e=>String(e.nif)!==String(nif));saveMeta();renderDMRMgmt();renderDMR();});}
+
+// ═══════════════════════════════════════
+// SENHAS DMR (só admin)
+// ═══════════════════════════════════════
+function openGestaoSenhas(){
+  if(userRole!=='admin')return;
+  const tbody=document.getElementById('senhasBody');
+  tbody.innerHTML=state.empresasDMR.map(e=>`
+    <tr style="border-bottom:1px solid var(--border2)">
+      <td style="padding:6px 10px;font-size:11px;color:var(--text3)">${e.num}</td>
+      <td style="padding:6px 10px;font-size:12px;font-weight:500">${e.nome}</td>
+      <td style="padding:6px 10px;font-size:11px;font-family:'JetBrains Mono',monospace">${e.nif}</td>
+      <td style="padding:6px 10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--blue)">${e.senhaAT||'—'}</td>
+      <td style="padding:6px 10px;font-size:11px;font-family:'JetBrains Mono',monospace">${e.niss||'—'}</td>
+      <td style="padding:6px 10px;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--green)">${e.senhaSS||'—'}</td>
+    </tr>`).join('');
+  openModal('modalSenhas');
+}
 
 document.getElementById('loginPass').focus();
 
