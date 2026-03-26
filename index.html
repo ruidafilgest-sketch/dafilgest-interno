@@ -996,7 +996,7 @@ async function pollFirebase(){
 
 function startPolling(){
   if(pollingTimer) clearInterval(pollingTimer);
-  pollingTimer = setInterval(pollFirebase, 30000);
+  pollingTimer = setInterval(pollFirebase, 5000);
 }
 function stopPolling(){
   if(pollingTimer){ clearInterval(pollingTimer); pollingTimer=null; }
