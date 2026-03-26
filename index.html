@@ -339,6 +339,18 @@ let state={
   rec:  JSON.parse(JSON.stringify(ANOS_REC_INIT)),
 };
 
+// ── CHAVES SEGURAS FIREBASE ──
+function safeKey(nome){
+  if(!nome) return nome;
+  return nome.replace(/\.|\//g,'_').replace(/#/g,'_').replace(/\$/g,'_').replace(/\[/g,'_').replace(/\]/g,'_');
+}
+function safeObj(obj){
+  if(typeof obj!=='object'||obj===null||Array.isArray(obj)) return obj;
+  const out={};
+  for(const [k,v] of Object.entries(obj)) out[safeKey(k)]=safeObj(v);
+  return out;
+}
+
 let ivaAno='2026',ivaFiltro='todos',ivaBusca='',ivaPag=1; const IVA_PP=35;
 let saftAno='2026',saftBusca='',saftPag=1; const SAFT_PP=35;
 let recAno='2026',recBusca='',recPag=1,recLocked=true; const REC_PP=35;
@@ -420,14 +432,29 @@ function startApp(){
 
 // ── FIREBASE ──
 async function fbGet(p){try{const r=await fetch(FIREBASE_URL+FB+p+'.json',{cache:'no-store'});if(!r.ok)throw 0;return await r.json();}catch{return null;}}
-async function fbSet(p,data){try{const r=await fetch(FIREBASE_URL+FB+p+'.json',{method:'PUT',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});if(!r.ok)throw 0;setFB(true);}catch{setFB(false);}}
+async function fbSet(p,data){
+  // Converter path para chave segura (último segmento)
+  const parts=p.split('/');
+  const safeParts=parts.map((seg,i)=>i<parts.length-1?seg:safeKey(seg));
+  const safePath=safeParts.join('/');
+  try{
+    const r=await fetch(FIREBASE_URL+FB+safePath+'.json',{method:'PUT',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
+    if(!r.ok)throw 0;setFB(true);
+  }catch{setFB(false);}
+}
 function setFB(ok){document.getElementById('fbDot').className='fb-dot '+(ok?'ok':'err');document.getElementById('fbLabel').textContent=ok?'Online':'Sem ligação';}
 function loadFirebase(cb){
   Promise.all([fbGet('/meta'),fbGet('/iva'),fbGet('/saft'),fbGet('/rec')])
   .then(([meta,iva,saft,rec])=>{
     setFB(meta!==null||iva!==null||saft!==null||rec!==null);
-    if(meta){if(meta.clientes)state.clientes=meta.clientes;if(meta.empresasIVA)state.empresasIVA=meta.empresasIVA;if(meta.nomesSAFT)state.nomesSAFT=meta.nomesSAFT;}
-    if(iva)state.iva=iva;if(saft)state.saft=saft;if(rec)state.rec=rec;
+    if(meta){
+      if(meta.clientes)state.clientes=meta.clientes;
+      if(meta.empresasIVA)state.empresasIVA=meta.empresasIVA;
+      if(meta.nomesSAFT)state.nomesSAFT=meta.nomesSAFT;
+    }
+    if(iva)state.iva=iva;
+    if(saft)state.saft=saft;
+    if(rec)state.rec=rec;
     cb();
   }).catch(()=>{setFB(false);cb();});
 }
@@ -656,7 +683,7 @@ function toggleIVA(nome,trim,campo,ano){
   if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
   const cur=state.iva[ano][nome][trim][campo]??null;
   state.iva[ano][nome][trim][campo]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/iva/${ano}/${encodeURIComponent(nome)}/${trim}/${campo}`,state.iva[ano][nome][trim][campo]);
+  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/${campo}`,state.iva[ano][nome][trim][campo]);
   renderIVA();renderDash();
 }
 function saveIVADate(nome,trim,val,ano){
@@ -664,7 +691,7 @@ function saveIVADate(nome,trim,val,ano){
   if(!state.iva[ano][nome])state.iva[ano][nome]={};
   if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
   state.iva[ano][nome][trim].dataEnvio=val||null;
-  fbSet(`/iva/${ano}/${encodeURIComponent(nome)}/${trim}/dataEnvio`,val||null);
+  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/dataEnvio`,val||null);
   renderIVA();renderDash();
 }
 function saveIVAObs(nome,trim,val,ano){
@@ -672,7 +699,7 @@ function saveIVAObs(nome,trim,val,ano){
   if(!state.iva[ano][nome])state.iva[ano][nome]={};
   if(!state.iva[ano][nome][trim])state.iva[ano][nome][trim]={};
   state.iva[ano][nome][trim].obs=val;
-  fbSet(`/iva/${ano}/${encodeURIComponent(nome)}/${trim}/obs`,val);
+  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/obs`,val);
 }
 
 // ── SAFT ──
@@ -745,7 +772,7 @@ function toggleSAFT(nome,idx,ano){
   if(!state.saft[ano][nome]||!Array.isArray(state.saft[ano][nome]))state.saft[ano][nome]=Array(24).fill(null);
   const cur=state.saft[ano][nome][idx]??null;
   state.saft[ano][nome][idx]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/saft/${ano}/${encodeURIComponent(nome)}/${idx}`,state.saft[ano][nome][idx]);
+  fbSet(`/saft/${ano}/${safeKey(nome)}/${idx}`,state.saft[ano][nome][idx]);
   renderSAFT();
 }
 function saveSAFTDate(nome,mes,val,ano){
@@ -753,7 +780,7 @@ function saveSAFTDate(nome,mes,val,ano){
   if(!state.saft[ano][nome]||!Array.isArray(state.saft[ano][nome]))state.saft[ano][nome]=Array(24).fill(null);
   if(!state.saft[ano][nome].datas)state.saft[ano][nome].datas={};
   state.saft[ano][nome].datas[mes]=val||null;
-  fbSet(`/saft/${ano}/${encodeURIComponent(nome)}/datas/${mes}`,val||null);
+  fbSet(`/saft/${ano}/${safeKey(nome)}/datas/${mes}`,val||null);
 }
 
 // ── RECEBIMENTOS ──
@@ -841,7 +868,7 @@ function saveRec(nome,mi,val,ano){
   if(!state.rec[ano])state.rec[ano]={};
   if(!state.rec[ano][nome])state.rec[ano][nome]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
   state.rec[ano][nome].meses[mi]=val||null;
-  fbSet(`/rec/${ano}/${encodeURIComponent(nome)}/meses/${mi}`,val||null);
+  fbSet(`/rec/${ano}/${safeKey(nome)}/meses/${mi}`,val||null);
   renderDash();
 }
 function saveRecData(nome,mi,val,ano){
@@ -849,7 +876,7 @@ function saveRecData(nome,mi,val,ano){
   if(!state.rec[ano][nome])state.rec[ano][nome]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
   if(!state.rec[ano][nome].datas)state.rec[ano][nome].datas={};
   state.rec[ano][nome].datas[mi]=val||null;
-  fbSet(`/rec/${ano}/${encodeURIComponent(nome)}/datas/${mi}`,val||null);
+  fbSet(`/rec/${ano}/${safeKey(nome)}/datas/${mi}`,val||null);
 }
 
 // ── GESTÃO IVA ──
