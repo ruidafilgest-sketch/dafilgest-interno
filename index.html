@@ -592,12 +592,22 @@ function buildAlertas(){
   const hoje=new Date();hoje.setHours(0,0,0,0);
   const ano='2026'; const mesIdx=hoje.getMonth();
   const alertas=[];
-  // SAFT do mês anterior
+  // SAFT do mês anterior — só alerta se houver empresas por processar
   if(mesIdx>0){
     const d=prazoSAFT(ano,mesIdx-1);
     const dias=diasAte(d);
-    if(dias>=0&&dias<=7) alertas.push({tipo:'amber',titulo:'SAFT '+MESES[mesIdx-1],msg:`Prazo de envio: ${fmtDate(d)} — faltam ${dias} dias`});
-    if(dias<0) alertas.push({tipo:'red',titulo:'SAFT '+MESES[mesIdx-1]+' EM ATRASO',msg:`Prazo era ${fmtDate(d)} — ${Math.abs(dias)} dias de atraso`});
+    const saftAnoD=state.saft[ano]||{};
+    const mesAnterior=(mesIdx-1)*2;
+    // Contar empresas com SAFT do mês anterior por preencher
+    const porProcessar=state.nomesSAFT.filter(nome=>{
+      const msObj=saftAnoD[safeKey(nome)]||{};
+      const estados=Array.isArray(msObj)?msObj:(msObj.estados||{});
+      return !estados[mesAnterior]; // sem estado = por processar
+    }).length;
+    if(porProcessar>0){
+      if(dias>=0&&dias<=7) alertas.push({tipo:'amber',titulo:'SAFT '+MESES[mesIdx-1],msg:`Prazo de envio: ${fmtDate(d)} — faltam ${dias} dias · ${porProcessar} empresas por processar`});
+      if(dias<0) alertas.push({tipo:'red',titulo:'SAFT '+MESES[mesIdx-1]+' EM ATRASO',msg:`Prazo era ${fmtDate(d)} — ${Math.abs(dias)} dias de atraso · ${porProcessar} empresas por processar`});
+    }
   }
   // IVA trimestral
   const trimAtual=Math.floor(mesIdx/3)+1;
