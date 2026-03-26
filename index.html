@@ -958,8 +958,15 @@ function renderREC(){
 
   pag.forEach((c,i)=>{
     const dCliente=dadosAno[safeKey(c.nome)]||{};
-    const ms=dCliente.meses||Array(12).fill(null);
-    const datas=dCliente.datas||{};
+    // Garantir sempre array de 12 — Firebase pode devolver objecto {0:'val',1:'val',...}
+    const msRaw=dCliente.meses||Array(12).fill(null);
+    const ms=Array.isArray(msRaw)
+      ? (msRaw.length===12 ? msRaw : Array.from({length:12},(_,i)=>msRaw[i]||null))
+      : Array.from({length:12},(_,i)=>msRaw[i]||msRaw[String(i)]||null);
+    const datasRaw=dCliente.datas||{};
+    const datas=Array.isArray(datasRaw)
+      ? datasRaw
+      : datasRaw;
     const av=dCliente.avenca||c.avenca||0;
     const rec=ms.filter(Boolean).length*av;
     const falta=ms.filter(v=>!v).length*av;
