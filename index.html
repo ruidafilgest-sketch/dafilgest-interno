@@ -965,17 +965,20 @@ function renderREC(){
       const dataRec=datas[mi]||'';
       const nomeEsc=c.nome.replace(/'/g,"\\'");
       const cor=recColor(val);
-      const opts=TIPOS.map(t=>'<option value="'+t+'"'+(val===t?' selected':'')+'>'+t+'</option>').join('');
-      let cell='<td class="center" style="border-left:1px solid var(--border2);padding:4px 2px">';
-      cell+='<select class="inline-sel" style="color:'+cor+';max-width:85px;font-size:10px" onchange="saveRec(\''+nomeEsc+'\','+mi+',this.value,\''+recAno+'\')"><option value=""'+(val?'':' selected')+'>—</option>'+opts+'</select>';
+      // Construir select com opções correctas
+      let opts='<option value=""'+(val?'':' selected')+'>—</option>';
+      TIPOS.forEach(function(t){
+        opts+='<option value="'+t+'"'+(val===t?' selected':'')+'>'+t+'</option>';
+      });
+      // Data se existir
+      let dataHtml='';
       if(dataRec){
         const dl=new Date(dataRec).toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-        cell+='<br><span style="font-size:9px;color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\''+dataRec+'\')">'+dl+'</span>';
+        dataHtml='<br><small style="color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\''+dataRec+'\')">'+dl+'</small>';
       } else if(val){
-        cell+='<br><span style="font-size:9px;color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\'\')">📅</span>';
+        dataHtml='<br><small style="color:var(--text4);cursor:pointer" onclick="promptRecData(\''+nomeEsc+'\','+mi+',\''+recAno+'\',\'\')">📅</small>';
       }
-      cell+='</td>';
-      h+=cell;
+      h+='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px"><select class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" onchange="saveRec(\''+nomeEsc+'\','+mi+',this.value,\''+recAno+'\')">'+opts+'</select>'+dataHtml+'</td>';
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
