@@ -950,8 +950,7 @@ function renderREC(){
   <div class="table-wrap">
     <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes)</span></div></div>
     <div class="tbl-scroll"><table><thead>
-      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th colspan="2" class="center" style="border-left:2px solid var(--border)">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
-      <tr><th></th><th></th>${MESES.map(()=>`<th class="center" style="border-left:2px solid var(--border);font-size:9px">Tipo</th><th class="center" style="font-size:9px">Data</th>`).join('')}<th></th><th></th><th></th></tr>
+      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:6px 4px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
     </thead><tbody>`;
 
   pag.forEach((c,i)=>{
@@ -964,11 +963,16 @@ function renderREC(){
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
       const dataRec=datas[mi]||'';
-      h+=`<td class="center" style="border-left:2px solid var(--border)"><select class="inline-sel" style="color:${recColor(val)}" onchange="saveRec('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')">
-        <option value=""${!val?' selected':''} >—</option>
-        ${TIPOS.map(t=>`<option value="${t}"${val===t?' selected':''} >${t}</option>`).join('')}
-      </select></td>`;
-      h+=`<td class="center"><input type="date" class="date-inp${dataRec?' filled':''}" value="${dataRec}" style="width:100px" onchange="saveRecData('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')"></td>`;
+      const dataLabel=dataRec?new Date(dataRec).toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'}):'';
+      h+=`<td class="center" style="border-left:1px solid var(--border2);padding:4px 2px">
+        <select class="inline-sel" style="color:${recColor(val)};max-width:90px;font-size:10px"
+          title="${dataRec?'Recebido em '+dataRec:''}"
+          onchange="saveRec('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')">
+          <option value=""${!val?' selected':''}>—</option>
+          ${TIPOS.map(t=>`<option value="${t}"${val===t?' selected':''}>${t.substring(0,5)}</option>`).join('')}
+        </select>
+        ${val?`<br><span style="font-size:9px;color:var(--text4);cursor:pointer" onclick="promptRecData('${c.nome.replace(/'/g,"\\'")}',${mi},'${recAno}','${dataRec}')">${dataLabel||'📅'}</span>`:''}
+      </td>`;
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
@@ -994,6 +998,12 @@ function saveRec(nome,mi,val,ano){
   state.rec[ano][safeKey(nome)].meses[mi]=val||null;
   fbSet(`/rec/${ano}/${safeKey(nome)}/meses/${mi}`,val||null);
   renderDash();
+}
+function promptRecData(nome,mi,ano,atual){
+  const nova=prompt('Data de receção (AAAA-MM-DD):', atual||'');
+  if(nova===null) return;
+  saveRecData(nome,mi,nova,ano);
+  renderREC();
 }
 function saveRecData(nome,mi,val,ano){
   if(!state.rec[ano])state.rec[ano]={};
