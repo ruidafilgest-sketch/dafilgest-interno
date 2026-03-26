@@ -737,9 +737,10 @@ function renderSAFT(){
     </thead><tbody>`;
 
   pag.forEach((nome,i)=>{
-    const ms=dadosAno[safeKey(nome)]||{};
-    const msArr=Array.isArray(ms)?ms:Array(24).fill(null);
-    const datas=ms.datas||{};
+    const msObj=dadosAno[safeKey(nome)]||{};
+    // Suporta tanto formato antigo (array) como novo (objecto com .estados)
+    const msArr=Array.isArray(msObj)?msObj:(msObj.estados||{});
+    const datas=Array.isArray(msObj)?{}:(msObj.datas||{});
     h+=`<tr><td class="td-num">${(saftPag-1)*SAFT_PP+i+1}</td><td class="td-nome">${nome}</td>`;
     for(let m=0;m<12;m++){
       const d=prazoSAFT(saftAno,m);
@@ -769,18 +770,21 @@ function saftBadge(val,nome,idx,ano){
 function toggleSAFT(nome,idx,ano){
   const est=[null,'S','N','NA','V','C'];
   if(!state.saft[ano])state.saft[ano]={};
-  if(!state.saft[ano][safeKey(nome)]||!Array.isArray(state.saft[ano][safeKey(nome)]))state.saft[ano][safeKey(nome)]=Array(24).fill(null);
-  const cur=state.saft[ano][safeKey(nome)][idx]??null;
-  state.saft[ano][safeKey(nome)][idx]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/saft/${ano}/${safeKey(nome)}/${idx}`,state.saft[ano][safeKey(nome)][idx]);
+  const sk=safeKey(nome);
+  if(!state.saft[ano][sk])state.saft[ano][sk]={};
+  if(!state.saft[ano][sk].estados)state.saft[ano][sk].estados={};
+  const cur=state.saft[ano][sk].estados[idx]??null;
+  state.saft[ano][sk].estados[idx]=est[(est.indexOf(cur)+1)%est.length];
+  fbSet(`/saft/${ano}/${sk}/estados/${idx}`,state.saft[ano][sk].estados[idx]);
   renderSAFT();
 }
 function saveSAFTDate(nome,mes,val,ano){
   if(!state.saft[ano])state.saft[ano]={};
-  if(!state.saft[ano][safeKey(nome)]||!Array.isArray(state.saft[ano][safeKey(nome)]))state.saft[ano][safeKey(nome)]=Array(24).fill(null);
-  if(!state.saft[ano][safeKey(nome)].datas)state.saft[ano][safeKey(nome)].datas={};
-  state.saft[ano][safeKey(nome)].datas[mes]=val||null;
-  fbSet(`/saft/${ano}/${safeKey(nome)}/datas/${mes}`,val||null);
+  const sk=safeKey(nome);
+  if(!state.saft[ano][sk])state.saft[ano][sk]={};
+  if(!state.saft[ano][sk].datas)state.saft[ano][sk].datas={};
+  state.saft[ano][sk].datas[mes]=val||null;
+  fbSet(`/saft/${ano}/${sk}/datas/${mes}`,val||null);
 }
 
 // ── RECEBIMENTOS ──
