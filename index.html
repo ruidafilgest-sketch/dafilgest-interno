@@ -989,28 +989,70 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
+  setTimeout(fillRecCells,0);
 }
 
 function buildRecCell(nome,mi,val,dataRec,ano){
-  const id='rc_'+mi+'_'+Math.random().toString(36).substr(2,5);
-  const nomeB64=btoa(unescape(encodeURIComponent(nome)));
-  const cor=recColor(val);
+  const uid='rc_'+Date.now()+'_'+mi;
+  // Guardar dados para uso posterior
+  window._recCells = window._recCells||{};
+  window._recCells[uid]={nome,mi,val,dataRec,ano};
+  return '<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px" id="'+uid+'"></td>';
+}
+
+function fillRecCells(){
+  // Preencher todas as células REC com elementos DOM reais
+  const cells=window._recCells||{};
   const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
-  let s='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px">';
-  s+='<select id="'+id+'" class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" ';
-  s+='onchange="saveRecFromId(\''+id+'\',\''+nomeB64+'\','+mi+',\''+ano+'\')"><option value=""'+(val?'':' selected')+'>—</option>';
-  ['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'].forEach(function(t){
-    s+='<option value="'+t+'"'+(val===t?' selected':'')+'>'+t+'</option>';
+  Object.keys(cells).forEach(function(uid){
+    const td=document.getElementById(uid);
+    if(!td) return;
+    const {nome,mi,val,dataRec,ano}=cells[uid];
+    // Criar select
+    const sel=document.createElement('select');
+    sel.className='inline-sel';
+    sel.style.color=recColor(val);
+    sel.style.maxWidth='88px';
+    sel.style.fontSize='10px';
+    // Opção vazia
+    const opt0=document.createElement('option');
+    opt0.value=''; opt0.textContent='—';
+    if(!val) opt0.selected=true;
+    sel.appendChild(opt0);
+    // Opções tipos
+    TIPOS.forEach(function(t){
+      const opt=document.createElement('option');
+      opt.value=t; opt.textContent=t;
+      if(val===t) opt.selected=true;
+      sel.appendChild(opt);
+    });
+    sel.addEventListener('change',function(){
+      saveRec(nome,mi,this.value,ano);
+      this.style.color=recColor(this.value);
+      // Mostrar input data se há valor
+      if(this.value && !td.querySelector('input[type=date]')){
+        td.appendChild(createDateInput(nome,mi,dataRec,ano));
+      }
+    });
+    td.appendChild(sel);
+    // Input data
+    if(val){
+      td.appendChild(createDateInput(nome,mi,dataRec,ano));
+    }
+    delete cells[uid];
   });
-  s+='</select>';
-  if(dataRec){
-    const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-    s+='<br><input type="date" value="'+dataRec+'" style="font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer" onchange="saveRecData(\''+nomeB64+'\','+mi+',this.value,\''+ano+'\',true)">';
-  } else if(val){
-    s+='<br><input type="date" placeholder="data" style="font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer" onchange="saveRecData(\''+nomeB64+'\','+mi+',this.value,\''+ano+'\',true)">';
-  }
-  s+='</td>';
-  return s;
+  window._recCells={};
+}
+
+function createDateInput(nome,mi,dataRec,ano){
+  const inp=document.createElement('input');
+  inp.type='date';
+  if(dataRec) inp.value=dataRec;
+  inp.style.cssText='font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer;display:block;margin:0 auto';
+  inp.addEventListener('change',function(){
+    _saveRecDataImpl(nome,mi,this.value,ano);
+  });
+  return inp;
 }
 function saveRecFromId(id,nomeB64,mi,ano){
   const sel=document.getElementById(id);
