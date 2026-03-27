@@ -1045,9 +1045,12 @@ function recBtnCell(nome,mi,val,dataRec,ano){
 function ciclarRec(btn,ni,mi,ano){
   const nome=decodeURIComponent(ni);
   const dadosAno=state.rec[ano]||{};
-  const cur=(dadosAno[safeKey(nome)]||{}).meses?.[mi]||null;
+  const meses=(dadosAno[safeKey(nome)]||{}).meses||[];
+  // Suporta array e objecto {0:'val',...}
+  const cur=Array.isArray(meses)?(meses[mi]||null):(meses[mi]||meses[String(mi)]||null);
   const idx=REC_TIPOS.indexOf(cur);
-  const next=REC_TIPOS[(idx+1)%REC_TIPOS.length];
+  // Se não encontrou (undefined/null não está no array como null), começa do 1
+  const next=REC_TIPOS[((idx===-1?0:idx)+1)%REC_TIPOS.length];
   saveRec(nome,mi,next,ano);
   btn.className='rec-btn '+(REC_CLS[next]||'');
   btn.textContent=REC_LBL[next]||'—';
