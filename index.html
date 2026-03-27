@@ -972,24 +972,7 @@ function renderREC(){
     const rec=ms.filter(Boolean).length*av;
     const falta=ms.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
-    for(let mi=0;mi<12;mi++){
-      const val=ms[mi]||null;
-      const dr=datas[mi]||'';
-      const cor=recColor(val);
-      const nf=encodeURIComponent(c.nome);
-      h+='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px">';
-      h+='<select class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" data-nome="'+nf+'" data-mi="'+mi+'" data-ano="'+recAno+'" onchange="handleRecChange(this)">';
-      h+='<option value=""'+(val?'':' selected')+'>—</option>';
-      h+='<option value="Transferência"'+(val==='Transferência'?' selected':'')+'>Transferência</option>';
-      h+='<option value="MBWay"'+(val==='MBWay'?' selected':'')+'>MBWay</option>';
-      h+='<option value="Numerário"'+(val==='Numerário'?' selected':'')+'>Numerário</option>';
-      h+='<option value="Cheque"'+(val==='Cheque'?' selected':'')+'>Cheque</option>';
-      h+='<option value="Débito Direto"'+(val==='Débito Direto'?' selected':'')+'>Débito Direto</option>';
-      h+='<option value="Outro"'+(val==='Outro'?' selected':'')+'>Outro</option>';
-      h+='</select>';
-      if(dr){const dl=new Date(dr+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});h+='<br><small style="color:var(--text4)">'+dl+'</small>';}
-      h+='</td>';
-    }
+    for(let mi=0;mi<12;mi++){h+=recCelula(c.nome,mi,ms[mi]||null,datas[mi]||'',recAno);}
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:${falta>0?'var(--red)':'var(--green)'}">€${falta.toLocaleString('pt-PT')}</td></tr>`;
@@ -1068,6 +1051,42 @@ function createDateInput(nome,mi,dataRec,ano){
   });
   return inp;
 }
+function recCelula(nome,mi,val,dr,ano){
+  const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
+  const nf=encodeURIComponent(nome);
+  const cor=recColor(val);
+  const td=document.createElement('td');
+  td.className='center';
+  td.style.cssText='border-left:1px solid var(--border2);padding:3px 2px';
+  const sel=document.createElement('select');
+  sel.className='inline-sel';
+  sel.style.color=cor;
+  sel.style.maxWidth='88px';
+  sel.style.fontSize='10px';
+  sel.dataset.nome=nf;
+  sel.dataset.mi=mi;
+  sel.dataset.ano=ano;
+  sel.addEventListener('change',function(){handleRecChange(this);});
+  const o0=document.createElement('option');
+  o0.value=''; o0.textContent='—'; if(!val)o0.selected=true;
+  sel.appendChild(o0);
+  TIPOS.forEach(function(t){
+    const o=document.createElement('option');
+    o.value=t; o.textContent=t;
+    if(val===t)o.selected=true;
+    sel.appendChild(o);
+  });
+  td.appendChild(sel);
+  if(dr){
+    const small=document.createElement('small');
+    small.style.color='var(--text4)';
+    small.textContent=new Date(dr+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+    td.appendChild(document.createElement('br'));
+    td.appendChild(small);
+  }
+  return td.outerHTML;
+}
+
 function handleRecChange(sel){
   const nome=decodeURIComponent(sel.dataset.nome);
   const mi=parseInt(sel.dataset.mi);
