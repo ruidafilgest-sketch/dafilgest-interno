@@ -971,8 +971,9 @@ function renderREC(){
       : Array.from({length:12},(_,i)=>msRaw[i]||msRaw[String(i)]||null);
     const datas=dCliente.datas||{};
     const av=dCliente.avenca||c.avenca||0;
-    const rec=ms.filter(Boolean).length*av;
-    const falta=ms.filter(v=>!v).length*av;
+    const msArr2=Array.from({length:12},(_,i)=>Array.isArray(ms)?(ms[i]||null):(ms[i]||ms[String(i)]||null));
+    const rec=msArr2.filter(Boolean).length*av;
+    const falta=msArr2.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
       h+='<td class="center rec-cel" style="border-left:1px solid var(--border2);padding:2px" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'"></td>';
@@ -1044,14 +1045,22 @@ function preencherCelulasRec(el){
       });
       td.appendChild(span);
     });
-    // Adicionar data se existir
-    if(dataRec){
-      const br=document.createElement('br');
-      const sm=document.createElement('small');
-      sm.style.color='var(--text4)';
-      const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-      sm.textContent=dl;
-      td.appendChild(br); td.appendChild(sm);
+    // Input de data — sempre visível quando tem tipo seleccionado
+    const br2=document.createElement('br');
+    const inp=document.createElement('input');
+    inp.type='date';
+    inp.style.cssText='font-size:9px;width:88px;border:1px solid var(--border);border-radius:3px;padding:1px 3px;margin-top:2px';
+    if(dataRec) inp.value=dataRec;
+    inp.addEventListener('change',function(){
+      if(!state.rec[ano]) state.rec[ano]={};
+      if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+      if(!state.rec[ano][safeKey(nome)].datas) state.rec[ano][safeKey(nome)].datas={};
+      state.rec[ano][safeKey(nome)].datas[mi]=this.value||null;
+      fbSet('/rec/'+ano+'/'+encodeURIComponent(safeKey(nome))+'/datas/'+mi, this.value||null);
+    });
+    if(cur){
+      td.appendChild(br2);
+      td.appendChild(inp);
     }
   });
 }
