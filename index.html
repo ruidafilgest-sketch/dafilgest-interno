@@ -532,12 +532,13 @@ function startApp(){
 }
 
 // ── FIREBASE ──
-async function fbGet(p){try{const r=await fetch(FIREBASE_URL+FB+p+'.json',{cache:'no-store'});if(!r.ok)throw 0;return await r.json();}catch{return null;}}
+async function fbGet(p){
+  const safePath=p.split('/').map(seg=>seg?encodeURIComponent(seg):seg).join('/');
+  try{const r=await fetch(FIREBASE_URL+FB+safePath+'.json',{cache:'no-store'});if(!r.ok)throw 0;return await r.json();}catch{return null;}
+}
 async function fbSet(p,data){
-  // Converter path para chave segura (último segmento)
-  const parts=p.split('/');
-  const safeParts=parts.map((seg,i)=>i<parts.length-1?seg:safeKey(seg));
-  const safePath=safeParts.join('/');
+  // Encodar cada segmento do path para ser seguro no Firebase REST API
+  const safePath=p.split('/').map(seg=>seg?encodeURIComponent(seg):seg).join('/');
   try{
     const r=await fetch(FIREBASE_URL+FB+safePath+'.json',{method:'PUT',body:JSON.stringify(data),headers:{'Content-Type':'application/json'}});
     if(!r.ok)throw 0;setFB(true);
