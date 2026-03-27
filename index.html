@@ -954,25 +954,35 @@ function renderREC(){
   <div class="table-wrap">
     <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes)</span></div></div>
     <div class="tbl-scroll"><table><thead>
-      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:6px 4px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
+      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th colspan="2" class="center" style="border-left:1px solid var(--border2)">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
+      <tr><th></th><th></th>${MESES.map(()=>'<th class="center" style="border-left:1px solid var(--border2);font-size:9px">Tipo</th><th class="center" style="font-size:9px">Data</th>').join('')}<th></th><th></th><th></th></tr>
     </thead><tbody>`;
 
   pag.forEach((c,i)=>{
     const dCliente=dadosAno[safeKey(c.nome)]||{};
-    // Garantir sempre array de 12 — Firebase pode devolver objecto {0:'val',1:'val',...}
     const msRaw=dCliente.meses||Array(12).fill(null);
     const ms=Array.isArray(msRaw)
-      ? (msRaw.length===12 ? msRaw : Array.from({length:12},(_,i)=>msRaw[i]||null))
+      ? Array.from({length:12},(_,i)=>msRaw[i]||null)
       : Array.from({length:12},(_,i)=>msRaw[i]||msRaw[String(i)]||null);
-    const datasRaw=dCliente.datas||{};
-    const datas=Array.isArray(datasRaw)
-      ? datasRaw
-      : datasRaw;
+    const datas=dCliente.datas||{};
     const av=dCliente.avenca||c.avenca||0;
     const rec=ms.filter(Boolean).length*av;
     const falta=ms.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
-    for(let mi=0;mi<12;mi++){h+=recCelula(c.nome,mi,ms[mi]||null,datas[mi]||'',recAno);}
+    ms.forEach((val,mi)=>{
+      const dataRec=datas[mi]||'';
+      h+=`<td class="center" style="border-left:1px solid var(--border2)"><select class="inline-sel" style="color:${recColor(val)}" onchange="saveRec('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')">
+        <option value=""${!val?' selected':''}>—</option>
+        <option value="Transferência"${val==='Transferência'?' selected':''}>Transferência</option>
+        <option value="MBWay"${val==='MBWay'?' selected':''}>MBWay</option>
+        <option value="Numerário"${val==='Numerário'?' selected':''}>Numerário</option>
+        <option value="Cheque"${val==='Cheque'?' selected':''}>Cheque</option>
+        <option value="Débito Direto"${val==='Débito Direto'?' selected':''}>Débito Direto</option>
+        <option value="Outro"${val==='Outro'?' selected':''}>Outro</option>
+      </select></td>`;
+      if(dataRec){h+=`<td class="center"><small style="color:var(--text4)">${new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}</small></td>`;}
+      else{h+=`<td class="center"><input type="date" class="date-inp" style="width:95px;font-size:11px" onchange="saveRecData('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')"></td>`;}
+    });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:${falta>0?'var(--red)':'var(--green)'}">€${falta.toLocaleString('pt-PT')}</td></tr>`;
