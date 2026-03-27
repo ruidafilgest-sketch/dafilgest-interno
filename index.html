@@ -995,57 +995,7 @@ function renderREC(){
   el.innerHTML=h;
 }
 
-function buildRecCell(nome,mi,val,dataRec,ano){
-  const uid='rc_'+Date.now()+'_'+mi;
-  // Guardar dados para uso posterior
-  window._recCells = window._recCells||{};
-  window._recCells[uid]={nome,mi,val,dataRec,ano};
-  return '<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px" id="'+uid+'"></td>';
-}
 
-function fillRecCells(){
-  // Preencher todas as células REC com elementos DOM reais
-  const cells=window._recCells||{};
-  const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
-  Object.keys(cells).forEach(function(uid){
-    const td=document.getElementById(uid);
-    if(!td) return;
-    const {nome,mi,val,dataRec,ano}=cells[uid];
-    // Criar select
-    const sel=document.createElement('select');
-    sel.className='inline-sel';
-    sel.style.color=recColor(val);
-    sel.style.maxWidth='88px';
-    sel.style.fontSize='10px';
-    // Opção vazia
-    const opt0=document.createElement('option');
-    opt0.value=''; opt0.textContent='—';
-    if(!val) opt0.selected=true;
-    sel.appendChild(opt0);
-    // Opções tipos
-    TIPOS.forEach(function(t){
-      const opt=document.createElement('option');
-      opt.value=t; opt.textContent=t;
-      if(val===t) opt.selected=true;
-      sel.appendChild(opt);
-    });
-    sel.addEventListener('change',function(){
-      saveRec(nome,mi,this.value,ano);
-      this.style.color=recColor(this.value);
-      // Mostrar input data se há valor
-      if(this.value && !td.querySelector('input[type=date]')){
-        td.appendChild(createDateInput(nome,mi,dataRec,ano));
-      }
-    });
-    td.appendChild(sel);
-    // Input data
-    if(val){
-      td.appendChild(createDateInput(nome,mi,dataRec,ano));
-    }
-    delete cells[uid];
-  });
-  window._recCells={};
-}
 
 function createDateInput(nome,mi,dataRec,ano){
   const inp=document.createElement('input');
@@ -1057,41 +1007,7 @@ function createDateInput(nome,mi,dataRec,ano){
   });
   return inp;
 }
-function recCelula(nome,mi,val,dr,ano){
-  const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
-  const nf=encodeURIComponent(nome);
-  const cor=recColor(val);
-  const td=document.createElement('td');
-  td.className='center';
-  td.style.cssText='border-left:1px solid var(--border2);padding:3px 2px';
-  const sel=document.createElement('select');
-  sel.className='inline-sel';
-  sel.style.color=cor;
-  sel.style.maxWidth='88px';
-  sel.style.fontSize='10px';
-  sel.dataset.nome=nf;
-  sel.dataset.mi=mi;
-  sel.dataset.ano=ano;
-  sel.addEventListener('change',function(){handleRecChange(this);});
-  const o0=document.createElement('option');
-  o0.value=''; o0.textContent='—'; if(!val)o0.selected=true;
-  sel.appendChild(o0);
-  TIPOS.forEach(function(t){
-    const o=document.createElement('option');
-    o.value=t; o.textContent=t;
-    if(val===t)o.selected=true;
-    sel.appendChild(o);
-  });
-  td.appendChild(sel);
-  if(dr){
-    const small=document.createElement('small');
-    small.style.color='var(--text4)';
-    small.textContent=new Date(dr+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-    td.appendChild(document.createElement('br'));
-    td.appendChild(small);
-  }
-  return td.outerHTML;
-}
+
 
 const REC_TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
 const REC_CLS={null:'','Transferência':'t','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':'o'};
@@ -1101,17 +1017,30 @@ function recBtnCell(nome,mi,val,dataRec,ano){
   const cls=REC_CLS[val]||'';
   const lbl=REC_LBL[val]||'—';
   const ni=encodeURIComponent(nome);
-  const di=encodeURIComponent(dataRec);
-  let h='<td class="center" style="border-left:1px solid var(--border2);padding:2px">';
-  h+='<button class="rec-btn '+cls+'" onclick="ciclarRec(this,''+ni+'','+mi+',''+ano+'')">'+lbl+'</button>';
+  const td=document.createElement('td');
+  td.className='center';
+  td.style.cssText='border-left:1px solid var(--border2);padding:2px';
+  const btn=document.createElement('button');
+  btn.className='rec-btn '+(cls||'');
+  btn.textContent=lbl;
+  btn.addEventListener('click',function(){ciclarRec(this,ni,mi,ano);});
+  td.appendChild(btn);
   if(val&&dataRec){
     const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
-    h+='<br><small style="color:var(--text4)">'+dl+'</small>';
+    td.appendChild(document.createElement('br'));
+    const sm=document.createElement('small');
+    sm.style.color='var(--text4)';
+    sm.textContent=dl;
+    td.appendChild(sm);
   } else if(val){
-    h+='<br><input type="date" style="font-size:9px;width:72px;border:1px solid var(--border);border-radius:3px;padding:1px 2px" onchange="saveRecDataEnc(''+ni+'','+mi+',this.value,''+ano+'')">';
+    td.appendChild(document.createElement('br'));
+    const inp=document.createElement('input');
+    inp.type='date';
+    inp.style.cssText='font-size:9px;width:72px;border:1px solid var(--border);border-radius:3px;padding:1px 2px';
+    inp.addEventListener('change',function(){saveRecDataEnc(ni,mi,this.value,ano);});
+    td.appendChild(inp);
   }
-  h+='</td>';
-  return h;
+  return td.outerHTML;
 }
 
 function ciclarRec(btn,ni,mi,ano){
@@ -1143,20 +1072,7 @@ function saveRecDataEnc(ni,mi,val,ano){
   _saveRecDataImpl(nome,mi,val,ano);
 }
 
-function handleRecChange(sel){
-  const nome=decodeURIComponent(sel.dataset.nome);
-  const mi=parseInt(sel.dataset.mi);
-  const ano=sel.dataset.ano;
-  saveRec(nome,mi,sel.value,ano);
-  sel.style.color=recColor(sel.value);
-}
 
-function saveRecFromId(id,nomeB64,mi,ano){
-  const sel=document.getElementById(id);
-  if(!sel) return;
-  const nome=decodeURIComponent(escape(atob(nomeB64)));
-  saveRec(nome,mi,sel.value,ano);
-}
 
 function recColor(v){if(!v)return'var(--red)';if(v==='Transferência')return'var(--blue)';if(v==='MBWay')return'var(--purple)';if(v==='Numerário')return'var(--amber)';if(v==='Débito Direto')return'var(--green)';return'var(--text3)';}
 function unlockRec(){if(document.getElementById('recPass').value===PASS_ADMIN){recLocked=false;renderREC();}else document.getElementById('recPassErr').textContent='Senha incorreta.';}
