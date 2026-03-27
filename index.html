@@ -993,14 +993,14 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
-  // Delegação de eventos - necessário porque innerHTML não preserva addEventListener
-  const tbl=el.querySelector('table');
-  if(tbl){
-    tbl.addEventListener('click',function(e){
+  // Delegação de eventos — usar função nomeada para não duplicar
+  if(!el._recListenerAdded){
+    el._recListenerAdded=true;
+    el.addEventListener('click',function(e){
       const btn=e.target.closest ? e.target.closest('.rec-btn') : null;
       if(btn) ciclarRec(btn,btn.dataset.ni,parseInt(btn.dataset.mi),btn.dataset.ano);
     });
-    tbl.addEventListener('change',function(e){
+    el.addEventListener('change',function(e){
       if(e.target.classList.contains('rec-date-inp')){
         saveRecDataEnc(e.target.dataset.ni,parseInt(e.target.dataset.mi),e.target.value,e.target.dataset.ano);
       }
