@@ -159,13 +159,12 @@ tbody td.center{text-align:center;}
 /* INLINE SELECT */
 .inline-sel{background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:3px 5px;border-radius:var(--r);font-size:11px;cursor:pointer;max-width:110px;outline:none;}
 .inline-sel:focus{border-color:var(--blue);}
-.rec-btn{padding:2px 7px;border-radius:4px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text3);white-space:nowrap;font-family:'Inter',sans-serif;}
-.rec-btn.t{background:var(--blue);color:#fff;border-color:var(--blue);}
-.rec-btn.m{background:var(--purple);color:#fff;border-color:var(--purple);}
-.rec-btn.n{background:var(--amber);color:#fff;border-color:var(--amber);}
-.rec-btn.c{background:var(--slate);color:#fff;border-color:var(--slate);}
-.rec-btn.d{background:var(--green);color:#fff;border-color:var(--green);}
-.rec-btn.o{background:var(--text2);color:#fff;border-color:var(--text2);}
+.rec-t{display:inline-block;padding:2px 5px;margin:1px;border-radius:3px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text3);font-size:10px;user-select:none;white-space:nowrap;}
+.rec-t.sel{background:var(--blue);color:#fff;border-color:var(--blue);}
+.rec-t.sel.m{background:var(--purple);border-color:var(--purple);}
+.rec-t.sel.n{background:var(--amber);border-color:var(--amber);}
+.rec-t.sel.c{background:var(--slate);border-color:var(--slate);}
+.rec-t.sel.d{background:var(--green);border-color:var(--green);}
 
 /* OBS */
 .obs-inp{background:transparent;border:none;color:var(--text3);font-size:11px;width:100%;min-width:55px;outline:none;font-family:'Inter',sans-serif;}
@@ -976,8 +975,7 @@ function renderREC(){
     const falta=ms.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
-      const dataRec=datas[mi]||'';
-      h+=recBtnCell(c.nome,mi,val,dataRec,recAno);
+      h+='<td class="center rec-cel" style="border-left:1px solid var(--border2);padding:2px" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'"></td>';
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
@@ -993,19 +991,7 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
-  // Delegação de eventos — usar função nomeada para não duplicar
-  if(!el._recListenerAdded){
-    el._recListenerAdded=true;
-    el.addEventListener('click',function(e){
-      const btn=e.target.closest ? e.target.closest('.rec-btn') : null;
-      if(btn) ciclarRec(btn,btn.dataset.ni,parseInt(btn.dataset.mi),btn.dataset.ano);
-    });
-    el.addEventListener('change',function(e){
-      if(e.target.classList.contains('rec-date-inp')){
-        saveRecDataEnc(e.target.dataset.ni,parseInt(e.target.dataset.mi),e.target.value,e.target.dataset.ano);
-      }
-    });
-  }
+  preencherCelulasRec(el);
 }
 
 
@@ -1021,6 +1007,54 @@ function createDateInput(nome,mi,dataRec,ano){
   return inp;
 }
 
+
+function preencherCelulasRec(el){
+  const TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
+  const ABREV={null:'—','Transferência':'Transf.','MBWay':'MBWay','Numerário':'Num.','Cheque':'Cheque','Débito Direto':'Déb.Dir.','Outro':'Outro'};
+  const EXTRA={null:'','Transferência':'','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':''};
+  el.querySelectorAll('.rec-cel').forEach(function(td){
+    const nomeCod=td.dataset.nome;
+    const mi=parseInt(td.dataset.mi);
+    const ano=td.dataset.ano;
+    const nome=decodeURIComponent(nomeCod);
+    if(!state.rec[ano]) state.rec[ano]={};
+    if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+    const mesesRaw=state.rec[ano][safeKey(nome)].meses||[];
+    const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
+    const datas=state.rec[ano][safeKey(nome)].datas||{};
+    const dataRec=datas[mi]||datas[String(mi)]||'';
+    // Criar spans para cada tipo
+    TIPOS.forEach(function(t){
+      const span=document.createElement('span');
+      const isSel=cur===t;
+      span.className='rec-t'+(isSel?' sel'+(EXTRA[t]?' '+EXTRA[t]:''):'');
+      span.textContent=ABREV[t]||'—';
+      span.addEventListener('click',function(){
+        if(!state.rec[ano]) state.rec[ano]={};
+        if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+        const mArr=state.rec[ano][safeKey(nome)].meses;
+        if(Array.isArray(mArr)) mArr[mi]=t;
+        else state.rec[ano][safeKey(nome)].meses=Object.assign(Array(12).fill(null),mArr,{[mi]:t});
+        saveRec(nome,mi,t,ano);
+        // Actualizar spans desta célula
+        td.querySelectorAll('.rec-t').forEach(function(s,si){
+          const tt=TIPOS[si];
+          s.className='rec-t'+(tt===t?' sel'+(EXTRA[tt]?' '+EXTRA[tt]:''):'');
+        });
+      });
+      td.appendChild(span);
+    });
+    // Adicionar data se existir
+    if(dataRec){
+      const br=document.createElement('br');
+      const sm=document.createElement('small');
+      sm.style.color='var(--text4)';
+      const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+      sm.textContent=dl;
+      td.appendChild(br); td.appendChild(sm);
+    }
+  });
+}
 
 const REC_TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
 const REC_CLS={null:'','Transferência':'t','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':'o'};
