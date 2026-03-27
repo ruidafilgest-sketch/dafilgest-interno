@@ -971,17 +971,30 @@ function renderREC(){
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
       const dataRec=datas[mi]||'';
-      h+=`<td class="center" style="border-left:1px solid var(--border2)"><select class="inline-sel" style="color:${recColor(val)}" onchange="saveRec('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')">
-        <option value=""${!val?' selected':''}>—</option>
-        <option value="Transferência"${val==='Transferência'?' selected':''}>Transferência</option>
-        <option value="MBWay"${val==='MBWay'?' selected':''}>MBWay</option>
-        <option value="Numerário"${val==='Numerário'?' selected':''}>Numerário</option>
-        <option value="Cheque"${val==='Cheque'?' selected':''}>Cheque</option>
-        <option value="Débito Direto"${val==='Débito Direto'?' selected':''}>Débito Direto</option>
-        <option value="Outro"${val==='Outro'?' selected':''}>Outro</option>
-      </select></td>`;
-      if(dataRec){h+=`<td class="center"><small style="color:var(--text4)">${new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'})}</small></td>`;}
-      else{h+=`<td class="center"><input type="date" class="date-inp" style="width:95px;font-size:11px" onchange="saveRecData('${c.nome.replace(/'/g,"\\'")}',${mi},this.value,'${recAno}')"></td>`;}
+      const nomeS=c.nome.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      const s0=val?'':' selected';
+      const s1=val==='Transferência'?' selected':'';
+      const s2=val==='MBWay'?' selected':'';
+      const s3=val==='Numerário'?' selected':'';
+      const s4=val==='Cheque'?' selected':'';
+      const s5=val==='Débito Direto'?' selected':'';
+      const s6=val==='Outro'?' selected':'';
+      const cor=recColor(val);
+      h+='<td class="center" style="border-left:1px solid var(--border2)"><select class="inline-sel" style="color:'+cor+'" onchange="saveRec(\'' +nomeS+ '\','+mi+',this.value,\''+recAno+'\')">'+
+        '<option value=""'+s0+'>—</option>'+
+        '<option value="Transferência"'+s1+'>Transferência</option>'+
+        '<option value="MBWay"'+s2+'>MBWay</option>'+
+        '<option value="Numerário"'+s3+'>Numerário</option>'+
+        '<option value="Cheque"'+s4+'>Cheque</option>'+
+        '<option value="Débito Direto"'+s5+'>Débito Direto</option>'+
+        '<option value="Outro"'+s6+'>Outro</option>'+
+        '</select></td>';
+      if(dataRec){
+        const dl=new Date(dataRec+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});
+        h+='<td class="center"><small style="color:var(--text4)">'+dl+'</small></td>';
+      } else {
+        h+='<td class="center"><input type="date" class="date-inp" style="width:95px;font-size:11px" onchange="saveRecData(\''+nomeS+'\','+mi+',this.value,\''+recAno+'\')"></td>';
+      }
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
