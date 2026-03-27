@@ -1044,13 +1044,19 @@ function recBtnCell(nome,mi,val,dataRec,ano){
 
 function ciclarRec(btn,ni,mi,ano){
   const nome=decodeURIComponent(ni);
-  const dadosAno=state.rec[ano]||{};
-  const meses=(dadosAno[safeKey(nome)]||{}).meses||[];
-  // Suporta array e objecto {0:'val',...}
-  const cur=Array.isArray(meses)?(meses[mi]||null):(meses[mi]||meses[String(mi)]||null);
+  // Garantir que a entrada existe no state
+  if(!state.rec[ano]) state.rec[ano]={};
+  if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={
+    avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,
+    meses:Array(12).fill(null),
+    datas:{}
+  };
+  const mesesRaw=state.rec[ano][safeKey(nome)].meses||[];
+  const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
   const idx=REC_TIPOS.indexOf(cur);
-  // Se não encontrou (undefined/null não está no array como null), começa do 1
-  const next=REC_TIPOS[((idx===-1?0:idx)+1)%REC_TIPOS.length];
+  const next=REC_TIPOS[((idx<=0?0:idx)+1)%REC_TIPOS.length];
+  // Actualizar state imediatamente antes de gravar
+  state.rec[ano][safeKey(nome)].meses[mi]=next;
   saveRec(nome,mi,next,ano);
   btn.className=('rec-btn '+(REC_CLS[next]||'')).trim();
   btn.textContent=REC_LBL[next]||'—';
