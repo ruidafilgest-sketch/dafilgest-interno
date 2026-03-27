@@ -1059,10 +1059,8 @@ function preencherCelulasRec(el){
       state.rec[ano][safeKey(nome)].datas[mi]=this.value||null;
       fbSet('/rec/'+ano+'/'+encodeURIComponent(safeKey(nome))+'/datas/'+mi, this.value||null);
     });
-    if(cur){
-      td.appendChild(br2);
-      td.appendChild(inp);
-    }
+    td.appendChild(br2);
+    td.appendChild(inp);
   });
 }
 
