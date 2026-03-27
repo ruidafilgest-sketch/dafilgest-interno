@@ -972,9 +972,24 @@ function renderREC(){
     const rec=ms.filter(Boolean).length*av;
     const falta=ms.filter(v=>!v).length*av;
     h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
-    ms.forEach((val,mi)=>{
-      h+=buildRecCell(c.nome,mi,val,datas[mi]||'',recAno);
-    });
+    for(let mi=0;mi<12;mi++){
+      const val=ms[mi]||null;
+      const dr=datas[mi]||'';
+      const cor=recColor(val);
+      const nf=encodeURIComponent(c.nome);
+      h+='<td class="center" style="border-left:1px solid var(--border2);padding:3px 2px">';
+      h+='<select class="inline-sel" style="color:'+cor+';max-width:88px;font-size:10px" data-nome="'+nf+'" data-mi="'+mi+'" data-ano="'+recAno+'" onchange="handleRecChange(this)">';
+      h+='<option value=""'+(val?'':' selected')+'>—</option>';
+      h+='<option value="Transferência"'+(val==='Transferência'?' selected':'')+'>Transferência</option>';
+      h+='<option value="MBWay"'+(val==='MBWay'?' selected':'')+'>MBWay</option>';
+      h+='<option value="Numerário"'+(val==='Numerário'?' selected':'')+'>Numerário</option>';
+      h+='<option value="Cheque"'+(val==='Cheque'?' selected':'')+'>Cheque</option>';
+      h+='<option value="Débito Direto"'+(val==='Débito Direto'?' selected':'')+'>Débito Direto</option>';
+      h+='<option value="Outro"'+(val==='Outro'?' selected':'')+'>Outro</option>';
+      h+='</select>';
+      if(dr){const dl=new Date(dr+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'});h+='<br><small style="color:var(--text4)">'+dl+'</small>';}
+      h+='</td>';
+    }
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:${falta>0?'var(--red)':'var(--green)'}">€${falta.toLocaleString('pt-PT')}</td></tr>`;
@@ -989,7 +1004,6 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
-  setTimeout(fillRecCells,0);
 }
 
 function buildRecCell(nome,mi,val,dataRec,ano){
@@ -1054,6 +1068,14 @@ function createDateInput(nome,mi,dataRec,ano){
   });
   return inp;
 }
+function handleRecChange(sel){
+  const nome=decodeURIComponent(sel.dataset.nome);
+  const mi=parseInt(sel.dataset.mi);
+  const ano=sel.dataset.ano;
+  saveRec(nome,mi,sel.value,ano);
+  sel.style.color=recColor(sel.value);
+}
+
 function saveRecFromId(id,nomeB64,mi,ano){
   const sel=document.getElementById(id);
   if(!sel) return;
