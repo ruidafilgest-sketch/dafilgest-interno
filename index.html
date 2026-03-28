@@ -1614,9 +1614,11 @@ function renderSSPrint(){
         .content{padding:0!important;}
         .tbl-scroll{overflow:visible!important;}
         tr{page-break-inside:avoid;}
-        table{width:100%;font-size:9.5pt!important;border-collapse:collapse;}
-        th,td{padding:4px 6px!important;}
-        @page{margin:1cm 1.2cm;size:A4 landscape;}
+        table{width:100%;font-size:9pt!important;border-collapse:collapse;}
+        th,td{padding:3px 5px!important;}
+        @page{margin:0.8cm 1cm;size:A4 landscape;}
+        a[href]:after{content:none!important;}
+        a{text-decoration:none!important;}
       }
     </style>
     <div class="print-area table-wrap">
@@ -1665,10 +1667,7 @@ function renderSSPrint(){
         </tbody>
       </table>
       </div>
-      <div style="padding:12px 20px;font-size:11px;color:var(--text4);border-top:1px solid var(--border2);display:flex;justify-content:space-between">
-        <span>Dafilgest, Lda. · NIF 505403447 · OCC 46003</span>
-        <span>Documento gerado em ${new Date().toLocaleDateString('pt-PT')}</span>
-      </div>
+
     </div>`;
   }
 
