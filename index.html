@@ -476,19 +476,22 @@ function diasAte(d){
   return Math.ceil((d-hoje)/86400000);
 }
 
-// Prazos IVA trimestral: envio=15, pagamento=25
+// Prazos IVA trimestral: envio=dia 20 do 2º mês após fim do trimestre, pagamento=dia 25 do mesmo mês
 const PRAZOS_TRIM={
-  T1:{envMes:4,envDia:15,pagMes:4,pagDia:25,nome:'1º Trim (Jan–Mar)'},
-  T2:{envMes:7,envDia:15,pagMes:7,pagDia:25,nome:'2º Trim (Abr–Jun)'},
-  T3:{envMes:10,envDia:15,pagMes:10,pagDia:25,nome:'3º Trim (Jul–Set)'},
-  T4:{envMes:1,envDia:15,pagMes:1,pagDia:25,nome:'4º Trim (Out–Dez)',nextYear:true},
+  T1:{envMes:5,envDia:20,pagMes:5,pagDia:25,nome:'1º Trim (Jan–Mar)'},
+  T2:{envMes:8,envDia:20,pagMes:8,pagDia:25,nome:'2º Trim (Abr–Jun)'},
+  T3:{envMes:11,envDia:20,pagMes:11,pagDia:25,nome:'3º Trim (Jul–Set)'},
+  T4:{envMes:2,envDia:20,pagMes:2,pagDia:25,nome:'4º Trim (Out–Dez)',nextYear:true},
 };
 // Prazos IVA mensal: envio=20, pagamento=25 do 2º mês seguinte
 function prazoMensal(ano,mesIdx){
-  const envMes=mesIdx+2; const anoEnv=+ano+(envMes>11?1:0);
-  const envD=proxDiaUtil(anoEnv,envMes%12,20);
-  const pagD=proxDiaUtil(anoEnv,envMes%12,25);
-  return {env:envD,pag:pagD};
+  // mesIdx: 0=Jan,...,11=Dez. Prazo = 2 meses depois do mês de referência
+  const totalMes = mesIdx + 2; // 0-based offset: Jan+2=Mar(idx2)
+  const anoEnv = totalMes >= 12 ? +ano + 1 : +ano;
+  const mesEnv0 = totalMes % 12; // 0-based: 0=Jan,1=Fev,...
+  const envD = proxDiaUtil(anoEnv, mesEnv0, 20);
+  const pagD = proxDiaUtil(anoEnv, mesEnv0, 25);
+  return {env:envD, pag:pagD};
 }
 // Prazo SAFT: dia 5 mês seguinte
 function prazoSAFT(ano,mesIdx){
@@ -1482,7 +1485,7 @@ function renderSS(){
 
   pag.forEach((t,i)=>{
     const d=dadosAno[t.num]||{};
-    h+=`<tr>
+    h+=`<tr style="border-bottom:3px solid var(--border2)">
       <td class="td-num">${(ssPag-1)*SS_PP+i+1}</td>
       <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3)">${t.num}</td>
       <td class="td-nome">${t.nome}</td>
@@ -1650,14 +1653,14 @@ function renderSSPrint(){
         </thead>
         <tbody>
           ${lista.map(t=>`
-          <tr>
-            <td style="font-family:'JetBrains Mono',monospace;font-size:10.5pt;font-weight:700">${t.num}</td>
-            <td style="font-weight:700;font-size:11pt">${t.nome}</td>
-            <td class="center" style="font-weight:700">${mesStr}</td>
-            <td class="center" style="font-weight:700;color:var(--green);font-size:11.5pt">€ ${t.valor.toFixed(2)}</td>
-            <td class="center">${t.tpa?'<span class="badge b-v" style="cursor:default">TPA</span>':'—'}</td>
-            <td class="center" style="min-width:80px"></td>
-            <td class="center" style="min-width:80px"></td>
+          <tr style="border-bottom:2px solid #000;border-top:1px solid #888">
+            <td style="font-family:'JetBrains Mono',monospace;font-size:10.5pt;font-weight:700;padding:6px 5px">${t.num}</td>
+            <td style="font-weight:700;font-size:11pt;padding:6px 5px">${t.nome}</td>
+            <td class="center" style="font-weight:700;padding:6px 5px">${mesStr}</td>
+            <td class="center" style="font-weight:700;color:var(--green);font-size:11.5pt;padding:6px 5px">€ ${t.valor.toFixed(2)}</td>
+            <td class="center" style="padding:6px 5px">${t.tpa?'<span class="badge b-v" style="cursor:default">TPA</span>':'—'}</td>
+            <td class="center" style="min-width:80px;padding:6px 5px"></td>
+            <td class="center" style="min-width:80px;padding:6px 5px"></td>
           </tr>`).join('')}
           <tr style="border-top:2px solid var(--border);background:var(--bg2)">
             <td colspan="3" style="font-weight:700;text-align:right;padding-right:16px">TOTAL</td>
