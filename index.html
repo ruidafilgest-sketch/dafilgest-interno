@@ -305,9 +305,7 @@ tbody td.center{text-align:center;}
     </div>
     <div class="form-group">
       <label>Ano</label>
-      <select id="impAno" class="ctrl-sel" style="width:100%">
-        ${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}">${a}</option>`).join('')}
-      </select>
+      <select id="impAno" class="ctrl-sel" style="width:100%"></select>
     </div>
     <div class="form-group" id="impPeriodoWrap">
       <label id="impPeriodoLabel">Trimestre</label>
@@ -905,7 +903,8 @@ function saveIVARp(nome,trim,campo,val,ano){
   fbSet(`/iva/${ano}/${sk}/${trim}/${campo}`,val||null);
 }
 function openImprimirIVA(){
-  document.getElementById('impAno').value=ivaAno;
+  // Popular anos dinamicamente (ANOS ainda não existe quando o HTML é renderizado)
+  document.getElementById('impAno').innerHTML=ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ivaAno?' selected':''}>${a}</option>`).join('');
   renderImprimirOpcoes();
   openModal('modalImprimirIVA');
 }
