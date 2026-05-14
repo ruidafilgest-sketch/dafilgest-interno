@@ -292,6 +292,31 @@ tbody td.center{text-align:center;}
   </div>
 </div>
 
+<!-- MODAL IMPRESSÃO IVA -->
+<div class="modal-overlay" id="modalImprimirIVA"><div class="modal" style="max-width:400px">
+  <div class="modal-header"><div class="modal-title">🖨️ Imprimir Relatório IVA</div><button class="modal-close" onclick="closeModal('modalImprimirIVA')">✕</button></div>
+  <div style="padding:16px 0 8px;display:flex;flex-direction:column;gap:12px;">
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="impTipo" class="ctrl-sel" style="width:100%" onchange="renderImprimirOpcoes()">
+        <option value="trimestral">Trimestral</option>
+        <option value="mensal">Mensal</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Ano</label>
+      <select id="impAno" class="ctrl-sel" style="width:100%">
+        ${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}">${a}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group" id="impPeriodoWrap">
+      <label id="impPeriodoLabel">Trimestre</label>
+      <select id="impPeriodo" class="ctrl-sel" style="width:100%"></select>
+    </div>
+    <button class="btn-primary" style="margin-top:4px" onclick="gerarRelatorioIVA()">🖨️ Gerar e Imprimir</button>
+  </div>
+</div></div>
+
 <!-- MODAIS GESTÃO -->
 <div class="modal-overlay" id="modalIVA"><div class="modal">
   <div class="modal-header"><div class="modal-title">⚙️ Gerir Empresas — IVA</div><button class="modal-close" onclick="closeModal('modalIVA')">✕</button></div>
@@ -740,14 +765,14 @@ function renderIVA(){
             const anoEnv=pt.nextYear?+ivaAno+1:+ivaAno;
             const dEnv=proxDiaUtil(anoEnv,pt.envMes-1,pt.envDia);
             const dPag=proxDiaUtil(anoEnv,pt.pagMes-1,pt.pagDia);
-            return `<th colspan="6" class="center" style="border-left:2px solid var(--border)">${pt.nome}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env: ${fmtDate(dEnv)} · Pag: ${fmtDate(dPag)}</span></th>`;
+            return `<th colspan="8" class="center" style="border-left:2px solid var(--border)">${pt.nome}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env: ${fmtDate(dEnv)} · Pag: ${fmtDate(dPag)}</span></th>`;
           }).join('')}
         </tr>
         <tr>
           <th></th><th></th>
           ${TRIMS.map((t,ti)=>{
             const meses=IVA_TRIM_MESES[t];
-            return `<th class="center" style="border-left:2px solid var(--border);font-size:10px">${meses[0]}</th><th class="center" style="font-size:10px">${meses[1]}</th><th class="center" style="font-size:10px">${meses[2]}</th><th class="center" style="border-left:1px solid var(--border2)">Tratada</th><th class="center">Data Envio</th><th>Obs.</th>`;
+            return `<th class="center" style="border-left:2px solid var(--border);font-size:10px">${meses[0]}</th><th class="center" style="font-size:10px">${meses[1]}</th><th class="center" style="font-size:10px">${meses[2]}</th><th class="center" style="border-left:1px solid var(--border2)">Tratada</th><th class="center">Data Envio</th><th>Obs.</th><th class="center" style="font-size:10px;color:var(--blue)">R</th><th class="center" style="font-size:10px;color:var(--amber)">P</th>`;
           }).join('')}
         </tr>
       </thead><tbody>`;
@@ -772,6 +797,8 @@ function renderIVA(){
         h+=`<td class="center" style="border-left:1px solid var(--border2)">${ivaBadge(td.tratada,emp.nome,t,'tratada',ivaAno)}</td>`;
         h+=`<td class="center"><input type="date" class="date-inp${td.dataEnvio?' filled':''}" value="${td.dataEnvio||''}" title="Data de envio (prazo: ${fmtDate(dEnv)})" onchange="saveIVADate('${nomeEsc}','${t}',this.value,'${ivaAno}')">${!td.dataEnvio?prazoLabel(dEnv,false):''}</td>`;
         h+=`<td><input class="obs-inp" value="${td.obs||''}" placeholder="nota…" onchange="saveIVAObs('${nomeEsc}','${t}',this.value,'${ivaAno}')"></td>`;
+        h+=`<td><input class="obs-inp rp-inp" style="color:var(--blue)" value="${td.rIVA||''}" placeholder="R €" onchange="saveIVARp('${nomeEsc}','${t}','rIVA',this.value,'${ivaAno}')"></td>`;
+        h+=`<td><input class="obs-inp rp-inp" style="color:var(--amber)" value="${td.pIVA||''}" placeholder="P €" onchange="saveIVARp('${nomeEsc}','${t}','pIVA',this.value,'${ivaAno}')"></td>`;
       });
       h+=`</tr>`;
     });
@@ -816,6 +843,7 @@ function renderIVA(){
         <select class="ctrl-sel" onchange="ivaAno=this.value;ivaPag=1;renderIVA()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ivaAno?' selected':''} >${a}</option>`).join('')}</select>
         <select class="ctrl-sel" onchange="ivaFiltro=this.value;ivaPag=1;renderIVA()"><option value="todos">Todos</option><option value="trimestral">Trimestrais</option><option value="mensal">Mensais</option></select>
         <input class="ctrl-inp" placeholder="🔍 Pesquisar empresa…" oninput="ivaBusca=this.value.toLowerCase();ivaPag=1;renderIVA()">
+        <button class="btn-gestao" onclick="openImprimirIVA()">🖨️ Imprimir</button>
       </div>
     </div>
     ${renderAlertas()}
@@ -866,6 +894,129 @@ function toggleIVAMes(nome,trim,mk,ano){
   state.iva[ano][sk][trim][mk]=novo;
   fbSet(`/iva/${ano}/${sk}/${trim}/${mk}`,novo);
   renderIVA();
+}
+function saveIVARp(nome,trim,campo,val,ano){
+  // campo = 'rIVA' ou 'pIVA' — campos NOVOS, não tocam em nada existente
+  if(!state.iva[ano])state.iva[ano]={};
+  const sk=safeKey(nome);
+  if(!state.iva[ano][sk])state.iva[ano][sk]={};
+  if(!state.iva[ano][sk][trim])state.iva[ano][sk][trim]={};
+  state.iva[ano][sk][trim][campo]=val||null;
+  fbSet(`/iva/${ano}/${sk}/${trim}/${campo}`,val||null);
+}
+function openImprimirIVA(){
+  document.getElementById('impAno').value=ivaAno;
+  renderImprimirOpcoes();
+  openModal('modalImprimirIVA');
+}
+function renderImprimirOpcoes(){
+  const tipo=document.getElementById('impTipo').value;
+  const lbl=document.getElementById('impPeriodoLabel');
+  const sel=document.getElementById('impPeriodo');
+  if(tipo==='trimestral'){
+    lbl.textContent='Trimestre';
+    sel.innerHTML=`<option value="T1">1º Trimestre (Jan-Mar)</option><option value="T2">2º Trimestre (Abr-Jun)</option><option value="T3">3º Trimestre (Jul-Set)</option><option value="T4">4º Trimestre (Out-Dez)</option>`;
+  } else {
+    lbl.textContent='Mês';
+    sel.innerHTML=MESES.map((m,i)=>`<option value="M${i+1}">${m}</option>`).join('');
+  }
+}
+function gerarRelatorioIVA(){
+  const tipo=document.getElementById('impTipo').value;
+  const ano=document.getElementById('impAno').value;
+  const periodo=document.getElementById('impPeriodo').value;
+  const dadosAno=state.iva[ano]||{};
+  const TRIM_NOMES={T1:'1º Trimestre (Jan–Mar)',T2:'2º Trimestre (Abr–Jun)',T3:'3º Trimestre (Jul–Set)',T4:'4º Trimestre (Out–Dez)'};
+  const periodoNome=tipo==='trimestral'?TRIM_NOMES[periodo]:MESES[+periodo.replace('M','')-1];
+  const lista=state.empresasIVA.filter(e=>e.ativa==='Sim'&&e.periodo===(tipo==='trimestral'?'Trimestral':'Mensal'));
+  const hoje=new Date();
+  const dataHoje=hoje.toLocaleDateString('pt-PT');
+
+  let linhas='';
+  let total=0;
+  lista.forEach((emp,i)=>{
+    const d=(dadosAno[safeKey(emp.nome)]||{})[periodo]||{};
+    const tratada=d.tratada||'—';
+    const dataEnvio=d.dataEnvio||'—';
+    const obs=d.obs||'';
+    const r=d.rIVA||'';
+    const p=d.pIVA||'';
+    const enviada=!!d.dataEnvio;
+    if(enviada)total++;
+    linhas+=`<tr class="${enviada?'row-ok':'row-pend'}">
+      <td class="col-num">${i+1}</td>
+      <td class="col-nome">${emp.nome}</td>
+      <td class="col-c">${tratada}</td>
+      <td class="col-c">${dataEnvio}</td>
+      <td class="col-obs">${obs}</td>
+      <td class="col-rp" style="color:#1a6fc4">${r}</td>
+      <td class="col-rp" style="color:#d97706">${p}</td>
+    </tr>`;
+  });
+
+  const html=`<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
+<title>IVA ${tipo==='trimestral'?'Trimestral':'Mensal'} · ${periodoNome} · ${ano}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Arial',sans-serif;font-size:11px;color:#1a1f2e;background:#fff;padding:16px 20px;}
+  .rel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:2px solid #1a6fc4;padding-bottom:10px;}
+  .rel-title{font-size:15px;font-weight:700;color:#1a1f2e;}
+  .rel-sub{font-size:11px;color:#6b7585;margin-top:3px;}
+  .rel-meta{text-align:right;font-size:10px;color:#6b7585;}
+  .rel-stats{display:flex;gap:16px;margin-bottom:12px;}
+  .stat-box{background:#f7f8fa;border:1px solid #d4d8de;border-radius:4px;padding:6px 12px;font-size:11px;}
+  .stat-box strong{font-size:14px;display:block;color:#1a6fc4;}
+  table{width:100%;border-collapse:collapse;font-size:10.5px;}
+  th{background:#1a6fc4;color:#fff;padding:5px 7px;text-align:left;font-size:10px;font-weight:600;}
+  th.col-c,th.col-rp{text-align:center;}
+  td{padding:4px 7px;border-bottom:1px solid #e8eaed;vertical-align:middle;}
+  td.col-num{width:28px;color:#6b7585;text-align:center;}
+  td.col-c{text-align:center;width:70px;}
+  td.col-rp{text-align:center;width:80px;font-weight:600;}
+  td.col-obs{font-size:10px;color:#3d4a5c;max-width:140px;}
+  .row-ok td{background:#f0fdf4;}
+  .row-pend td{background:#fff;}
+  .rel-footer{margin-top:14px;font-size:9px;color:#a0aab8;border-top:1px solid #e8eaed;padding-top:8px;display:flex;justify-content:space-between;}
+  @media print{body{padding:8px 12px;} .no-print{display:none;}}
+</style></head><body>
+<div class="no-print" style="margin-bottom:12px">
+  <button onclick="window.print()" style="padding:7px 16px;background:#1a6fc4;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">🖨️ Imprimir</button>
+  <button onclick="window.close()" style="margin-left:8px;padding:7px 16px;background:#f7f8fa;border:1px solid #d4d8de;border-radius:4px;cursor:pointer;font-size:12px">✕ Fechar</button>
+</div>
+<div class="rel-header">
+  <div>
+    <div class="rel-title">Dafilgest · Controlo IVA ${tipo==='trimestral'?'Trimestral':'Mensal'}</div>
+    <div class="rel-sub">${periodoNome} · ${ano}</div>
+  </div>
+  <div class="rel-meta">Impresso em ${dataHoje}<br>${total} de ${lista.length} declarações enviadas</div>
+</div>
+<div class="rel-stats">
+  <div class="stat-box"><strong>${lista.length}</strong>Empresas</div>
+  <div class="stat-box"><strong style="color:#16a34a">${total}</strong>Enviadas</div>
+  <div class="stat-box"><strong style="color:#dc2626">${lista.length-total}</strong>Pendentes</div>
+</div>
+<table>
+  <thead><tr>
+    <th class="col-num">#</th>
+    <th>Empresa</th>
+    <th class="col-c">Tratada</th>
+    <th class="col-c">Data Envio</th>
+    <th>Obs.</th>
+    <th class="col-rp" style="color:#bfdbfe">Reporte</th>
+    <th class="col-rp" style="color:#fde68a">Pagamento</th>
+  </tr></thead>
+  <tbody>${linhas}</tbody>
+</table>
+<div class="rel-footer">
+  <span>Dafilgest Gab. de Contabilidade Unipessoal Lda · NIF 505403447</span>
+  <span>Contabilista Certificado — Inscrito na OCC 46003</span>
+</div>
+</body></html>`;
+
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+  closeModal('modalImprimirIVA');
 }
 
 // ── SAFT ──
