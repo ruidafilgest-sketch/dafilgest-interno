@@ -146,6 +146,11 @@ tbody td.center{text-align:center;}
 .b-na{background:var(--bg2);color:var(--text3);border-color:var(--border);}
 .b-empty{background:transparent;color:var(--text4);border-color:var(--border2);border-style:dashed;}
 .b-s{background:var(--green-bg);color:var(--green);border-color:var(--green-bd);}
+.mes-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;font-size:11px;font-weight:700;cursor:pointer;transition:all .12s;user-select:none;border:1px solid transparent;}
+.mes-badge:hover{opacity:.75;}
+.mes-vazio{background:var(--border2);color:var(--text4);}
+.mes-ok{background:var(--green-bg);color:var(--green);border-color:var(--green-bd);}
+.mes-nao{background:var(--red-bg);color:var(--red);border-color:var(--red-bd);}
 .b-n{background:var(--red-bg);color:var(--red);border-color:var(--red-bd);}
 .b-nav{background:var(--bg2);color:var(--text3);border-color:var(--border);}
 .b-v{background:var(--blue-light);color:var(--blue);border-color:var(--blue-mid);}
@@ -476,6 +481,8 @@ function diasAte(d){
   return Math.ceil((d-hoje)/86400000);
 }
 
+// Meses de cada trimestre (para display nos mini-checks)
+const IVA_TRIM_MESES={T1:['Jan','Fev','Mar'],T2:['Abr','Mai','Jun'],T3:['Jul','Ago','Set'],T4:['Out','Nov','Dez']};
 // Prazos IVA trimestral: envio=dia 20 do 2º mês após fim do trimestre, pagamento=dia 25 do mesmo mês
 const PRAZOS_TRIM={
   T1:{envMes:5,envDia:20,pagMes:5,pagDia:25,nome:'1º Trim (Jan–Mar)'},
@@ -728,17 +735,20 @@ function renderIVA(){
       <div class="tbl-scroll"><table><thead>
         <tr>
           <th style="width:32px">#</th><th>Empresa</th>
-          ${TRIMS.map(t=>{
+          ${TRIMS.map((t,ti)=>{
             const pt=PRAZOS_TRIM[t];
             const anoEnv=pt.nextYear?+ivaAno+1:+ivaAno;
             const dEnv=proxDiaUtil(anoEnv,pt.envMes-1,pt.envDia);
             const dPag=proxDiaUtil(anoEnv,pt.pagMes-1,pt.pagDia);
-            return `<th colspan="3" class="center" style="border-left:2px solid var(--border)">${pt.nome}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env: ${fmtDate(dEnv)} · Pag: ${fmtDate(dPag)}</span></th>`;
+            return `<th colspan="6" class="center" style="border-left:2px solid var(--border)">${pt.nome}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env: ${fmtDate(dEnv)} · Pag: ${fmtDate(dPag)}</span></th>`;
           }).join('')}
         </tr>
         <tr>
           <th></th><th></th>
-          ${TRIMS.map(()=>`<th class="center" style="border-left:2px solid var(--border)">Tratada</th><th class="center">Data Envio</th><th>Obs.</th>`).join('')}
+          ${TRIMS.map((t,ti)=>{
+            const meses=IVA_TRIM_MESES[t];
+            return `<th class="center" style="border-left:2px solid var(--border);font-size:10px">${meses[0]}</th><th class="center" style="font-size:10px">${meses[1]}</th><th class="center" style="font-size:10px">${meses[2]}</th><th class="center" style="border-left:1px solid var(--border2)">Tratada</th><th class="center">Data Envio</th><th>Obs.</th>`;
+          }).join('')}
         </tr>
       </thead><tbody>`;
 
@@ -750,9 +760,18 @@ function renderIVA(){
         const pt=PRAZOS_TRIM[t];
         const anoEnv=pt.nextYear?+ivaAno+1:+ivaAno;
         const dEnv=proxDiaUtil(anoEnv,pt.envMes-1,pt.envDia);
-        h+=`<td class="center" style="border-left:2px solid var(--border)">${ivaBadge(td.tratada,emp.nome,t,'tratada',ivaAno)}</td>`;
-        h+=`<td class="center"><input type="date" class="date-inp${td.dataEnvio?' filled':''}" value="${td.dataEnvio||''}" title="Data de envio (prazo: ${fmtDate(dEnv)})" onchange="saveIVADate('${emp.nome.replace(/'/g,"\\'")}','${t}',this.value,'${ivaAno}')">${!td.dataEnvio?prazoLabel(dEnv,false):''}</td>`;
-        h+=`<td><input class="obs-inp" value="${td.obs||''}" placeholder="nota…" onchange="saveIVAObs('${emp.nome.replace(/'/g,"\\'")}','${t}',this.value,'${ivaAno}')"></td>`;
+        const nomeEsc=emp.nome.replace(/'/g,"\\'");
+        const meses=IVA_TRIM_MESES[t];
+        ['m1','m2','m3'].forEach((mk,mi)=>{
+          const val=td[mk]||null;
+          const cls=val==='Sim'?'mes-ok':val==='Não'?'mes-nao':'mes-vazio';
+          const lbl=val==='Sim'?'✓':val==='Não'?'✗':'·';
+          const bsl=mi===0?'border-left:2px solid var(--border);':'';
+          h+=`<td class="center" style="${bsl}padding:2px 4px"><span class="mes-badge ${cls}" title="${meses[mi]}" onclick="toggleIVAMes('${nomeEsc}','${t}','${mk}','${ivaAno}')">${lbl}</span></td>`;
+        });
+        h+=`<td class="center" style="border-left:1px solid var(--border2)">${ivaBadge(td.tratada,emp.nome,t,'tratada',ivaAno)}</td>`;
+        h+=`<td class="center"><input type="date" class="date-inp${td.dataEnvio?' filled':''}" value="${td.dataEnvio||''}" title="Data de envio (prazo: ${fmtDate(dEnv)})" onchange="saveIVADate('${nomeEsc}','${t}',this.value,'${ivaAno}')">${!td.dataEnvio?prazoLabel(dEnv,false):''}</td>`;
+        h+=`<td><input class="obs-inp" value="${td.obs||''}" placeholder="nota…" onchange="saveIVAObs('${nomeEsc}','${t}',this.value,'${ivaAno}')"></td>`;
       });
       h+=`</tr>`;
     });
@@ -766,7 +785,7 @@ function renderIVA(){
   function buildMensais(lista){
     if(!lista.length)return'';
     let h=`<div class="table-wrap">
-      <div class="toolbar"><div class="toolbar-title">Mensais <span class="toolbar-count">(${lista.length} empresas · Envio dia 20 · Pagamento dia 25 do 2º mês seguinte)</span></div></div>
+      <div class="toolbar"><div class="toolbar-title">Mensais <span class="toolbar-count">(${lista.length} empresas · Envio dia 20 · Pagamento dia 25 do 2º mês seguinte)</span></div><div class="toolbar-right">${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoIVA()">⚙️ Gerir</button>`:''}</div></div>
       <div class="tbl-scroll"><table><thead>
         <tr><th>#</th><th>Empresa</th>${MESES.map((m,i)=>{
           const p=prazoMensal(ivaAno,i);
@@ -834,6 +853,19 @@ function saveIVAObs(nome,trim,val,ano){
   if(!state.iva[ano][safeKey(nome)][trim])state.iva[ano][safeKey(nome)][trim]={};
   state.iva[ano][safeKey(nome)][trim].obs=val;
   fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/obs`,val);
+}
+function toggleIVAMes(nome,trim,mk,ano){
+  // mk = 'm1'|'m2'|'m3' — campos NOVOS, não tocam em nada existente
+  const estados=[null,'Sim','Não'];
+  if(!state.iva[ano])state.iva[ano]={};
+  const sk=safeKey(nome);
+  if(!state.iva[ano][sk])state.iva[ano][sk]={};
+  if(!state.iva[ano][sk][trim])state.iva[ano][sk][trim]={};
+  const cur=state.iva[ano][sk][trim][mk]??null;
+  const novo=estados[(estados.indexOf(cur)+1)%estados.length];
+  state.iva[ano][sk][trim][mk]=novo;
+  fbSet(`/iva/${ano}/${sk}/${trim}/${mk}`,novo);
+  renderIVA();
 }
 
 // ── SAFT ──
@@ -1161,6 +1193,7 @@ function renderIVAMgmt(){
       <span class="mgmt-nome">${e.nome}</span>
       <span class="mgmt-meta">${e.periodo}</span>
       <span class="mgmt-ativa ${e.ativa==='Sim'?'sim':'nao'}">${e.ativa==='Sim'?'Ativa':'Inativa'}</span>
+      <button class="btn-secondary" onclick="editNomeIVA('${e.nome.replace(/'/g,"\\'")}');" style="font-size:11px;padding:3px 8px">✏️</button>
       <button class="btn-secondary" onclick="toggleIVAAtiva('${e.nome.replace(/'/g,"\\'")}');" style="font-size:11px;padding:3px 8px">${e.ativa==='Sim'?'Desativar':'Ativar'}</button>
       <button class="btn-danger" onclick="removeEmpresaIVA('${e.nome.replace(/'/g,"\\'")}');">✕</button>
     </div>`).join('')||'<div style="padding:12px;color:var(--text4);font-size:12px">Sem resultados.</div>';
@@ -1173,6 +1206,15 @@ function addEmpresaIVA(){
   if(state.empresasIVA.find(e=>e.nome.toLowerCase()===nome.toLowerCase())){err.textContent='Empresa já existe.';return;}
   state.empresasIVA.push({num:Math.max(0,...state.empresasIVA.map(e=>e.num||0))+1,nome,periodo:per,ativa:'Sim'});
   err.textContent='';document.getElementById('ivaNewNome').value='';
+  saveMeta();renderIVAMgmt();renderIVA();
+}
+function editNomeIVA(nomeAtual){
+  const novo=prompt('Novo nome para a empresa:',nomeAtual);
+  if(!novo||novo.trim()===''||novo.trim()===nomeAtual)return;
+  const novoTrim=novo.trim();
+  if(state.empresasIVA.find(e=>e.nome.toLowerCase()===novoTrim.toLowerCase()&&e.nome!==nomeAtual)){alert('Já existe uma empresa com esse nome.');return;}
+  const emp=state.empresasIVA.find(e=>e.nome===nomeAtual);
+  if(emp){emp.nome=novoTrim;}
   saveMeta();renderIVAMgmt();renderIVA();
 }
 function toggleIVAAtiva(nome){const e=state.empresasIVA.find(x=>x.nome===nome);if(e){e.ativa=e.ativa==='Sim'?'Não':'Sim';saveMeta();renderIVAMgmt();renderIVA();}}
