@@ -590,9 +590,9 @@ function loadFirebase(cb){
   .then(([meta,iva,saft,rec])=>{
     setFB(meta!==null||iva!==null||saft!==null||rec!==null);
     if(meta){
-      if(meta.clientes)state.clientes=meta.clientes;
-      if(meta.empresasIVA)state.empresasIVA=meta.empresasIVA;
-      if(meta.nomesSAFT)state.nomesSAFT=meta.nomesSAFT;
+      if(meta.clientes)state.clientes=Array.isArray(meta.clientes)?meta.clientes:Object.values(meta.clientes);
+      if(meta.empresasIVA)state.empresasIVA=Array.isArray(meta.empresasIVA)?meta.empresasIVA:Object.values(meta.empresasIVA);
+      if(meta.nomesSAFT)state.nomesSAFT=Array.isArray(meta.nomesSAFT)?meta.nomesSAFT:Object.values(meta.nomesSAFT);
     }
     if(iva)state.iva=iva;
     if(saft)state.saft=saft;
@@ -1467,9 +1467,9 @@ function startApp(){
       if(ssdecl) state.ssdecl=ssdecl;
       if(dmr) state.dmr=dmr;
       if(meta){
-        if(meta.clientes) state.clientes=meta.clientes;
-        if(meta.empresasIVA) state.empresasIVA=meta.empresasIVA;
-        if(meta.nomesSAFT) state.nomesSAFT=meta.nomesSAFT;
+        if(meta.clientes) state.clientes=Array.isArray(meta.clientes)?meta.clientes:Object.values(meta.clientes);
+        if(meta.empresasIVA) state.empresasIVA=Array.isArray(meta.empresasIVA)?meta.empresasIVA:Object.values(meta.empresasIVA);
+        if(meta.nomesSAFT) state.nomesSAFT=Array.isArray(meta.nomesSAFT)?meta.nomesSAFT:Object.values(meta.nomesSAFT);
         if(meta.declarantes) state.declarantes=meta.declarantes;
         if(meta.trabalhadores) state.trabalhadores=meta.trabalhadores;
         if(meta.empresasDMR) state.empresasDMR=meta.empresasDMR;
@@ -2055,9 +2055,9 @@ async function pollFirebase(){
     const newHash = JSON.stringify({meta,iva,saft,rec,ss,ssdecl,dmr});
     if(newHash !== lastHash && lastHash !== ''){
       if(meta){
-        if(meta.clientes) state.clientes = meta.clientes;
-        if(meta.empresasIVA) state.empresasIVA = meta.empresasIVA;
-        if(meta.nomesSAFT) state.nomesSAFT = meta.nomesSAFT;
+        if(meta.clientes) state.clientes = Array.isArray(meta.clientes)?meta.clientes:Object.values(meta.clientes);
+        if(meta.empresasIVA) state.empresasIVA = Array.isArray(meta.empresasIVA)?meta.empresasIVA:Object.values(meta.empresasIVA);
+        if(meta.nomesSAFT) state.nomesSAFT = Array.isArray(meta.nomesSAFT)?meta.nomesSAFT:Object.values(meta.nomesSAFT);
         if(meta.declarantes) state.declarantes = meta.declarantes;
         if(meta.trabalhadores) state.trabalhadores = meta.trabalhadores;
         if(meta.empresasDMR) state.empresasDMR = meta.empresasDMR;
