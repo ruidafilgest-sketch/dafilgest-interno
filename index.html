@@ -675,7 +675,8 @@ function renderDash(){
   const rec26=state.rec['2026']||{};
   let totalRec=0,totalFalta=0;
   state.clientes.forEach(c=>{
-    const ms=(rec26[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const msRaw=(rec26[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const ms=Array.isArray(msRaw)?msRaw:Object.values(msRaw);
     const av=(rec26[safeKey(c.nome)]||{}).avenca||c.avenca||0;
     ms.forEach((m,i)=>{if(m)totalRec+=av;else if(i<=mesAtual)totalFalta+=av;});
   });
@@ -1125,7 +1126,8 @@ function renderREC(){
   const pag=lista.slice((recPag-1)*REC_PP,recPag*REC_PP);
   let totalRec=0,totalFalta=0;
   lista.forEach(c=>{
-    const ms=(dadosAno[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const msRaw2=(dadosAno[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
+    const ms=Array.isArray(msRaw2)?msRaw2:Object.values(msRaw2);
     const av=(dadosAno[safeKey(c.nome)]||{}).avenca||c.avenca||0;
     ms.forEach(m=>{if(m)totalRec+=av;else totalFalta+=av;});
   });
