@@ -2050,27 +2050,20 @@ async function afLoadTabelaFiscal() {
   AF_TABELA_II_BASE.forEach(t => { tab2Obj[t.cod] = {...t, taxa_min: t.taxa_max / 2}; });
   afState.tabelaII = tab2Obj;
 
-  // Só actualiza no Firebase se a versão actual estiver desactualizada
-  const versaoActual = data?.meta_tab2?.versao || '';
-  if (!versaoActual.includes('DR 4/2015') || !data?.tab2?.['2001']) {
-    afFBSet(`${AF_TF_PATH}/tab2`, tab2Obj);
-    afFBSet(`${AF_TF_PATH}/meta_tab2`, {
-      versao: 'DR 25/2009 + DR 4/2015',
-      vigencia_desde: '2010-01-01',
-      ultima_atualizacao: new Date().toISOString().split('T')[0],
-      atualizado_por: '© Rui Gonçalves'
-    });
-  }
+  // Actualiza sempre tab2 no Firebase com a versão correcta
+  afFBSet(`${AF_TF_PATH}/tab2`, tab2Obj);
+  afFBSet(`${AF_TF_PATH}/meta_tab2`, {
+    versao: 'DR 25/2009 + DR 4/2015',
+    vigencia_desde: '2010-01-01',
+    ultima_atualizacao: new Date().toISOString().split('T')[0],
+    atualizado_por: '© Rui Gonçalves'
+  });
 
-  // Tab1 — actualiza se estiver vazia
-  if (data?.tab1 && Object.keys(data.tab1).length > 5) {
-    afState.tabelaI = data.tab1;
-  } else {
-    afState.tabelaI = AF_TABELA_I_BASE;
-    afFBSet(`${AF_TF_PATH}/tab1`, AF_TABELA_I_BASE);
-  }
+  // Tab1 — usa sempre a base local e actualiza Firebase
+  afState.tabelaI = AF_TABELA_I_BASE;
+  afFBSet(`${AF_TF_PATH}/tab1`, AF_TABELA_I_BASE);
 
-  // Coeficientes
+  // Coeficientes — usa Firebase se existir (permite edição manual), senão usa base
   if (data?.coeficientes && Object.keys(data.coeficientes).length > 40) {
     afState.coeficientes = data.coeficientes;
   } else {
