@@ -7,8 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-<script src="https://unpkg.com/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
 /* ── RESET E BASE ── */
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -1207,8 +1207,6 @@ td.center{text-align:center;}
 </div>
 
 <!-- ═══════════════════════════════════ SCRIPTS ═══════════════════════════════════ -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 
 <script>
 // ── CONFIGURAÇÃO ──────────────────────────────────────────────
@@ -1295,45 +1293,61 @@ let afState = {
   userRole: 'equipa',
 };
 
-// ── TABELA II GENÉRICA (DR 25/2009) — VALORES INICIAIS ──────────
+// ── TABELA II GENÉRICA (DR 25/2009, Tabela II) + ACTIVOS INTANGÍVEIS ────────────
+// Códigos reais conforme DR 25/2009, de 14 de Setembro (Diário da República n.º 178)
 // Carregado do Firebase; se não existir, usa estes valores base
-// Fonte: DR 25/2009 + DR 4/2015 (versão OE2024)
 const AF_TABELA_II_BASE = [
-  {cod:'2001',desc:'Edifícios administrativos e comerciais — construção definitiva (betão, tijolo, pedra)',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2002',desc:'Edifícios administrativos e comerciais — construção ligeira (madeira, zinco, fibrocimento)',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2003',desc:'Edifícios industriais — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2004',desc:'Edifícios industriais — construção ligeira',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2005',desc:'Armazéns e hangares — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2006',desc:'Armazéns e hangares — construção ligeira',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2007',desc:'Instalações especiais em edifícios (elevadores, ar condicionado, eléctricas fixas)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2008',desc:'Outras construções — muros, vedações, pavimentos, parques de estacionamento',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'2009',desc:'Terrenos e recursos naturais — não amortizável',grupo:'431',taxa_max:0,degressivas:false,diploma:'N/A',nao_amortizavel:true},
-  {cod:'3001',desc:'Viaturas ligeiras de passageiros ou mistas — novas',grupo:'434',taxa_max:25,degressivas:false,diploma:'DR 25/2009 + Art. 11.º (cap. €40.000)',limite_viatura:true},
-  {cod:'3002',desc:'Viaturas ligeiras de passageiros ou mistas — usadas',grupo:'434',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 11.º (cap. €40.000)',limite_viatura:true},
-  {cod:'3003',desc:'Viaturas pesadas de mercadorias e de passageiros',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'3004',desc:'Tractores e máquinas de movimentação de terras',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'3005',desc:'Reboques e semi-reboques',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'3006',desc:'Motociclos, ciclomotores e bicicletas',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4001',desc:'Máquinas e equipamento de uso geral — tornos, fresadoras, rectificadoras',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4002',desc:'Máquinas e equipamento — prensas, puncionadoras, guilhotinas',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4003',desc:'Equipamento de elevação e transporte — empilhadores, pontes rolantes',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4004',desc:'Equipamento de produção de energia — geradores, compressores, bombas',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4005',desc:'Equipamento de soldadura',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4006',desc:'Ferramentas e utensílios com vida útil superior a 1 ano',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4007',desc:'Moldes, modelos e matrizes',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'4008',desc:'Equipamento de segurança e vigilância',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5001',desc:'Computadores, servidores e periféricos',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5002',desc:'Equipamento de rede — routers, switches, access points',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5003',desc:'Equipamento de telecomunicações — centrais, telefones',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5004',desc:'Máquinas de escritório — fotocopiadoras, impressoras, scanners',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5005',desc:'Mobiliário de escritório — secretárias, cadeiras, armários',grupo:'435',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'5006',desc:'Equipamento e utensílios de cozinha e cantina',grupo:'435',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
-  {cod:'6001',desc:'Programas de computador (software) adquiridos autonomamente',grupo:'443',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
-  {cod:'6002',desc:'Patentes e marcas registadas',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
-  {cod:'6003',desc:'Alvarás e licenças com prazo definido',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
-  {cod:'6004',desc:'Projectos de desenvolvimento (NCRF 6) — máximo 5 anos',grupo:'442',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 17.º'},
-  {cod:'6005',desc:'Goodwill adquirido em concentração de actividades',grupo:'441',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 15.º'},
-  {cod:'7001',desc:'Bens de custo unitário inferior a €1.000 — amortização imediata',grupo:'437',taxa_max:100,degressivas:false,diploma:'DR 25/2009, Art. 19.º'},
+  // ── GRUPO 1 — IMÓVEIS (Tabela II, Divisão I) ──
+  {cod:'2005',desc:'Edificações ligeiras (fibrocimento, madeira, zinco, etc.)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2010',desc:'Edifícios administrativos, comerciais e de serviços — construção definitiva',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2015',desc:'Edifícios industriais — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2020',desc:'Outras construções (armazéns, hangares, muros, vedações, pavimentos)',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 2 — EQUIPAMENTO BÁSICO ──
+  {cod:'2025',desc:'Máquinas e instalações — uso geral (motores, compressores, bombas, geradores)',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2030',desc:'Ferramentas e utensílios — uso geral',grupo:'437',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2035',desc:'Caldeiras e instalações de vapor',grupo:'433',taxa_max:10,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2040',desc:'Instalações de ar comprimido',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2045',desc:'Equipamento eléctrico — motores, transformadores, quadros, instalações',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2050',desc:'Equipamento de elevação e transporte interno (empilhadores, pontes rolantes)',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2055',desc:'Equipamento de segurança, vigilância e detecção de incêndio',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 3 — EQUIPAMENTO DE TRANSPORTE ──
+  {cod:'2060',desc:'Viaturas pesadas de mercadorias e tractores',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2065',desc:'Viaturas ligeiras de passageiros ou mistas (cap. €40.000 — Art. 11.º)',grupo:'434',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II + Art. 11.º',limite_viatura:true},
+  {cod:'2066',desc:'Viaturas ligeiras usadas — passageiros ou mistas (cap. €40.000)',grupo:'434',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Tab.II + Art. 11.º',limite_viatura:true},
+  {cod:'2070',desc:'Reboques, semi-reboques, motociclos, ciclomotores e bicicletas',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 4 — FERRAMENTAS E UTENSÍLIOS ESPECÍFICOS ──
+  {cod:'2085',desc:'Ferramentas, utensílios e moldes de uso específico',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 5 — EQUIPAMENTO ADMINISTRATIVO E SOCIAL ──
+  {cod:'2100',desc:'Equipamento informático — computadores, servidores, periféricos',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2105',desc:'Equipamento de escritório — impressoras, scanners, fotocopiadoras, multifunções',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2110',desc:'Mobiliário e recheio de escritório — secretárias, cadeiras, armários',grupo:'435',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2115',desc:'Máquinas de calcular, registar e de escritório',grupo:'435',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2120',desc:'Equipamento de comunicações — centrais telefónicas, fax, telefones',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2125',desc:'Equipamento de rede — routers, switches, access points, NAS',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2130',desc:'Equipamento audiovisual e de apresentação — projectores, monitores, TV',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2135',desc:'Equipamento de cantina, refeitório e cozinha',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2140',desc:'Equipamento de saúde, primeiros socorros e segurança no trabalho',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2145',desc:'Equipamento desportivo e recreativo',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 6 — INSTALAÇÕES ESPECÍFICAS ──
+  {cod:'2150',desc:'Instalações especiais em edifícios (elevadores, ar condicionado, eléctricas fixas)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2155',desc:'Equipamento de laboratório, ensaio e medida',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── GRUPO 7 — OUTROS AFT ──
+  {cod:'2160',desc:'Embalagens retornáveis e vasilhame',grupo:'437',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2165',desc:'Outros activos fixos tangíveis não especificados noutro grupo',grupo:'437',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // ── PROPRIEDADES DE INVESTIMENTO ──
+  {cod:'2200',desc:'Propriedades de investimento — edifícios habitacionais',grupo:'421',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2205',desc:'Propriedades de investimento — edifícios comerciais e de serviços',grupo:'421',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2210',desc:'Propriedades de investimento — edifícios industriais',grupo:'421',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  // ── ACTIVOS INTANGÍVEIS (Art. 16.º e 17.º do DR 25/2009) ──
+  {cod:'2375',desc:'Despesas com projectos de desenvolvimento (NCRF 6) — máx. 3 anos (Art. 17.º)',grupo:'442',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Art. 17.º'},
+  {cod:'2380',desc:'Programas de computador (software) adquiridos autonomamente',grupo:'443',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
+  {cod:'2385',desc:'Patentes, marcas e alvarás com prazo de utilização limitado',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
+  {cod:'2390',desc:'Outros activos intangíveis com vida útil definida (licenças, direitos, etc.)',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
+  {cod:'2395',desc:'Goodwill adquirido em concentração de actividades empresariais',grupo:'441',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 15.º'},
+  // ── TERRENOS (não amortizável) ──
+  {cod:'4300',desc:'Terrenos e recursos naturais — não sujeito a depreciação',grupo:'431',taxa_max:0,degressivas:false,diploma:'N/A',nao_amortizavel:true},
+  // ── BENS DE REDUZIDO VALOR ──
+  {cod:'9999',desc:'Bens de custo unitário ≤ €1.000 — amortização total imediata (Art. 19.º)',grupo:'437',taxa_max:100,degressivas:false,diploma:'DR 25/2009, Art. 19.º'},
 ];
 
 const AF_COEF_BASE = {
