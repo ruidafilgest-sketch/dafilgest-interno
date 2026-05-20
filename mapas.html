@@ -116,6 +116,10 @@ body{font-family:'Inter',sans-serif;background:#eef0f3;color:#1a1f2e;font-size:1
 
 </div>
 
+<div style="text-align:center;padding:10px;background:#fff;border-top:1px solid #e8eaed;margin-bottom:0">
+  <button onclick="diagPDF()" class="btn btn-secondary btn-sm">🔧 Diagnóstico PDF</button>
+  <span id="diag-msg" style="font-size:11px;margin-left:10px;color:#6b7585"></span>
+</div>
 <div class="footer">Dafilgest · Contabilista Certificado — Inscrito na OCC 46003 · © Rui Gonçalves · Portaria 92-A/2011 de 28 de Fevereiro</div>
 
 <script>
@@ -332,6 +336,10 @@ function cabecalhoMapa(doc, modelo, titulo, nif, emp, ano, W) {
 // MODELO 32 — DEPRECIAÇÕES E AMORTIZAÇÕES
 // ══════════════════════════════════════════════════════════════
 function gerarMod32() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    setStatus('st-m32', '❌ Erro: biblioteca PDF não carregada. Tente recarregar a página.', 'err');
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const ano = st.ano;
   const emp = st.empNome;
@@ -339,12 +347,14 @@ function gerarMod32() {
 
   setStatus('st-m32', '⏳ A gerar...', '');
 
+  if (!emp) { setStatus('st-m32', '⚠️ Selecione uma empresa primeiro', 'err'); return; }
+
   const fichas = Object.values(st.fichas).filter(f =>
     f.estado !== 'Alienado' && f.estado !== 'Abatido'
   );
 
   if (fichas.length === 0) {
-    setStatus('st-m32', '⚠️ Sem ativos para este exercício', 'err');
+    setStatus('st-m32', '⚠️ Sem ativos para este exercício. Importe dados primeiro.', 'err');
     return;
   }
 
@@ -474,15 +484,24 @@ function gerarMod32() {
     margin: {top:43, left:5, right:5},
   });
 
-  rodape(doc, doc.internal.getNumberOfPages());
-  doc.save(`Mod32_${fbKey(emp)}_${ano}.pdf`);
-  setStatus('st-m32', `✅ PDF gerado — ${fichas.length} activos`, 'ok');
+  try {
+    rodape(doc, doc.internal.getNumberOfPages());
+    doc.save(`Mod32_${fbKey(emp)}_${ano}.pdf`);
+    setStatus('st-m32', `✅ PDF gerado — ${fichas.length} activos`, 'ok');
+  } catch(e) {
+    setStatus('st-m32', `❌ Erro ao gerar PDF: ${e.message}`, 'err');
+    console.error('Mod32 erro:', e);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
 // MODELO 31 — MAIS-VALIAS E MENOS-VALIAS
 // ══════════════════════════════════════════════════════════════
 function gerarMod31() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    setStatus('st-m31', '❌ Erro: biblioteca PDF não carregada. Tente recarregar a página.', 'err');
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const ano = st.ano;
   const emp = st.empNome;
@@ -613,15 +632,24 @@ function gerarMod31() {
     margin: {top:43, left:5, right:5},
   });
 
-  rodape(doc, doc.internal.getNumberOfPages());
-  doc.save(`Mod31_${fbKey(emp)}_${ano}.pdf`);
-  setStatus('st-m31', `✅ PDF gerado — ${alienacoes.length} alienações`, 'ok');
+  try {
+    rodape(doc, doc.internal.getNumberOfPages());
+    doc.save(`Mod31_${fbKey(emp)}_${ano}.pdf`);
+    setStatus('st-m31', `✅ PDF gerado — ${alienacoes.length} alienações`, 'ok');
+  } catch(e) {
+    setStatus('st-m31', `❌ Erro ao gerar PDF: ${e.message}`, 'err');
+    console.error('Mod31 erro:', e);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════
 // MODELO 30 — PROVISÕES E IMPARIDADES
 // ══════════════════════════════════════════════════════════════
 function gerarMod30() {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    setStatus('st-m30', '❌ Erro: biblioteca PDF não carregada. Tente recarregar a página.', 'err');
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const ano = st.ano;
   const emp = st.empNome;
@@ -761,9 +789,30 @@ function gerarMod30() {
     margin: {left:5, right:5},
   });
 
-  rodape(doc, doc.internal.getNumberOfPages());
-  doc.save(`Mod30_${fbKey(emp)}_${ano}.pdf`);
-  setStatus('st-m30', `✅ PDF gerado`, 'ok');
+  try {
+    rodape(doc, doc.internal.getNumberOfPages());
+    doc.save(`Mod30_${fbKey(emp)}_${ano}.pdf`);
+    setStatus('st-m30', `✅ PDF gerado`, 'ok');
+  } catch(e) {
+    setStatus('st-m30', `❌ Erro ao gerar PDF: ${e.message}`, 'err');
+    console.error('Mod30 erro:', e);
+  }
+}
+
+function diagPDF() {
+  const msg = document.getElementById('diag-msg');
+  if (!window.jspdf) { msg.textContent = '❌ window.jspdf não existe'; msg.style.color='#dc2626'; return; }
+  if (!window.jspdf.jsPDF) { msg.textContent = '❌ window.jspdf.jsPDF não existe'; msg.style.color='#dc2626'; return; }
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.text('Teste', 10, 10);
+    msg.textContent = '✅ jsPDF OK — biblioteca carregada correctamente';
+    msg.style.color = '#16a34a';
+  } catch(e) {
+    msg.textContent = `❌ Erro: ${e.message}`;
+    msg.style.color = '#dc2626';
+  }
 }
 </script>
 </body>
