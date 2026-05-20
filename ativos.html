@@ -584,6 +584,7 @@ td.center{text-align:center;}
       <div class="ph-left"><h1>⚙️ Tabela Fiscal</h1><p>Gestão das taxas e coeficientes fiscais — editável pelo administrador</p></div>
       <div class="ph-right" id="af-tf-admin-actions" style="display:none">
         <button class="btn btn-secondary btn-sm" onclick="afExportTabelaFiscalExcel()">📊 Exportar</button>
+        <button class="btn btn-warning btn-sm" onclick="openModalActualizarTabela()" title="Importar nova versão da tabela fiscal quando sair novo decreto">📥 Actualizar Tabela Base</button>
         <button class="btn btn-primary btn-sm" onclick="openModalNovaTaxa()">➕ Nova Taxa</button>
       </div>
     </div>
@@ -1045,6 +1046,103 @@ td.center{text-align:center;}
   </div>
 </div>
 
+<!-- MODAL: ACTUALIZAR TABELA BASE -->
+<div id="af-modal-actualizar-tabela" class="modal-overlay">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h3>📥 Actualizar Tabela Fiscal Base</h3>
+      <button class="modal-close" onclick="closeModal('af-modal-actualizar-tabela')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ️</span>
+        <span class="alert-text">
+          Use esta ferramenta quando sair um novo decreto que altere taxas fiscais.<br>
+          Cole abaixo o JSON com as entradas a <strong>adicionar ou substituir</strong> — as entradas existentes não referidas mantêm-se.<br>
+          Para apagar uma entrada, inclua-a com <code style="background:#1e293b;padding:2px 5px;border-radius:3px">"apagar": true</code>.
+        </span>
+      </div>
+
+      <!-- Tabs: Manual vs JSON -->
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem">
+        <button id="af-act-tab-json" class="btn btn-primary btn-sm" onclick="afActShowTab('json')">📋 Colar JSON</button>
+        <button id="af-act-tab-manual" class="btn btn-secondary btn-sm" onclick="afActShowTab('manual')">✏️ Editar entrada a entrada</button>
+        <button id="af-act-tab-info" class="btn btn-secondary btn-sm" onclick="afActShowTab('info')">📖 Formato</button>
+      </div>
+
+      <!-- Painel JSON -->
+      <div id="af-act-panel-json">
+        <div style="margin-bottom:0.5rem;font-size:12px;color:var(--text2)">Diploma de referência da actualização:</div>
+        <input type="text" id="af-act-diploma" placeholder="Ex: DR 4/2025, de 15 de Março" style="width:100%;margin-bottom:0.75rem;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+        <div style="margin-bottom:0.5rem;font-size:12px;color:var(--text2)">JSON com as entradas a actualizar:</div>
+        <textarea id="af-act-json" rows="12" placeholder='[
+  {"cod":"2375","desc":"Veículos automóveis — ligeiros e mistos","taxa_max":25,"grupo":"434","degressivas":false,"diploma":"DR X/2025"},
+  {"cod":"9998","desc":"Nova entrada exemplo","taxa_max":15,"grupo":"433","degressivas":true,"diploma":"DR X/2025"},
+  {"cod":"2060","apagar":true}
+]' style="width:100%;padding:0.75rem;background:#0f172a;border:1px solid var(--border);color:#93c5fd;border-radius:6px;font-size:12px;font-family:monospace;resize:vertical"></textarea>
+        <div id="af-act-json-erro" style="display:none;margin-top:0.5rem;padding:0.5rem 0.75rem;background:#7f1d1d;border:1px solid #ef4444;color:#fca5a5;border-radius:6px;font-size:12px"></div>
+        <div id="af-act-json-preview" style="display:none;margin-top:0.75rem"></div>
+      </div>
+
+      <!-- Painel manual (entrada a entrada) -->
+      <div id="af-act-panel-manual" style="display:none">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Código DR *</label>
+            <input type="text" id="af-act-m-cod" placeholder="Ex: 2375" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Grupo SNC *</label>
+            <input type="text" id="af-act-m-grupo" placeholder="Ex: 434" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Descrição *</label>
+            <input type="text" id="af-act-m-desc" placeholder="Descrição conforme o decreto" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Taxa máxima % *</label>
+            <input type="number" id="af-act-m-taxa" placeholder="Ex: 25" step="0.01" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Diploma *</label>
+            <input type="text" id="af-act-m-diploma" placeholder="Ex: DR 4/2025" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Degressivas</label>
+            <select id="af-act-m-deg" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+              <option value="false">Não</option>
+              <option value="true">Sim</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px">Nota vida útil (opcional)</label>
+            <input type="text" id="af-act-m-nota" placeholder="Ex: até 5 anos (Art. 3.º)" style="width:100%;padding:0.5rem;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px">
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="afActAdicionarManual()">➕ Adicionar à lista</button>
+        <div id="af-act-manual-lista" style="margin-top:0.75rem;max-height:200px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Painel formato/ajuda -->
+      <div id="af-act-panel-info" style="display:none;font-size:12px;color:var(--text2);line-height:1.7">
+        <p style="margin-bottom:0.5rem"><strong style="color:var(--text1)">Campos obrigatórios:</strong> <code style="background:#1e293b;padding:1px 4px;border-radius:3px">cod</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">desc</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">taxa_max</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">grupo</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">degressivas</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">diploma</code></p>
+        <p style="margin-bottom:0.5rem"><strong style="color:var(--text1)">Campos opcionais:</strong> <code style="background:#1e293b;padding:1px 4px;border-radius:3px">nota_vida_util</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">limite_viatura</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">nao_amortizavel</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">vida_util_fixa</code>, <code style="background:#1e293b;padding:1px 4px;border-radius:3px">taxa_variavel</code></p>
+        <p style="margin-bottom:0.5rem"><strong style="color:var(--text1)">Para apagar:</strong> inclua <code style="background:#1e293b;padding:1px 4px;border-radius:3px">"apagar": true</code> na entrada com o código a remover</p>
+        <p style="margin-bottom:0.5rem"><strong style="color:var(--text1)">Grupos SNC comuns:</strong> 431=Terrenos · 432=Edifícios · 433=Equipamento básico · 434=Transporte · 435=Administrativo/social · 437=Outros AFT · 441=Goodwill · 442=Proj.Desenv. · 443=Software · 444=Prop.Industrial</p>
+        <p><strong style="color:var(--text1)">Nota:</strong> As alterações são gravadas no Firebase. A tabela base do código não é alterada — serve de fallback se o Firebase estiver indisponível.</p>
+      </div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between">
+      <div style="font-size:11px;color:var(--text3)" id="af-act-estado"></div>
+      <div style="display:flex;gap:0.5rem">
+        <button class="btn btn-secondary" onclick="closeModal('af-modal-actualizar-tabela')">Cancelar</button>
+        <button class="btn btn-secondary" id="af-act-btn-preview" onclick="afActPreview()">👁️ Pré-visualizar</button>
+        <button class="btn btn-primary" onclick="afActAplicar()">✅ Aplicar Actualização</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: NOVO COEFICIENTE -->
 <div id="af-modal-coef" class="modal-overlay">
   <div class="modal" style="max-width:400px">
@@ -1296,57 +1394,113 @@ let afState = {
 // ── TABELA II GENÉRICA (DR 25/2009, Tabela II) + ACTIVOS INTANGÍVEIS ────────────
 // Códigos reais conforme DR 25/2009, de 14 de Setembro (Diário da República n.º 178)
 // Carregado do Firebase; se não existir, usa estes valores base
+// TABELA II — TAXAS GENÉRICAS — DR 25/2009, de 14 de Setembro
+// Fonte: Diário da República n.º 178, 1.ª série — transcrição integral
 const AF_TABELA_II_BASE = [
-  // ── GRUPO 1 — IMÓVEIS (Tabela II, Divisão I) ──
+  // ── DIVISÃO I — ACTIVOS FIXOS TANGÍVEIS E PROPRIEDADES DE INVESTIMENTO ──
+  // Grupo 1 — Imóveis
   {cod:'2005',desc:'Edificações ligeiras (fibrocimento, madeira, zinco, etc.)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2010',desc:'Edifícios administrativos, comerciais e de serviços — construção definitiva',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2015',desc:'Edifícios industriais — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2020',desc:'Outras construções (armazéns, hangares, muros, vedações, pavimentos)',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 2 — EQUIPAMENTO BÁSICO ──
-  {cod:'2025',desc:'Máquinas e instalações — uso geral (motores, compressores, bombas, geradores)',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2030',desc:'Ferramentas e utensílios — uso geral',grupo:'437',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2035',desc:'Caldeiras e instalações de vapor',grupo:'433',taxa_max:10,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2040',desc:'Instalações de ar comprimido',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2045',desc:'Equipamento eléctrico — motores, transformadores, quadros, instalações',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2050',desc:'Equipamento de elevação e transporte interno (empilhadores, pontes rolantes)',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2055',desc:'Equipamento de segurança, vigilância e detecção de incêndio',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 3 — EQUIPAMENTO DE TRANSPORTE ──
-  {cod:'2060',desc:'Viaturas pesadas de mercadorias e tractores',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2065',desc:'Viaturas ligeiras de passageiros ou mistas (cap. €40.000 — Art. 11.º)',grupo:'434',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II + Art. 11.º',limite_viatura:true},
-  {cod:'2066',desc:'Viaturas ligeiras usadas — passageiros ou mistas (cap. €40.000)',grupo:'434',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Tab.II + Art. 11.º',limite_viatura:true},
-  {cod:'2070',desc:'Reboques, semi-reboques, motociclos, ciclomotores e bicicletas',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 4 — FERRAMENTAS E UTENSÍLIOS ESPECÍFICOS ──
-  {cod:'2085',desc:'Ferramentas, utensílios e moldes de uso específico',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 5 — EQUIPAMENTO ADMINISTRATIVO E SOCIAL ──
-  {cod:'2100',desc:'Equipamento informático — computadores, servidores, periféricos',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2105',desc:'Equipamento de escritório — impressoras, scanners, fotocopiadoras, multifunções',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2110',desc:'Mobiliário e recheio de escritório — secretárias, cadeiras, armários',grupo:'435',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2115',desc:'Máquinas de calcular, registar e de escritório',grupo:'435',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2120',desc:'Equipamento de comunicações — centrais telefónicas, fax, telefones',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2125',desc:'Equipamento de rede — routers, switches, access points, NAS',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2130',desc:'Equipamento audiovisual e de apresentação — projectores, monitores, TV',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2135',desc:'Equipamento de cantina, refeitório e cozinha',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2140',desc:'Equipamento de saúde, primeiros socorros e segurança no trabalho',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2145',desc:'Equipamento desportivo e recreativo',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 6 — INSTALAÇÕES ESPECÍFICAS ──
-  {cod:'2150',desc:'Instalações especiais em edifícios (elevadores, ar condicionado, eléctricas fixas)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2155',desc:'Equipamento de laboratório, ensaio e medida',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── GRUPO 7 — OUTROS AFT ──
-  {cod:'2160',desc:'Embalagens retornáveis e vasilhame',grupo:'437',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2165',desc:'Outros activos fixos tangíveis não especificados noutro grupo',grupo:'437',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
-  // ── PROPRIEDADES DE INVESTIMENTO ──
-  {cod:'2200',desc:'Propriedades de investimento — edifícios habitacionais',grupo:'421',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2205',desc:'Propriedades de investimento — edifícios comerciais e de serviços',grupo:'421',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  {cod:'2210',desc:'Propriedades de investimento — edifícios industriais',grupo:'421',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
-  // ── ACTIVOS INTANGÍVEIS (Art. 16.º e 17.º do DR 25/2009) ──
-  {cod:'2375',desc:'Despesas com projectos de desenvolvimento (NCRF 6) — máx. 5 anos (Art. 17.º)',grupo:'442',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Art. 17.º'},
-  {cod:'2380',desc:'Programas de computador (software) adquiridos autonomamente',grupo:'443',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
-  {cod:'2385',desc:'Patentes, marcas e alvarás com prazo de utilização limitado',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
-  {cod:'2390',desc:'Outros activos intangíveis com vida útil definida (licenças, direitos, etc.)',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 16.º'},
-  {cod:'2395',desc:'Goodwill adquirido em concentração de actividades empresariais',grupo:'441',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Art. 15.º'},
-  // ── TERRENOS (não amortizável) ──
-  {cod:'4300',desc:'Terrenos e recursos naturais — não sujeito a depreciação',grupo:'431',taxa_max:0,degressivas:false,diploma:'N/A',nao_amortizavel:true},
-  // ── BENS DE REDUZIDO VALOR ──
+  {cod:'2010',desc:'Edifícios — habitacionais',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2015',desc:'Edifícios — comerciais e administrativos',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2020',desc:'Edifícios — industriais ou edificações integradas em conjuntos industriais',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2025',desc:'Edifícios — afectos a hotéis, restaurantes e similares, garagens, serviços de saúde, ensino, recreativos e culturais',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2035',desc:'Fornos',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2040',desc:'Obras hidráulicas, incluindo poços de água',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2045',desc:'Obras de pavimentação de pedra, cimento, betão, etc.',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2050',desc:'Pontes e aquedutos — de betão ou alvenaria',grupo:'432',taxa_max:3.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2055',desc:'Pontes e aquedutos — de madeira',grupo:'432',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2060',desc:'Pontes e aquedutos — metálicos',grupo:'432',taxa_max:8.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2065',desc:'Reservatórios de água — de torre ou de superfície',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2070',desc:'Reservatórios de água — subterrâneos',grupo:'432',taxa_max:3.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2075',desc:'Silos',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2080',desc:'Vedações e arranjos urbanísticos — arranjos urbanísticos',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2085',desc:'Vedações e arranjos urbanísticos — vedações ligeiras',grupo:'432',taxa_max:8.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2090',desc:'Vedações e arranjos urbanísticos — muros',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  // Grupo 2 — Instalações
+  {cod:'2095',desc:'Instalações de água, electricidade, ar comprimido, refrigeração e telefónicas (interiores)',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2100',desc:'Instalações de aquecimento central',grupo:'433',taxa_max:6.66,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2105',desc:'Ascensores, monta-cargas e escadas mecânicas',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2110',desc:'Instalações de cabos aéreos e suportes',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2115',desc:'Instalações de caldeiras e alambiques',grupo:'433',taxa_max:7.14,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2120',desc:'Instalações de captação e distribuição de água (privativas)',grupo:'433',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2125',desc:'Instalações de carga, descarga e embarque (privativas)',grupo:'433',taxa_max:7.14,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2130',desc:'Centrais telefónicas privativas',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2135',desc:'Instalações de distribuição de combustíveis líquidos (privativas)',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2140',desc:'Instalações de embalagem',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2145',desc:'Instalações de armazenagem e depósito — de betão',grupo:'433',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2150',desc:'Instalações de armazenagem e depósito — de madeira',grupo:'433',taxa_max:6.66,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2155',desc:'Instalações de armazenagem e depósito — metálicos',grupo:'433',taxa_max:8.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2160',desc:'Instalações de lagares e prensas',grupo:'433',taxa_max:7.14,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2165',desc:'Postos de transformação',grupo:'433',taxa_max:5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2170',desc:'Instalações radiofónicas, radiotelegráficas e de televisão (privativas)',grupo:'433',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2175',desc:'Refeitórios e cozinhas privativas',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2180',desc:'Reservatórios para combustíveis líquidos',grupo:'433',taxa_max:6.66,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2185',desc:'Vitrinas e estantes fixas',grupo:'433',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2186',desc:'Espaços expositivos de carácter itinerante',grupo:'433',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2190',desc:'Instalações de centros de formação profissional',grupo:'433',taxa_max:16.66,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2195',desc:'Instalações não especificadas',grupo:'433',taxa_max:10,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  // Grupo 3 — Máquinas, aparelhos e ferramentas
+  {cod:'2200',desc:'Aparelhagem e máquinas electrónicas',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2205',desc:'Aparelhagem de reprodução de som',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2210',desc:'Aparelhos de ar condicionado',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2215',desc:'Aparelhos de aquecimento (irradiadores e outros)',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2220',desc:'Aparelhos de laboratório e precisão',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2225',desc:'Aparelhos de ventilação (ventoinhas e outros)',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2230',desc:'Balanças',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2235',desc:'Compressores',grupo:'433',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2240',desc:'Computadores',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2245',desc:'Equipamento de centros de formação profissional',grupo:'433',taxa_max:16.66,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2250',desc:'Equipamentos de energia solar',grupo:'433',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2251',desc:'Aparelhos telemóveis',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2255',desc:'Equipamento de oficinas privativas — de carpintaria',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2260',desc:'Equipamento de oficinas privativas — de serralharia e mecânica',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2265',desc:'Ferramentas e utensílios',grupo:'437',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2270',desc:'Guindastes',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2275',desc:'Máquinas de escrever, de calcular, de contabilidade e de fotocopiar',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2280',desc:'Máquinas-ferramentas — ligeiras',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2285',desc:'Máquinas-ferramentas — pesadas',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2290',desc:'Máquinas de lavagem automática de veículos',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2295',desc:'Máquinas não especificadas',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2300',desc:'Material de incêndio (extintores e outros)',grupo:'433',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2305',desc:'Material de queima',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2310',desc:'Motores',grupo:'433',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2315',desc:'Televisores',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // Grupo 4 — Material rolante ou de transporte
+  {cod:'2320',desc:'Aeronaves',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2325',desc:'Barcos — de ferro',grupo:'434',taxa_max:7.14,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2330',desc:'Barcos — de madeira',grupo:'434',taxa_max:10,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2335',desc:'Barcos — de borracha',grupo:'434',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2340',desc:'Bicicletas, triciclos e motociclos',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2345',desc:'Tractores e atrelados, empilhadores e carros com caixa basculante (dumpers)',grupo:'434',taxa_max:16.66,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2350',desc:'Vagões',grupo:'434',taxa_max:4,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2355',desc:'Veículos de tracção animal, compreendendo animais de tiro',grupo:'434',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2360',desc:'Vias-férreas normais',grupo:'434',taxa_max:4,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2365',desc:'Vias-férreas (sistema Decauville) e respectivo material rolante',grupo:'434',taxa_max:10,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2370',desc:'Veículos automóveis — funerários',grupo:'434',taxa_max:12.5,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2375',desc:'Veículos automóveis — ligeiros e mistos (cap. €40.000 — Art. 11.º)',grupo:'434',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II + Art. 11.º',limite_viatura:true},
+  {cod:'2380',desc:'Veículos automóveis — pesados de passageiros',grupo:'434',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2385',desc:'Veículos automóveis — pesados e reboques de mercadorias',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2390',desc:'Veículos automóveis — pesados e reboques de mercadorias em vias de forte desgaste',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2395',desc:'Tanques',grupo:'434',taxa_max:16.66,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  // Grupo 5 — Elementos diversos
+  {cod:'2400',desc:'Artigos de conforto e decoração — alcatifas',grupo:'437',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2405',desc:'Artigos de conforto e decoração — outros',grupo:'437',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2410',desc:'Encerados',grupo:'437',taxa_max:50,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2415',desc:'Equipamento publicitário colocado na via pública',grupo:'437',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2420',desc:'Filmes, discos e cassettes',grupo:'437',taxa_max:25,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2425',desc:'Material de desenho e topografia',grupo:'437',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2430',desc:'Mobiliário',grupo:'435',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2435',desc:'Moldes, matrizes, formas e cunhos',grupo:'437',taxa_max:25,degressivas:true,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2440',desc:'Programas de computadores',grupo:'443',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2445',desc:'Taras e vasilhame — de madeira',grupo:'437',taxa_max:20,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2450',desc:'Taras e vasilhame — de metal',grupo:'437',taxa_max:14.28,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  {cod:'2455',desc:'Taras e vasilhame — de outros materiais',grupo:'437',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Tab.II'},
+  // ── DIVISÃO II — ACTIVOS INTANGÍVEIS ──
+  {cod:'2470',desc:'Projectos de desenvolvimento',grupo:'442',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009, Tab.II',nota_vida_util:'até 5 anos (Art. 3.º n.º 3)'},
+  {cod:'2475',desc:'Elementos da propriedade industrial — patentes, marcas, alvarás, processos, modelos e outros direitos adquiridos a título oneroso com utilização exclusiva por período limitado',grupo:'444',taxa_max:0,degressivas:false,diploma:'DR 25/2009, Tab.II',nota_vida_util:'Em função do período de utilização exclusiva (Art. 16.º)',taxa_variavel:true},
+  // ── TERRENOS — não amortizável ──
+  {cod:'4310',desc:'Terrenos e recursos naturais — não sujeito a depreciação',grupo:'431',taxa_max:0,degressivas:false,diploma:'N/A',nao_amortizavel:true},
+  // ── BENS DE REDUZIDO VALOR (Art. 19.º) ──
   {cod:'9999',desc:'Bens de custo unitário ≤ €1.000 — amortização total imediata (Art. 19.º)',grupo:'437',taxa_max:100,degressivas:false,diploma:'DR 25/2009, Art. 19.º',vida_util_fixa:1},
 ];
 
@@ -2214,6 +2368,7 @@ function afCalcVidaUtil(taxa, obj) {
   if (!taxa || taxa <= 0) return '—';
   if (taxa >= 100) return '1 ano (amortização imediata)';
   if (obj && obj.vida_util_fixa) return `${obj.vida_util_fixa} ano${obj.vida_util_fixa > 1 ? 's' : ''}`;
+  if (obj && obj.nota_vida_util) return obj.nota_vida_util;
   const anos = 1 / (taxa / 100);
   return `${Math.round(anos)} anos (min ${Math.round(anos*2)})`;
 }
@@ -2659,6 +2814,198 @@ async function afRegistarAbate() {
 
 // ═══════════════════════════════════════════════════════════════
 // TABELA FISCAL — CRUD
+// ═══════════════════════════════════════════════════════════════
+// FERRAMENTA DE ACTUALIZAÇÃO DA TABELA FISCAL BASE
+// ═══════════════════════════════════════════════════════════════
+
+// Lista temporária de entradas manuais pendentes
+let afActEntradas = [];
+
+function openModalActualizarTabela() {
+  afActEntradas = [];
+  document.getElementById('af-act-json').value = '';
+  document.getElementById('af-act-diploma').value = '';
+  document.getElementById('af-act-json-erro').style.display = 'none';
+  document.getElementById('af-act-json-preview').style.display = 'none';
+  document.getElementById('af-act-estado').textContent = '';
+  afActShowTab('json');
+  openModal('af-modal-actualizar-tabela');
+}
+
+function afActShowTab(tab) {
+  ['json','manual','info'].forEach(t => {
+    document.getElementById(`af-act-panel-${t}`).style.display = t === tab ? 'block' : 'none';
+    const btn = document.getElementById(`af-act-tab-${t}`);
+    if (btn) {
+      btn.className = t === tab ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+    }
+  });
+}
+
+function afActParseJSON() {
+  const raw = document.getElementById('af-act-json').value.trim();
+  if (!raw) return { ok: false, erro: 'Cole o JSON com as entradas a actualizar.' };
+  let data;
+  try { data = JSON.parse(raw); } catch(e) { return { ok: false, erro: 'JSON inválido: ' + e.message }; }
+  if (!Array.isArray(data)) return { ok: false, erro: 'O JSON deve ser um array [...] de entradas.' };
+  const erros = [];
+  data.forEach((e, i) => {
+    if (!e.cod) erros.push(`Entrada ${i+1}: campo "cod" em falta`);
+    if (!e.apagar) {
+      if (!e.desc) erros.push(`Entrada ${i+1} (${e.cod}): campo "desc" em falta`);
+      if (e.taxa_max === undefined) erros.push(`Entrada ${i+1} (${e.cod}): campo "taxa_max" em falta`);
+      if (!e.grupo) erros.push(`Entrada ${i+1} (${e.cod}): campo "grupo" em falta`);
+      if (!e.diploma) erros.push(`Entrada ${i+1} (${e.cod}): campo "diploma" em falta`);
+    }
+  });
+  if (erros.length) return { ok: false, erro: erros.join('\n') };
+  return { ok: true, data };
+}
+
+function afActPreview() {
+  const erroEl = document.getElementById('af-act-json-erro');
+  const previewEl = document.getElementById('af-act-json-preview');
+  erroEl.style.display = 'none';
+  previewEl.style.display = 'none';
+
+  const result = afActParseJSON();
+  if (!result.ok) {
+    erroEl.textContent = result.erro;
+    erroEl.style.display = 'block';
+    return;
+  }
+
+  const adds = result.data.filter(e => !e.apagar);
+  const dels = result.data.filter(e => e.apagar);
+  let html = `<div style="font-size:12px;color:var(--text2);margin-bottom:0.5rem">Pré-visualização da actualização:</div>`;
+  if (adds.length) {
+    html += `<div style="font-size:12px;color:#34d399;margin-bottom:0.25rem">✅ ${adds.length} entrada(s) a adicionar/substituir:</div>`;
+    html += `<div style="max-height:150px;overflow-y:auto;background:#0f172a;border-radius:6px;padding:0.5rem;margin-bottom:0.5rem">`;
+    adds.forEach(e => {
+      html += `<div style="font-size:11px;color:#cbd5e1;padding:2px 0;border-bottom:1px solid #1e293b">${e.cod} — ${e.desc} — ${e.taxa_max}% — ${e.diploma}</div>`;
+    });
+    html += `</div>`;
+  }
+  if (dels.length) {
+    html += `<div style="font-size:12px;color:#f87171;margin-bottom:0.25rem">🗑️ ${dels.length} entrada(s) a apagar:</div>`;
+    dels.forEach(e => { html += `<div style="font-size:11px;color:#fca5a5">${e.cod}</div>`; });
+  }
+  previewEl.innerHTML = html;
+  previewEl.style.display = 'block';
+}
+
+function afActAdicionarManual() {
+  const cod = document.getElementById('af-act-m-cod').value.trim();
+  const desc = document.getElementById('af-act-m-desc').value.trim();
+  const taxa = parseFloat(document.getElementById('af-act-m-taxa').value);
+  const grupo = document.getElementById('af-act-m-grupo').value.trim();
+  const diploma = document.getElementById('af-act-m-diploma').value.trim();
+  const deg = document.getElementById('af-act-m-deg').value === 'true';
+  const nota = document.getElementById('af-act-m-nota').value.trim();
+  if (!cod || !desc || isNaN(taxa) || !grupo || !diploma) {
+    afMsg('Preenche todos os campos obrigatórios', 'red'); return;
+  }
+  const entrada = { cod, desc, taxa_max: taxa, grupo, degressivas: deg, diploma };
+  if (nota) entrada.nota_vida_util = nota;
+  afActEntradas.push(entrada);
+  // Limpar campos
+  ['af-act-m-cod','af-act-m-desc','af-act-m-taxa','af-act-m-diploma','af-act-m-nota'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  // Actualizar lista visual
+  const lista = document.getElementById('af-act-manual-lista');
+  lista.innerHTML = afActEntradas.map((e, i) =>
+    `<div style="display:flex;align-items:center;gap:0.5rem;padding:4px 0;border-bottom:1px solid var(--border);font-size:12px">
+      <span style="color:#fb923c;font-family:monospace;min-width:50px">${e.cod}</span>
+      <span style="flex:1;color:var(--text1)">${e.desc}</span>
+      <span style="color:#34d399">${e.taxa_max}%</span>
+      <button onclick="afActEntradas.splice(${i},1);document.getElementById('af-act-manual-lista').dispatchEvent(new Event('actualizar'))" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:14px">🗑️</button>
+    </div>`
+  ).join('');
+}
+
+async function afActAplicar() {
+  const estadoEl = document.getElementById('af-act-estado');
+  const diploma = document.getElementById('af-act-diploma').value.trim();
+
+  // Determinar fonte: JSON ou manual
+  let entradas = [];
+  const tabActiva = document.getElementById('af-act-panel-json').style.display !== 'none' ? 'json' : 'manual';
+
+  if (tabActiva === 'json') {
+    const result = afActParseJSON();
+    if (!result.ok) {
+      const erroEl = document.getElementById('af-act-json-erro');
+      erroEl.textContent = result.erro;
+      erroEl.style.display = 'block';
+      return;
+    }
+    entradas = result.data;
+  } else {
+    if (!afActEntradas.length) { afMsg('Adiciona pelo menos uma entrada', 'amber'); return; }
+    entradas = afActEntradas;
+  }
+
+  if (!entradas.length) { afMsg('Nenhuma entrada para aplicar', 'amber'); return; }
+
+  estadoEl.textContent = 'A aplicar actualização…';
+
+  // Carregar tabela actual do Firebase (ou base)
+  const dadosFB = await afFBGet('/dafilgest/tabelasFiscais/tabela2') || {};
+  // Construir objecto actual a partir do código base + Firebase
+  const tab2Actual = {};
+  AF_TABELA_II_BASE.forEach(t => { tab2Actual[t.cod] = {...t, taxa_min: t.taxa_max / 2}; });
+  Object.entries(dadosFB).forEach(([k, v]) => { tab2Actual[k] = v; });
+
+  // Aplicar entradas
+  let nadd = 0, ndel = 0;
+  entradas.forEach(e => {
+    if (e.apagar) {
+      delete tab2Actual[e.cod];
+      ndel++;
+    } else {
+      const entrada = {
+        cod: e.cod,
+        desc: e.desc,
+        taxa_max: e.taxa_max,
+        taxa_min: e.taxa_min !== undefined ? e.taxa_min : e.taxa_max / 2,
+        grupo: e.grupo,
+        degressivas: e.degressivas || false,
+        diploma: e.diploma || diploma || 'DR 25/2009',
+      };
+      if (e.nota_vida_util) entrada.nota_vida_util = e.nota_vida_util;
+      if (e.limite_viatura) entrada.limite_viatura = true;
+      if (e.nao_amortizavel) entrada.nao_amortizavel = true;
+      if (e.vida_util_fixa) entrada.vida_util_fixa = e.vida_util_fixa;
+      if (e.taxa_variavel) entrada.taxa_variavel = true;
+      tab2Actual[e.cod] = entrada;
+      nadd++;
+    }
+  });
+
+  // Gravar no Firebase
+  const ok = await afFBSet('/dafilgest/tabelasFiscais/tabela2', tab2Actual);
+  if (ok) {
+    // Actualizar estado local
+    afState.tabelaII = tab2Actual;
+    // Guardar registo da actualização
+    const registo = {
+      diploma: diploma || entradas[0]?.diploma || 'N/D',
+      data: new Date().toLocaleDateString('pt-PT'),
+      adicionadas: nadd,
+      apagadas: ndel,
+      total: Object.keys(tab2Actual).length
+    };
+    await afFBSet('/dafilgest/tabelasFiscais/historico/' + Date.now(), registo);
+    closeModal('af-modal-actualizar-tabela');
+    afRenderTabelaFiscal();
+    afMsg(`✅ Tabela actualizada: ${nadd} entrada(s) adicionadas/modificadas, ${ndel} apagadas. Total: ${registo.total} entradas.`, 'green');
+  } else {
+    estadoEl.textContent = 'Erro ao gravar no Firebase.';
+    afMsg('Erro ao gravar no Firebase. Verifique a ligação.', 'red');
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════
 
 function openModalNovaTaxa() {
