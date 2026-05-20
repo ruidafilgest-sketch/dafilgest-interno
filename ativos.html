@@ -315,7 +315,7 @@ td.center{text-align:center;}
         <p style="margin-top:4px">Importe o mapa Excel de 2024 ou crie fichas individuais.</p>
         <div class="es-action" style="display:flex;gap:8px;justify-content:center">
           <button class="btn btn-primary" onclick="afShowTab('fichas');openModalNovaFicha()">➕ Nova Ficha</button>
-          <a href="importar.html" target="_blank" class="btn btn-secondary">📥 Importar Mapas 2024</a>
+          <button class="btn btn-secondary" onclick="afShowImportExcel()">📥 Importar Excel 2024</button>
         </div>
       </div>
     </div>
@@ -324,7 +324,7 @@ td.center{text-align:center;}
       <div class="tw-header">
         <span class="tw-title">Resumo por Categoria</span>
         <div class="tw-actions">
-          <a href="importar.html" target="_blank" class="btn btn-secondary btn-sm">📥 Importar Mapas 2024</a>
+          <button class="btn btn-secondary btn-sm" onclick="afShowImportExcel()">📥 Importar Excel</button>
           <button class="btn btn-primary btn-sm" onclick="afShowTab('fichas');openModalNovaFicha()">➕ Nova Ficha</button>
         </div>
       </div>
@@ -352,6 +352,7 @@ td.center{text-align:center;}
     <div class="ph">
       <div class="ph-left"><h1>🗂️ Fichas de Ativos</h1><p>Registo individual de cada ativo fixo</p></div>
       <div class="ph-right">
+        <button class="btn btn-danger btn-sm" id="af-btn-apagar-sel" onclick="afApagarSeleccionados()" style="display:none">🗑 Apagar seleccionados</button>
         <a href="importar.html" target="_blank" class="btn btn-secondary btn-sm">📥 Importar Mapas 2024</a>
         <button class="btn btn-primary btn-sm" onclick="openModalNovaFicha()">➕ Nova Ficha</button>
       </div>
@@ -376,6 +377,7 @@ td.center{text-align:center;}
       <div class="tbl-scroll">
         <table>
           <thead><tr>
+            <th style="width:30px"><input type="checkbox" id="af-sel-all" onclick="afToggleAll(this)" title="Seleccionar todos"></th>
             <th>Ref.</th>
             <th>Descrição</th>
             <th>Categoria</th>
@@ -1246,6 +1248,17 @@ function afLogout() {
 
 // Verificar sessão ao carregar
 window.addEventListener('load', () => {
+  // Se está dentro de um iframe (programa principal) salta o login
+  if (window.self !== window.top) {
+    // Herdar role do pai se disponível, senão usar admin
+    const r = sessionStorage.getItem('af_role') || 'admin';
+    afStartApp(r);
+    // Esconder o botão Sair e o link Sistema Principal dentro do iframe
+    const topbar = document.querySelector('.af-topbar-right');
+    if (topbar) topbar.style.display = 'none';
+    return;
+  }
+  // Standalone — verificar sessão normal
   const r = sessionStorage.getItem('af_role');
   if (r) afStartApp(r);
 });
@@ -1703,6 +1716,7 @@ function afRenderFichas() {
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
+      <td class="center"><input type="checkbox" class="af-sel-cb" data-id="${id}" onchange="afUpdateSeleccao()"></td>
       <td style="font-size:10px;color:var(--text4)">${id.substr(-6)}</td>
       <td><strong>${f.descricao || '—'}</strong>${f.ref ? `<br><span style="font-size:10px;color:var(--text4)">${f.ref}</span>` : ''}</td>
       <td>${f.categoria || '—'}</td>
@@ -1717,7 +1731,7 @@ function afRenderFichas() {
       <td>
         <button class="btn btn-secondary btn-xs" onclick="afOpenDetalhe('${id}')">👁</button>
         <button class="btn btn-secondary btn-xs" onclick="afEditFichaById('${id}')">✏️</button>
-        ${f.estado !== 'Alienado' && f.estado !== 'Abatido' ? `<button class="btn btn-danger btn-xs" onclick="afConfirmDelete('${id}')">🗑</button>` : ''}
+        <button class="btn btn-danger btn-xs" onclick="afConfirmDelete('${id}')">🗑</button>
       </td>`;
     body.appendChild(tr);
   });
@@ -2050,18 +2064,18 @@ async function afLoadTabelaFiscal() {
   AF_TABELA_II_BASE.forEach(t => { tab2Obj[t.cod] = {...t, taxa_min: t.taxa_max / 2}; });
   afState.tabelaII = tab2Obj;
 
-  // Actualiza sempre tab2 no Firebase com a versão correcta
-  afFBSet(`${AF_TF_PATH}/tab2`, tab2Obj);
-  afFBSet(`${AF_TF_PATH}/meta_tab2`, {
-    versao: 'DR 25/2009 + DR 4/2015',
-    vigencia_desde: '2010-01-01',
-    ultima_atualizacao: new Date().toISOString().split('T')[0],
-    atualizado_por: '© Rui Gonçalves'
-  });
+  // NÃO sobrescrever tabelas — geridas pelo carregar_tabelas.html
+  // Usar Firebase se já existir, senão usar base local
+  if (!data?.tab2 || Object.keys(data.tab2).length < 10) {
+    afFBSet(`${AF_TF_PATH}/tab2`, tab2Obj);
+  }
 
-  // Tab1 — usa sempre a base local e actualiza Firebase
-  afState.tabelaI = AF_TABELA_I_BASE;
-  afFBSet(`${AF_TF_PATH}/tab1`, AF_TABELA_I_BASE);
+  // Tab1 — usar Firebase se existir (gerido pelo carregar_tabelas.html)
+  if (data?.tab1 && Object.keys(data.tab1).length > 10) {
+    afState.tabelaI = data.tab1;
+  } else {
+    afState.tabelaI = AF_TABELA_I_BASE;
+  }
 
   // Coeficientes — usa Firebase se existir (permite edição manual), senão usa base
   if (data?.coeficientes && Object.keys(data.coeficientes).length > 40) {
@@ -2480,6 +2494,35 @@ function afEditFichaById(id) {
 function afEditFicha() {
   closeModal('af-modal-detalhe');
   afEditFichaById(afState.fichaDetalheId);
+}
+
+function afToggleAll(cb) {
+  document.querySelectorAll('.af-sel-cb').forEach(c => c.checked = cb.checked);
+  afUpdateSeleccao();
+}
+
+function afUpdateSeleccao() {
+  const sels = document.querySelectorAll('.af-sel-cb:checked');
+  const btn = document.getElementById('af-btn-apagar-sel');
+  if (btn) btn.style.display = sels.length > 0 ? '' : 'none';
+  if (btn && sels.length > 0) btn.textContent = `🗑 Apagar ${sels.length} seleccionado(s)`;
+}
+
+async function afApagarSeleccionados() {
+  const sels = Array.from(document.querySelectorAll('.af-sel-cb:checked'));
+  if (sels.length === 0) return;
+  if (!confirm(`Apagar ${sels.length} bem(ns) permanentemente? Esta acção não pode ser revertida.`)) return;
+
+  let ok = 0;
+  for (const cb of sels) {
+    const id = cb.dataset.id;
+    const res = await afFBDelete(`${AF_FB_PATH}/${afState.empKey}/fichas/${id}`);
+    if (res) { delete afState.fichas[id]; ok++; }
+  }
+
+  afMsg(`${ok} bem(ns) apagado(s)`, 'amber');
+  afRenderFichas();
+  afRenderDashboard();
 }
 
 async function afConfirmDelete(id) {
