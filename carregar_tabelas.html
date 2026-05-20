@@ -1,1 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Carregar Tabelas Fiscais — Dafilgest</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#eef0f3;color:#1a1f2e;font-size:13px;}
+.wrap{max-width:700px;margin:40px auto;padding:0 16px;}
+.card{background:#fff;border-radius:10px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.08);margin-bottom:16px;}
+h1{font-size:16px;font-weight:700;margin-bottom:4px;}
+p{font-size:12px;color:#6b7585;margin-bottom:16px;}
+.secao{margin-bottom:20px;}
+.secao-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#1a6fc4;margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid #c5d9f1;}
+.btn{padding:8px 16px;border-radius:5px;border:none;cursor:pointer;font-size:12px;font-weight:600;}
+.btn-primary{background:#1a6fc4;color:#fff;}
+.btn-primary:hover{background:#1560ad;}
+.btn-success{background:#16a34a;color:#fff;}
+.btn-success:hover{background:#15803d;}
+.btn-danger{background:#dc2626;color:#fff;}
+.resultado{margin-top:10px;font-size:12px;padding:8px 12px;border-radius:5px;display:none;}
+.ok{background:#f0fdf4;color:#16a34a;border:1px solid #86efac;}
+.erro{background:#fef2f2;color:#dc2626;border:1px solid #fca5a5;}
+.info{background:#e8f1fb;color:#1a6fc4;border:1px solid #c5d9f1;}
+table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;}
+th{background:#f7f8fa;padding:5px 8px;text-align:left;font-size:10px;font-weight:700;color:#6b7585;border-bottom:1px solid #e8eaed;}
+td{padding:5px 8px;border-bottom:1px solid #e8eaed;}
+.badge{display:inline-block;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:600;}
+.badge-blue{background:#e8f1fb;color:#1a6fc4;}
+.badge-green{background:#f0fdf4;color:#16a34a;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>⚙️ Carregar Tabelas Fiscais — Dafilgest</h1>
+    <p>Carrega as tabelas fiscais directamente no Firebase. Usa apenas uma vez ou quando precisares de actualizar.</p>
+
+    <!-- TABELA II -->
+    <div class="secao">
+      <div class="secao-title">Tabela II — Taxas Genéricas (DR 25/2009 + DR 4/2015)</div>
+      <p style="margin-bottom:8px">35 entradas — aplicáveis a todos os sectores sem taxa específica na Tabela I.</p>
+      <table id="tab2-preview">
+        <thead><tr><th>Código</th><th>Descrição</th><th>SNC</th><th>Taxa Máx</th><th>Degressivas</th></tr></thead>
+        <tbody id="tab2-body"></tbody>
+      </table>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" onclick="carregarTab2()">📥 Carregar Tab II no Firebase</button>
+      </div>
+      <div id="res-tab2" class="resultado"></div>
+    </div>
+
+    <!-- TABELA I -->
+    <div class="secao">
+      <div class="secao-title">Tabela I — Taxas Específicas por Sector</div>
+      <p style="margin-bottom:8px">21 entradas — Construção, Têxtil, Alimentação, Transportes, Comércio e outros.</p>
+      <table id="tab1-preview">
+        <thead><tr><th>Código</th><th>Sector / Descrição</th><th>Taxa Máx</th><th>Degressivas</th></tr></thead>
+        <tbody id="tab1-body"></tbody>
+      </table>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" onclick="carregarTab1()">📥 Carregar Tab I no Firebase</button>
+      </div>
+      <div id="res-tab1" class="resultado"></div>
+    </div>
+
+    <!-- COEFICIENTES -->
+    <div class="secao">
+      <div class="secao-title">Coeficientes de Desvalorização Monetária (Mod. 31)</div>
+      <p style="margin-bottom:8px">56 anos (1970–2025) — valores oficiais AT publicados por Portaria anual.</p>
+      <table>
+        <thead><tr><th>Anos recentes</th><th>Coeficiente</th><th>Portaria</th></tr></thead>
+        <tbody>
+          <tr><td>2025</td><td>1.00</td><td>Portaria em vigor 2025</td></tr>
+          <tr><td>2024</td><td>1.00</td><td>Portaria em vigor 2024</td></tr>
+          <tr><td>2023</td><td>1.00</td><td>Portaria 320/2023</td></tr>
+          <tr><td>2022</td><td>1.02</td><td>Portaria 237/2022</td></tr>
+          <tr><td>2021</td><td>1.10</td><td>Portaria 221/2021</td></tr>
+          <tr><td>2020</td><td>1.13</td><td>Portaria 239/2020</td></tr>
+          <tr><td>... (1970 a 2019 também incluídos)</td><td></td><td></td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:10px">
+        <button class="btn btn-primary" onclick="carregarCoef()">📥 Carregar Coeficientes no Firebase</button>
+      </div>
+      <div id="res-coef" class="resultado"></div>
+    </div>
+
+    <!-- TUDO DE UMA VEZ -->
+    <div style="border-top:2px solid #e8eaed;padding-top:16px;margin-top:4px;text-align:center;">
+      <button class="btn btn-success" onclick="carregarTudo()" style="padding:10px 24px;font-size:13px;">
+        🚀 Carregar TUDO de uma vez
+      </button>
+      <div id="res-tudo" class="resultado" style="text-align:left"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FB_URL  = 'https://dafilgest-interno-default-rtdb.europe-west1.firebasedatabase.app';
+const TF_PATH = '/dafilgest/tabelas_fiscais';
+
+// ── TABELA II ─────────────────────────────────────────────────
+const TAB2 = {
+  "2001":{cod:"2001",desc:"Edifícios administrativos e comerciais — construção definitiva (betão, tijolo, pedra)",grupo:"432",taxa_max:2,taxa_min:1,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2002":{cod:"2002",desc:"Edifícios administrativos e comerciais — construção ligeira (madeira, zinco, fibrocimento)",grupo:"432",taxa_max:5,taxa_min:2.5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2003":{cod:"2003",desc:"Edifícios industriais — construção definitiva",grupo:"432",taxa_max:5,taxa_min:2.5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2004":{cod:"2004",desc:"Edifícios industriais — construção ligeira",grupo:"432",taxa_max:10,taxa_min:5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2005":{cod:"2005",desc:"Armazéns e hangares — construção definitiva",grupo:"432",taxa_max:5,taxa_min:2.5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2006":{cod:"2006",desc:"Armazéns e hangares — construção ligeira",grupo:"432",taxa_max:10,taxa_min:5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2007":{cod:"2007",desc:"Instalações especiais em edifícios (elevadores, ar condicionado, eléctricas fixas)",grupo:"432",taxa_max:10,taxa_min:5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2008":{cod:"2008",desc:"Outras construções — muros, vedações, pavimentos, parques",grupo:"432",taxa_max:5,taxa_min:2.5,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "2009":{cod:"2009",desc:"Terrenos e recursos naturais — não amortizável",grupo:"431",taxa_max:0,taxa_min:0,degressivas:false,diploma:"N/A",nao_amortizavel:true},
+  "3001":{cod:"3001",desc:"Viaturas ligeiras de passageiros ou mistas — novas",grupo:"434",taxa_max:25,taxa_min:12.5,degressivas:false,diploma:"DR 25/2009 + Art. 11.º (cap. €40.000)",limite_viatura:true},
+  "3002":{cod:"3002",desc:"Viaturas ligeiras de passageiros ou mistas — usadas",grupo:"434",taxa_max:33.33,taxa_min:16.67,degressivas:false,diploma:"DR 25/2009 + Art. 11.º (cap. €40.000)",limite_viatura:true},
+  "3003":{cod:"3003",desc:"Viaturas pesadas de mercadorias e de passageiros",grupo:"434",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "3004":{cod:"3004",desc:"Tractores e máquinas de movimentação de terras",grupo:"434",taxa_max:25,taxa_min:12.5,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "3005":{cod:"3005",desc:"Reboques e semi-reboques",grupo:"434",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "3006":{cod:"3006",desc:"Motociclos, ciclomotores e bicicletas",grupo:"434",taxa_max:25,taxa_min:12.5,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4001":{cod:"4001",desc:"Máquinas e equipamento de uso geral — tornos, fresadoras, rectificadoras",grupo:"433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4002":{cod:"4002",desc:"Máquinas e equipamento — prensas, puncionadoras, guilhotinas",grupo:"433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4003":{cod:"4003",desc:"Equipamento de elevação e transporte — empilhadores, pontes rolantes",grupo:"433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4004":{cod:"4004",desc:"Equipamento de produção de energia — geradores, compressores, bombas",grupo:"433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4005":{cod:"4005",desc:"Equipamento de soldadura",grupo:"433",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4006":{cod:"4006",desc:"Ferramentas e utensílios com vida útil superior a 1 ano",grupo:"437",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4007":{cod:"4007",desc:"Moldes, modelos e matrizes",grupo:"437",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "4008":{cod:"4008",desc:"Equipamento de segurança e vigilância",grupo:"433",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "5001":{cod:"5001",desc:"Computadores, servidores e periféricos",grupo:"435",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "5002":{cod:"5002",desc:"Equipamento de rede — routers, switches, access points",grupo:"435",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "5003":{cod:"5003",desc:"Equipamento de telecomunicações — centrais, telefones",grupo:"435",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "5004":{cod:"5004",desc:"Máquinas de escritório — fotocopiadoras, impressoras, scanners",grupo:"435",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "5005":{cod:"5005",desc:"Mobiliário de escritório — secretárias, cadeiras, armários",grupo:"435",taxa_max:12.5,taxa_min:6.25,degressivas:false,diploma:"DR 25/2009 + DR 4/2015"},
+  "5006":{cod:"5006",desc:"Equipamento e utensílios de cozinha e cantina",grupo:"435",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009 + DR 4/2015"},
+  "6001":{cod:"6001",desc:"Programas de computador (software) adquiridos autonomamente",grupo:"443",taxa_max:33.33,taxa_min:16.67,degressivas:false,diploma:"DR 25/2009 + Art. 16.º"},
+  "6002":{cod:"6002",desc:"Patentes e marcas registadas",grupo:"444",taxa_max:20,taxa_min:10,degressivas:false,diploma:"DR 25/2009 + Art. 16.º"},
+  "6003":{cod:"6003",desc:"Alvarás e licenças com prazo definido",grupo:"444",taxa_max:20,taxa_min:10,degressivas:false,diploma:"DR 25/2009 + Art. 16.º"},
+  "6004":{cod:"6004",desc:"Projectos de desenvolvimento (NCRF 6) — máximo 5 anos",grupo:"442",taxa_max:33.33,taxa_min:16.67,degressivas:false,diploma:"DR 25/2009 + Art. 17.º"},
+  "6005":{cod:"6005",desc:"Goodwill adquirido em concentração de actividades",grupo:"441",taxa_max:20,taxa_min:10,degressivas:false,diploma:"DR 25/2009 + Art. 15.º"},
+  "7001":{cod:"7001",desc:"Bens de custo unitário inferior a €1.000 — amortização imediata",grupo:"437",taxa_max:100,taxa_min:100,degressivas:false,diploma:"DR 25/2009, Art. 19.º"}
+};
+
+// ── TABELA I ──────────────────────────────────────────────────
+const TAB1 = {
+  "C001":{cod:"C001",desc:"Edifícios e construções em explorações agrícolas",grupo:"Agricultura / 432",taxa_max:5,taxa_min:2.5,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C002":{cod:"C002",desc:"Tractores e máquinas agrícolas (alfaias)",grupo:"Agricultura / 434",taxa_max:25,taxa_min:12.5,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C010":{cod:"C010",desc:"Andaimes e cofragens metálicas",grupo:"Construção / 433",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C011":{cod:"C011",desc:"Equipamento de perfuração, escavação e betonagem",grupo:"Construção / 433",taxa_max:25,taxa_min:12.5,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C012":{cod:"C012",desc:"Gruas, guinchos e guindastes de construção",grupo:"Construção / 433",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C013":{cod:"C013",desc:"Instalações de estaleiro provisórias",grupo:"Construção / 432",taxa_max:33.33,taxa_min:16.67,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C020":{cod:"C020",desc:"Máquinas de corte e costura industrial",grupo:"Têxtil / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C021":{cod:"C021",desc:"Teares, tricoteiras e máquinas de tecelagem",grupo:"Têxtil / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C030":{cod:"C030",desc:"Câmaras frigoríficas e arcas congeladoras",grupo:"Alimentação / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C031":{cod:"C031",desc:"Máquinas de embalagem e rotulagem",grupo:"Alimentação / 433",taxa_max:20,taxa_min:10,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C032":{cod:"C032",desc:"Equipamento de transformação alimentar (fornos, misturadoras)",grupo:"Alimentação / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C033":{cod:"C033",desc:"Mobiliário e equipamento de restauração",grupo:"Restauração / 435",taxa_max:14.28,taxa_min:7.14,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C040":{cod:"C040",desc:"Equipamento de lavandaria industrial",grupo:"Lavandaria / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C050":{cod:"C050",desc:"Instalações de abastecimento de combustíveis",grupo:"Transportes / 433",taxa_max:10,taxa_min:5,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C051":{cod:"C051",desc:"Equipamento GPS e gestão de frota",grupo:"Transportes / 435",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C060":{cod:"C060",desc:"Equipamento de climatização AVAC",grupo:"Climatização / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C070":{cod:"C070",desc:"Mobiliário e equipamento de cabeleireiro e estética",grupo:"Serviços / 435",taxa_max:20,taxa_min:10,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C080":{cod:"C080",desc:"Prateleiras, expositores e gôndolas de comércio",grupo:"Comércio / 435",taxa_max:14.28,taxa_min:7.14,degressivas:false,diploma:"DR 25/2009, Tabela I"},
+  "C081":{cod:"C081",desc:"Caixas registadoras e terminais POS",grupo:"Comércio / 435",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C090":{cod:"C090",desc:"Equipamento de extrusão de plásticos",grupo:"Plásticos / 433",taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:"DR 25/2009, Tabela I"},
+  "C091":{cod:"C091",desc:"Moldes de injecção de plástico",grupo:"Plásticos / 437",taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:"DR 25/2009, Tabela I"}
+};
+
+// ── COEFICIENTES ──────────────────────────────────────────────
+const COEF = {
+  "1970":{coef:57.21,portaria:"Base histórica AT"},"1971":{coef:52.46,portaria:"Base histórica AT"},
+  "1972":{coef:48.76,portaria:"Base histórica AT"},"1973":{coef:44.78,portaria:"Base histórica AT"},
+  "1974":{coef:36.43,portaria:"Base histórica AT"},"1975":{coef:30.39,portaria:"Base histórica AT"},
+  "1976":{coef:24.14,portaria:"Base histórica AT"},"1977":{coef:18.67,portaria:"Base histórica AT"},
+  "1978":{coef:15.76,portaria:"Base histórica AT"},"1979":{coef:13.33,portaria:"Base histórica AT"},
+  "1980":{coef:11.40,portaria:"Base histórica AT"},"1981":{coef:9.44,portaria:"Base histórica AT"},
+  "1982":{coef:7.74,portaria:"Base histórica AT"},"1983":{coef:5.99,portaria:"Base histórica AT"},
+  "1984":{coef:4.58,portaria:"Base histórica AT"},"1985":{coef:3.83,portaria:"Base histórica AT"},
+  "1986":{coef:3.38,portaria:"Base histórica AT"},"1987":{coef:3.10,portaria:"Base histórica AT"},
+  "1988":{coef:2.84,portaria:"Base histórica AT"},"1989":{coef:2.60,portaria:"Base histórica AT"},
+  "1990":{coef:2.36,portaria:"Base histórica AT"},"1991":{coef:2.14,portaria:"Base histórica AT"},
+  "1992":{coef:1.99,portaria:"Base histórica AT"},"1993":{coef:1.89,portaria:"Base histórica AT"},
+  "1994":{coef:1.84,portaria:"Base histórica AT"},"1995":{coef:1.79,portaria:"Base histórica AT"},
+  "1996":{coef:1.74,portaria:"Base histórica AT"},"1997":{coef:1.71,portaria:"Base histórica AT"},
+  "1998":{coef:1.68,portaria:"Base histórica AT"},"1999":{coef:1.65,portaria:"Base histórica AT"},
+  "2000":{coef:1.60,portaria:"Base histórica AT"},"2001":{coef:1.54,portaria:"Base histórica AT"},
+  "2002":{coef:1.49,portaria:"Base histórica AT"},"2003":{coef:1.46,portaria:"Base histórica AT"},
+  "2004":{coef:1.43,portaria:"Base histórica AT"},"2005":{coef:1.40,portaria:"Base histórica AT"},
+  "2006":{coef:1.37,portaria:"Base histórica AT"},"2007":{coef:1.33,portaria:"Base histórica AT"},
+  "2008":{coef:1.27,portaria:"Base histórica AT"},"2009":{coef:1.28,portaria:"Base histórica AT"},
+  "2010":{coef:1.27,portaria:"Portaria 400/2010"},"2011":{coef:1.22,portaria:"Portaria 282/2011"},
+  "2012":{coef:1.19,portaria:"Portaria 316/2012"},"2013":{coef:1.19,portaria:"Portaria 378/2013"},
+  "2014":{coef:1.19,portaria:"Portaria 400/2014"},"2015":{coef:1.19,portaria:"Portaria 316/2015"},
+  "2016":{coef:1.18,portaria:"Portaria 320/2016"},"2017":{coef:1.17,portaria:"Portaria 249/2017"},
+  "2018":{coef:1.15,portaria:"Portaria 196/2018"},"2019":{coef:1.13,portaria:"Portaria 183/2019"},
+  "2020":{coef:1.13,portaria:"Portaria 239/2020"},"2021":{coef:1.10,portaria:"Portaria 221/2021"},
+  "2022":{coef:1.02,portaria:"Portaria 237/2022"},"2023":{coef:1.00,portaria:"Portaria 320/2023"},
+  "2024":{coef:1.00,portaria:"Portaria em vigor 2024"},"2025":{coef:1.00,portaria:"Portaria em vigor 2025"}
+};
+
+// ── FIREBASE PUT ──────────────────────────────────────────────
+async function fbPut(path, data) {
+  const r = await fetch(`${FB_URL}${path}.json`, {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data)
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return true;
+}
+
+function mostrar(id, msg, tipo) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.className = `resultado ${tipo}`;
+  el.style.display = 'block';
+}
+
+// ── ACÇÕES ────────────────────────────────────────────────────
+async function carregarTab2() {
+  mostrar('res-tab2', '⏳ A carregar...', 'info');
+  try {
+    await fbPut(`${TF_PATH}/tab2`, TAB2);
+    await fbPut(`${TF_PATH}/meta_tab2`, {
+      versao: 'DR 25/2009 + DR 4/2015',
+      vigencia_desde: '2010-01-01',
+      ultima_atualizacao: new Date().toISOString().split('T')[0],
+      atualizado_por: '© Rui Gonçalves'
+    });
+    mostrar('res-tab2', `✅ Tabela II carregada — ${Object.keys(TAB2).length} entradas`, 'ok');
+  } catch(e) {
+    mostrar('res-tab2', `❌ Erro: ${e.message}`, 'erro');
+  }
+}
+
+async function carregarTab1() {
+  mostrar('res-tab1', '⏳ A carregar...', 'info');
+  try {
+    await fbPut(`${TF_PATH}/tab1`, TAB1);
+    mostrar('res-tab1', `✅ Tabela I carregada — ${Object.keys(TAB1).length} entradas`, 'ok');
+  } catch(e) {
+    mostrar('res-tab1', `❌ Erro: ${e.message}`, 'erro');
+  }
+}
+
+async function carregarCoef() {
+  mostrar('res-coef', '⏳ A carregar...', 'info');
+  try {
+    await fbPut(`${TF_PATH}/coeficientes`, COEF);
+    mostrar('res-coef', `✅ Coeficientes carregados — ${Object.keys(COEF).length} anos (1970–2025)`, 'ok');
+  } catch(e) {
+    mostrar('res-coef', `❌ Erro: ${e.message}`, 'erro');
+  }
+}
+
+async function carregarTudo() {
+  mostrar('res-tudo', '⏳ A carregar tudo...', 'info');
+  try {
+    await fbPut(`${TF_PATH}/tab2`, TAB2);
+    await fbPut(`${TF_PATH}/tab1`, TAB1);
+    await fbPut(`${TF_PATH}/coeficientes`, COEF);
+    await fbPut(`${TF_PATH}/meta_tab2`, {
+      versao: 'DR 25/2009 + DR 4/2015',
+      vigencia_desde: '2010-01-01',
+      ultima_atualizacao: new Date().toISOString().split('T')[0],
+      atualizado_por: '© Rui Gonçalves'
+    });
+    mostrar('res-tudo',
+      `✅ Tudo carregado:\n• Tab II — ${Object.keys(TAB2).length} taxas genéricas\n• Tab I — ${Object.keys(TAB1).length} taxas específicas\n• Coeficientes — ${Object.keys(COEF).length} anos`, 'ok');
+  } catch(e) {
+    mostrar('res-tudo', `❌ Erro: ${e.message}`, 'erro');
+  }
+}
+
+// ── PREENCHER PREVIEW DAS TABELAS ────────────────────────────
+window.onload = () => {
+  const b2 = document.getElementById('tab2-body');
+  Object.values(TAB2).forEach(t => {
+    b2.innerHTML += `<tr>
+      <td><strong>${t.cod}</strong></td>
+      <td>${t.desc}</td>
+      <td>${t.grupo}</td>
+      <td>${t.taxa_max}%</td>
+      <td>${t.degressivas ? '<span class="badge badge-green">Sim</span>' : 'Não'}</td>
+    </tr>`;
+  });
+
+  const b1 = document.getElementById('tab1-body');
+  Object.values(TAB1).forEach(t => {
+    b1.innerHTML += `<tr>
+      <td><strong>${t.cod}</strong></td>
+      <td><span class="badge badge-blue">${t.grupo.split('/')[0].trim()}</span> ${t.desc}</td>
+      <td>${t.taxa_max}%</td>
+      <td>${t.degressivas ? '<span class="badge badge-green">Sim</span>' : 'Não'}</td>
+    </tr>`;
+  });
+};
+</script>
+</body>
+</html>
 
