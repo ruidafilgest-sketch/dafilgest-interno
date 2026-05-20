@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dafilgest — Portal de Acesso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  font-family:'Inter',sans-serif;
+  min-height:100vh;
+  background:linear-gradient(135deg,#0f1e35 0%,#1a3a5c 50%,#0f1e35 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+}
+
+.portal{
+  width:100%;
+  max-width:780px;
+}
+
+/* CABEÇALHO */
+.portal-header{
+  text-align:center;
+  margin-bottom:36px;
+}
+.portal-logo{
+  font-size:28px;
+  font-weight:800;
+  color:#fff;
+  letter-spacing:-1px;
+}
+.portal-logo span{color:#c8a84b;}
+.portal-sub{
+  font-size:13px;
+  color:rgba(255,255,255,.5);
+  margin-top:6px;
+}
+
+/* GRID DE MÓDULOS */
+.portal-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+@media(max-width:560px){
+  .portal-grid{grid-template-columns:1fr;}
+}
+
+/* CARD */
+.portal-card{
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:14px;
+  padding:28px 24px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:0;
+  transition:all .2s;
+  cursor:pointer;
+  text-decoration:none;
+}
+.portal-card:hover{
+  background:rgba(255,255,255,.1);
+  border-color:rgba(255,255,255,.25);
+  transform:translateY(-2px);
+  box-shadow:0 12px 40px rgba(0,0,0,.3);
+}
+.card-icon{
+  font-size:36px;
+  margin-bottom:14px;
+}
+.card-title{
+  font-size:17px;
+  font-weight:700;
+  color:#fff;
+  margin-bottom:6px;
+}
+.card-desc{
+  font-size:12px;
+  color:rgba(255,255,255,.55);
+  line-height:1.7;
+  flex:1;
+}
+.card-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:5px;
+  margin-top:16px;
+  margin-bottom:18px;
+}
+.tag{
+  font-size:10px;
+  font-weight:600;
+  padding:3px 8px;
+  border-radius:20px;
+  background:rgba(255,255,255,.1);
+  color:rgba(255,255,255,.7);
+  border:1px solid rgba(255,255,255,.15);
+}
+.card-btn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:11px;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:700;
+  border:none;
+  cursor:pointer;
+  transition:all .15s;
+  width:100%;
+  text-decoration:none;
+}
+.btn-azul{background:#1a6fc4;color:#fff;}
+.btn-azul:hover{background:#1560ad;}
+.btn-ouro{background:#c8a84b;color:#1a2535;}
+.btn-ouro:hover{background:#b8983b;}
+
+/* RODAPÉ */
+.portal-footer{
+  text-align:center;
+  margin-top:28px;
+  font-size:11px;
+  color:rgba(255,255,255,.3);
+}
+</style>
+</head>
+<body>
+
+<div class="portal">
+
+  <div class="portal-header">
+    <div class="portal-logo">Dafil<span>gest</span></div>
+    <div class="portal-sub">Gab. de Contabilidade Unipessoal Lda · NIF 505403447 · Vizela</div>
+  </div>
+
+  <div class="portal-grid">
+
+    <!-- SISTEMA INTERNO -->
+    <a class="portal-card" href="index.html" target="_blank">
+      <div class="card-icon">📊</div>
+      <div class="card-title">Sistema Interno</div>
+      <div class="card-desc">Gestão contabilística das empresas clientes — IVA, SAFT, Recebimentos, Segurança Social, DMR e Ativos Fixos.</div>
+      <div class="card-tags">
+        <span class="tag">IVA</span>
+        <span class="tag">SAFT</span>
+        <span class="tag">Recebimentos</span>
+        <span class="tag">Seg. Social</span>
+        <span class="tag">DMR / DRI</span>
+        <span class="tag">Ativos Fixos</span>
+      </div>
+      <span class="card-btn btn-azul">Aceder →</span>
+    </a>
+
+    <!-- DECLARAÇÕES FISCAIS -->
+    <a class="portal-card" href="declaracoes.html" target="_blank">
+      <div class="card-icon">📋</div>
+      <div class="card-title">Declarações Fiscais</div>
+      <div class="card-desc">Tracking de declarações fiscais das 68 empresas clientes — Modelo 22 IRC e IES com controlo de prazos e estados.</div>
+      <div class="card-tags">
+        <span class="tag">Mod. 22 IRC</span>
+        <span class="tag">IES</span>
+        <span class="tag">68 Empresas</span>
+        <span class="tag">Prazos</span>
+        <span class="tag">Dashboard</span>
+      </div>
+      <span class="card-btn btn-ouro">Aceder →</span>
+    </a>
+
+  </div>
+
+  <div class="portal-footer">
+    Contabilista Certificado — Inscrito na OCC 46003 · © Rui Gonçalves
+  </div>
+
+</div>
+
+</body>
+</html>
