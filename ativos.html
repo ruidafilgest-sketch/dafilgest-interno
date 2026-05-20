@@ -2859,53 +2859,48 @@ function afOnImportFileSelect(e) {
 }
 
 function afParseModelo32(raw, filename) {
-  // Detectar tipo de ficheiro pelo nome ou conteúdo
   const nome = filename.toLowerCase();
-  let categoria = 'Outros';
-  if (nome.includes('viatur') || nome.includes('veic') || nome.includes('transp')) categoria = 'Viaturas';
-  else if (nome.includes('edific') || nome.includes('imovel') || nome.includes('terreno')) categoria = 'Imóveis';
-  else if (nome.includes('equip') && (nome.includes('basic') || nome.includes('prod'))) categoria = 'Equipamento Básico';
-  else if (nome.includes('inform') || nome.includes('escrit')) categoria = 'Equipamento Informático';
-  else if (nome.includes('mobil') || nome.includes('mob')) categoria = 'Mobiliário';
+  let categoria = 'Equipamento Básico';
+  if (nome.includes('viatur') || nome.includes('veic')) categoria = 'Viaturas';
+  else if (nome.includes('edific') || nome.includes('imovel') || nome.includes('imov') || nome.includes('terreno')) categoria = 'Imóveis';
+  else if (nome.includes('inform') || nome.includes('comput')) categoria = 'Equipamento Informático';
   else if (nome.includes('intang') || nome.includes('softw')) categoria = 'Intangíveis';
+
+  const CABECALHOS = ['total geral','a transportar','transporte','periodo de tribut',
+    'descrição dos elem','natureza dos','activos tang','activos intang',
+    'nº de identif','modelo 32','mapa de deprec','quotas const','quotas decresc'];
 
   const ativos = [];
   for (let i = 0; i < raw.length; i++) {
     const row = raw[i];
-    // Linha de dados: col 4 tem descrição, col 20 tem ano, col 22 tem valor
     const desc = String(row[4] || '').trim();
-    const ano  = parseInt(row[20]);
-    const valor = parseFloat(String(row[22] || '0').replace(',','.'));
+    if (!desc || desc === 'nan' || desc.length < 2) continue;
 
-    if (!desc || desc.length < 3) continue;
-    if (desc.toUpperCase().includes('TOTAL') || desc.toUpperCase().includes('TRANSPOR')) continue;
-    if (!valor || valor <= 0) continue;
+    // A regra principal: só importa se tiver ano E valor válidos
+    let ano = 0, valor = 0;
+    try {
+      ano   = parseInt(String(row[20]).replace(',','.'));
+      valor = parseFloat(String(row[22] || '0').replace(/[€\s]/g,'').replace(',','.'));
+    } catch(e) {}
+    if (!(ano > 1900 && valor > 0)) continue;
 
-    // Extrair código SNC da coluna 5 (ex: "16434001 - TRATOR...")
-    const codRaw = String(row[5] || '');
-    let snc = '';
-    const sncMatch = codRaw.match(/(4[3-4][0-9]|44[0-9])/);
-    if (sncMatch) snc = sncMatch[0];
+    // Segurança: ignorar linhas de controlo conhecidas
+    const dl = desc.toLowerCase();
+    if (CABECALHOS.some(c => dl.includes(c))) continue;
 
-    const taxa     = parseFloat(String(row[32] || '0').replace(',','.')) || 0;
-    const depAcum  = parseFloat(String(row[38] || '0').replace(',','.')) || 0;
-    const dep2024  = parseFloat(String(row[46] || '0').replace(',','.')) || 0;
-
-    // Dep acumuladas até 31/12/2024 = dep anteriores + dep 2024
-    const depAcumTotal = depAcum + dep2024;
+    const codRaw  = String(row[5] || '');
+    const sncM    = codRaw.match(/\b(4[3-4][0-9]|44[0-9])\b/);
+    const snc     = sncM ? sncM[0] : '433';
+    const taxa    = parseFloat(String(row[32] || '0').replace(',','.')) || 0;
+    const depAcum = parseFloat(String(row[38] || '0').replace(/[€\s]/g,'').replace(',','.')) || 0;
+    const dep2024 = parseFloat(String(row[46] || '0').replace(/[€\s]/g,'').replace(',','.')) || 0;
 
     ativos.push({
-      descricao: desc,
-      snc: snc || '433',
-      categoria,
-      data_aquisicao: ano ? `${ano}-01-01` : '2020-01-01',
-      valor,
-      taxa,
-      taxa_max: taxa,
-      dep_acum_migracao: depAcumTotal,
-      metodo: 'QC',
-      migrado: 1,
-      estado: 'Ativo',
+      descricao: desc, snc, categoria,
+      data_aquisicao: `${ano}-01-01`,
+      valor, taxa, taxa_max: taxa,
+      dep_acum_migracao: depAcum + dep2024,
+      metodo: 'QC', migrado: 1, estado: 'Ativo',
       obs: `Importado de ${filename} — Mapa 2024 (Ano 0)`,
     });
   }
