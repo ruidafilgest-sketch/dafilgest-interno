@@ -370,11 +370,63 @@ function adicionarFicheiros(files) {
   document.getElementById('btn-processar').disabled = state.ficheiros.length === 0;
 }
 
+const CATEGORIAS = ['Equipamento Básico','Viaturas','Imóveis','Terrenos','Equip. Informático','Mobiliário','Intangíveis','Outros'];
+
+function detectarCategoria(nome) {
+  const n = nome.toLowerCase();
+  if (n.includes('viatur') || n.includes('veic')) return 'Viaturas';
+  if (n.includes('terreno')) return 'Terrenos';
+  if (n.includes('edific') || n.includes('imovel') || n.includes('imov')) return 'Imóveis';
+  if (n.includes('inform') || n.includes('comput')) return 'Equip. Informático';
+  if (n.includes('mobil')) return 'Mobiliário';
+  if (n.includes('intang') || n.includes('softw')) return 'Intangíveis';
+  if (n.includes('eq_bas') || n.includes('equip_bas') || n.includes('basico') || n.includes('básico')) return 'Equipamento Básico';
+  if (n.includes('proder') || n.includes('projec')) return 'Equipamento Básico';
+  if (n.includes('admin') || n.includes('escrit')) return 'Equip. Informático';
+  return 'Equipamento Básico';
+}
+
 function renderFicheirosList() {
   const el = document.getElementById('uz-files');
-  el.innerHTML = state.ficheiros.map((f,i) =>
-    `<span class="uz-file">✓ ${f.name} <span onclick="removerFicheiro(${i})" style="cursor:pointer;opacity:.7">✕</span></span>`
-  ).join('');
+  if (state.ficheiros.length === 0) { el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div style="width:100%;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:#1a2a3d;margin-bottom:8px;text-align:left">
+        ${state.ficheiros.length} ficheiro(s) — confirme a categoria de cada um:
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;text-align:left">
+        <thead>
+          <tr style="background:#f7f8fa">
+            <th style="padding:5px 8px;border-bottom:1px solid #e8eaed;font-weight:700">Ficheiro</th>
+            <th style="padding:5px 8px;border-bottom:1px solid #e8eaed;font-weight:700">Categoria detectada</th>
+            <th style="padding:5px 8px;border-bottom:1px solid #e8eaed;width:30px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${state.ficheiros.map((f,i) => {
+            if (!f._categoria) f._categoria = detectarCategoria(f.name);
+            const opts = CATEGORIAS.map(c =>
+              `<option value="${c}" ${c === f._categoria ? 'selected' : ''}>${c}</option>`
+            ).join('');
+            return `<tr style="border-bottom:1px solid #f0f0f0">
+              <td style="padding:5px 8px;color:#3d4a5c;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.name}">
+                <span style="color:#16a34a;margin-right:4px">✓</span>${f.name}
+              </td>
+              <td style="padding:3px 8px">
+                <select onchange="state.ficheiros[${i}]._categoria=this.value"
+                        style="border:1px solid #d4d8de;border-radius:4px;padding:3px 6px;font-size:11px;outline:none;min-width:160px">
+                  ${opts}
+                </select>
+              </td>
+              <td style="padding:5px 8px">
+                <span onclick="removerFicheiro(${i})" style="cursor:pointer;color:#dc2626;font-weight:700">✕</span>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
 }
 
 function removerFicheiro(i) {
@@ -408,16 +460,9 @@ function processarFicheiros() {
 
 // ── PARSE MODELO 32 ───────────────────────────────────────────
 function parseModelo32(raw, filename) {
-  // Detectar categoria pelo nome do ficheiro
-  const nome = filename.toLowerCase();
-  let categoria = 'Equipamento Básico';
-  if (nome.includes('viatur') || nome.includes('veic')) categoria = 'Viaturas';
-  else if (nome.includes('edific') || nome.includes('imovel') || nome.includes('imov') || nome.includes('terreno')) categoria = 'Imóveis';
-  else if (nome.includes('terreno')) categoria = 'Terrenos';
-  else if (nome.includes('inform') || nome.includes('comput')) categoria = 'Equip. Informático';
-  else if (nome.includes('intang') || nome.includes('softw')) categoria = 'Intangíveis';
-  else if (nome.includes('mobil')) categoria = 'Mobiliário';
-  else if (nome.includes('proder') || nome.includes('projec')) categoria = 'Equipamento Básico';
+  // Usar categoria já confirmada pelo utilizador no passo 2
+  const fObj = state.ficheiros.find(f => f.name === filename);
+  let categoria = fObj ? (fObj._categoria || 'Equipamento Básico') : 'Equipamento Básico';
 
   // Cabeçalhos a ignorar
   const IGNORAR = ['total geral','a transportar','transporte','periodo de tribut',
