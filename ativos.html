@@ -956,18 +956,15 @@ td.center{text-align:center;}
 
       <div class="upload-zone" id="af-import-zone" onclick="document.getElementById('af-import-file').click()">
         <div class="upload-icon">📊</div>
-        <p>Clique para selecionar o ficheiro Excel (.xlsx)</p>
+        <p>Clique para selecionar um ou vários ficheiros Excel</p>
+        <p style="font-size:10px;color:var(--text4)">Pode seleccionar vários de uma vez (Ctrl+click) — Viaturas, Edifícios, Equipamentos, etc.</p>
         <p class="upload-name" id="af-import-name"></p>
-        <input type="file" id="af-import-file" accept=".xlsx,.xls,.csv" onchange="afOnImportFileSelect(event)">
+        <input type="file" id="af-import-file" accept=".xlsx,.xls" multiple onchange="afOnImportFileSelect(event)">
       </div>
 
-      <div id="af-import-preview" style="display:none;margin-top:12px">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;">Pré-visualização (primeiras 5 linhas):</div>
-        <div class="table-wrap" style="max-height:200px;overflow-y:auto;">
-          <table id="af-import-preview-table" style="font-size:11px;"></table>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:6px;" id="af-import-count"></div>
+      <div id="af-import-preview" style="display:none;margin-top:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-lg);padding:12px;">
       </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;" id="af-import-count"></div>
 
       <div id="af-import-map" style="display:none;margin-top:12px">
         <div class="form-section-title">Mapeamento de Colunas</div>
@@ -1289,31 +1286,43 @@ let afState = {
 // Carregado do Firebase; se não existir, usa estes valores base
 // Fonte: DR 25/2009 + DR 4/2015 (versão OE2024)
 const AF_TABELA_II_BASE = [
-  {cod:'2005', desc:'Edificações ligeiras (fibrocimento, madeira, zinco, etc.)', grupo:'432', taxa_max:10, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'2010', desc:'Edifícios industriais e comerciais — betão, tijolo, pedra', grupo:'432', taxa_max:5, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'2015', desc:'Edifícios administrativos e habitacionais', grupo:'432', taxa_max:2, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'2020', desc:'Outras construções (muros, vedações, pavimentos)', grupo:'432', taxa_max:5, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'3010', desc:'Viaturas ligeiras de passageiros ou mistas', grupo:'434', taxa_max:25, degressivas:false, diploma:'DR 25/2009 + Art. 11.º (cap €40.000)', limite_viatura:true},
-  {cod:'3020', desc:'Viaturas pesadas de passageiros e de mercadorias', grupo:'434', taxa_max:20, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'3030', desc:'Tractores, máquinas e viaturas especiais', grupo:'434', taxa_max:25, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'3040', desc:'Motociclos e ciclomotores', grupo:'434', taxa_max:25, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'4010', desc:'Máquinas e equipamento básico de uso geral', grupo:'433', taxa_max:14.28, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'4020', desc:'Instalações específicas e equipamento industrial', grupo:'433', taxa_max:12.5, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'4030', desc:'Ferramentas e utensílios', grupo:'437', taxa_max:33.33, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'4040', desc:'Moldes e modelos', grupo:'437', taxa_max:33.33, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'5010', desc:'Equipamento informático (computadores, servidores)', grupo:'435', taxa_max:33.33, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'5020', desc:'Equipamento de escritório e comunicações', grupo:'435', taxa_max:20, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'5030', desc:'Mobiliário e artigos de conforto', grupo:'435', taxa_max:12.5, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'5040', desc:'Máquinas de escritório (fotocópiadoras, fax, etc.)', grupo:'435', taxa_max:20, degressivas:true, diploma:'DR 25/2009'},
-  {cod:'6010', desc:'Software (programas de computador)', grupo:'443', taxa_max:33.33, degressivas:false, diploma:'DR 25/2009'},
-  {cod:'6020', desc:'Patentes, marcas, alvarás, processos de produção', grupo:'444', taxa_max:20, degressivas:false, diploma:'DR 25/2009 + art. 16.º'},
-  {cod:'6030', desc:'Projetos de desenvolvimento', grupo:'442', taxa_max:33.33, degressivas:false, diploma:'DR 25/2009 + art. 17.º (máx. 5 anos)'},
-  {cod:'7010', desc:'Elementos de custo unitário inferior a €1.000', grupo:'437', taxa_max:100, degressivas:false, diploma:'DR 25/2009 + art. 19.º'},
-  {cod:'8010', desc:'Terrenos e recursos naturais', grupo:'431', taxa_max:0, degressivas:false, diploma:'N/A — Não amortizável', nao_amortizavel:true},
+  {cod:'2001',desc:'Edifícios administrativos e comerciais — construção definitiva (betão, tijolo, pedra)',grupo:'432',taxa_max:2,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2002',desc:'Edifícios administrativos e comerciais — construção ligeira (madeira, zinco, fibrocimento)',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2003',desc:'Edifícios industriais — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2004',desc:'Edifícios industriais — construção ligeira',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2005',desc:'Armazéns e hangares — construção definitiva',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2006',desc:'Armazéns e hangares — construção ligeira',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2007',desc:'Instalações especiais em edifícios (elevadores, ar condicionado, eléctricas fixas)',grupo:'432',taxa_max:10,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2008',desc:'Outras construções — muros, vedações, pavimentos, parques de estacionamento',grupo:'432',taxa_max:5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'2009',desc:'Terrenos e recursos naturais — não amortizável',grupo:'431',taxa_max:0,degressivas:false,diploma:'N/A',nao_amortizavel:true},
+  {cod:'3001',desc:'Viaturas ligeiras de passageiros ou mistas — novas',grupo:'434',taxa_max:25,degressivas:false,diploma:'DR 25/2009 + Art. 11.º (cap. €40.000)',limite_viatura:true},
+  {cod:'3002',desc:'Viaturas ligeiras de passageiros ou mistas — usadas',grupo:'434',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 11.º (cap. €40.000)',limite_viatura:true},
+  {cod:'3003',desc:'Viaturas pesadas de mercadorias e de passageiros',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'3004',desc:'Tractores e máquinas de movimentação de terras',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'3005',desc:'Reboques e semi-reboques',grupo:'434',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'3006',desc:'Motociclos, ciclomotores e bicicletas',grupo:'434',taxa_max:25,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4001',desc:'Máquinas e equipamento de uso geral — tornos, fresadoras, rectificadoras',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4002',desc:'Máquinas e equipamento — prensas, puncionadoras, guilhotinas',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4003',desc:'Equipamento de elevação e transporte — empilhadores, pontes rolantes',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4004',desc:'Equipamento de produção de energia — geradores, compressores, bombas',grupo:'433',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4005',desc:'Equipamento de soldadura',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4006',desc:'Ferramentas e utensílios com vida útil superior a 1 ano',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4007',desc:'Moldes, modelos e matrizes',grupo:'437',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'4008',desc:'Equipamento de segurança e vigilância',grupo:'433',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5001',desc:'Computadores, servidores e periféricos',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5002',desc:'Equipamento de rede — routers, switches, access points',grupo:'435',taxa_max:33.33,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5003',desc:'Equipamento de telecomunicações — centrais, telefones',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5004',desc:'Máquinas de escritório — fotocopiadoras, impressoras, scanners',grupo:'435',taxa_max:20,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5005',desc:'Mobiliário de escritório — secretárias, cadeiras, armários',grupo:'435',taxa_max:12.5,degressivas:false,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'5006',desc:'Equipamento e utensílios de cozinha e cantina',grupo:'435',taxa_max:14.28,degressivas:true,diploma:'DR 25/2009 + DR 4/2015'},
+  {cod:'6001',desc:'Programas de computador (software) adquiridos autonomamente',grupo:'443',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
+  {cod:'6002',desc:'Patentes e marcas registadas',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
+  {cod:'6003',desc:'Alvarás e licenças com prazo definido',grupo:'444',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 16.º'},
+  {cod:'6004',desc:'Projectos de desenvolvimento (NCRF 6) — máximo 5 anos',grupo:'442',taxa_max:33.33,degressivas:false,diploma:'DR 25/2009 + Art. 17.º'},
+  {cod:'6005',desc:'Goodwill adquirido em concentração de actividades',grupo:'441',taxa_max:20,degressivas:false,diploma:'DR 25/2009 + Art. 15.º'},
+  {cod:'7001',desc:'Bens de custo unitário inferior a €1.000 — amortização imediata',grupo:'437',taxa_max:100,degressivas:false,diploma:'DR 25/2009, Art. 19.º'},
 ];
 
-// ── COEFICIENTES DESVALORIZAÇÃO MONETÁRIA (base) ──────────────
-// Fonte: AT — tabela publicada anualmente por portaria
 const AF_COEF_BASE = {
   1970:57.21,1971:52.46,1972:48.76,1973:44.78,1974:36.43,1975:30.39,
   1976:24.14,1977:18.67,1978:15.76,1979:13.33,1980:11.40,1981:9.44,
@@ -2009,19 +2018,41 @@ function afRenderMod34() {
 // TABELA FISCAL
 // ═══════════════════════════════════════════════════════════════
 
+const AF_TABELA_I_BASE = {
+  C001:{cod:'C001',desc:'Edifícios e construções em explorações agrícolas',grupo:'Agricultura / 432',taxa_max:5,taxa_min:2.5,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C002:{cod:'C002',desc:'Tractores e máquinas agrícolas (alfaias)',grupo:'Agricultura / 434',taxa_max:25,taxa_min:12.5,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C010:{cod:'C010',desc:'Andaimes e cofragens metálicas',grupo:'Construção / 433',taxa_max:20,taxa_min:10,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C011:{cod:'C011',desc:'Equipamento de perfuração, escavação e betonagem',grupo:'Construção / 433',taxa_max:25,taxa_min:12.5,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C012:{cod:'C012',desc:'Gruas, guinchos e guindastes de construção',grupo:'Construção / 433',taxa_max:20,taxa_min:10,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C013:{cod:'C013',desc:'Instalações de estaleiro provisórias',grupo:'Construção / 432',taxa_max:33.33,taxa_min:16.67,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C020:{cod:'C020',desc:'Máquinas de corte e costura industrial',grupo:'Têxtil / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C021:{cod:'C021',desc:'Teares, tricoteiras e máquinas de tecelagem',grupo:'Têxtil / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C030:{cod:'C030',desc:'Câmaras frigoríficas e arcas congeladoras',grupo:'Alimentação / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C031:{cod:'C031',desc:'Máquinas de embalagem e rotulagem',grupo:'Alimentação / 433',taxa_max:20,taxa_min:10,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C032:{cod:'C032',desc:'Equipamento de transformação alimentar (fornos, misturadoras)',grupo:'Alimentação / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C033:{cod:'C033',desc:'Mobiliário e equipamento de restauração',grupo:'Restauração / 435',taxa_max:14.28,taxa_min:7.14,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C040:{cod:'C040',desc:'Equipamento de lavandaria industrial',grupo:'Lavandaria / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C050:{cod:'C050',desc:'Instalações de abastecimento de combustíveis',grupo:'Transportes / 433',taxa_max:10,taxa_min:5,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C051:{cod:'C051',desc:'Equipamento GPS e gestão de frota',grupo:'Transportes / 435',taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C060:{cod:'C060',desc:'Equipamento de climatização AVAC',grupo:'Climatização / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C070:{cod:'C070',desc:'Mobiliário e equipamento de cabeleireiro e estética',grupo:'Serviços / 435',taxa_max:20,taxa_min:10,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C080:{cod:'C080',desc:'Prateleiras, expositores e gôndolas de comércio',grupo:'Comércio / 435',taxa_max:14.28,taxa_min:7.14,degressivas:false,diploma:'DR 25/2009, Tabela I'},
+  C081:{cod:'C081',desc:'Caixas registadoras e terminais POS',grupo:'Comércio / 435',taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C090:{cod:'C090',desc:'Equipamento de extrusão de plásticos',grupo:'Plásticos / 433',taxa_max:14.28,taxa_min:7.14,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+  C091:{cod:'C091',desc:'Moldes de injecção de plástico',grupo:'Plásticos / 437',taxa_max:33.33,taxa_min:16.67,degressivas:true,diploma:'DR 25/2009, Tabela I'},
+};
+
 async function afLoadTabelaFiscal() {
   const data = await afFBGet(`${AF_TF_PATH}`);
 
-  if (data?.tab2) {
-    afState.tabelaII = data.tab2;
-  } else {
-    // Inicializa com valores base no Firebase
-    const tab2Obj = {};
-    AF_TABELA_II_BASE.forEach(t => {
-      tab2Obj[t.cod] = {...t, taxa_min: t.taxa_max / 2};
-    });
-    afState.tabelaII = tab2Obj;
-    // Salva no Firebase (só admin — usamos patch silencioso)
+  // Sempre actualiza tab2 com a versão correcta
+  const tab2Obj = {};
+  AF_TABELA_II_BASE.forEach(t => { tab2Obj[t.cod] = {...t, taxa_min: t.taxa_max / 2}; });
+  afState.tabelaII = tab2Obj;
+
+  // Só actualiza no Firebase se a versão actual estiver desactualizada
+  const versaoActual = data?.meta_tab2?.versao || '';
+  if (!versaoActual.includes('DR 4/2015') || !data?.tab2?.['2001']) {
     afFBSet(`${AF_TF_PATH}/tab2`, tab2Obj);
     afFBSet(`${AF_TF_PATH}/meta_tab2`, {
       versao: 'DR 25/2009 + DR 4/2015',
@@ -2031,14 +2062,18 @@ async function afLoadTabelaFiscal() {
     });
   }
 
-  if (data?.tab1) {
+  // Tab1 — actualiza se estiver vazia
+  if (data?.tab1 && Object.keys(data.tab1).length > 5) {
     afState.tabelaI = data.tab1;
+  } else {
+    afState.tabelaI = AF_TABELA_I_BASE;
+    afFBSet(`${AF_TF_PATH}/tab1`, AF_TABELA_I_BASE);
   }
 
-  if (data?.coeficientes) {
+  // Coeficientes
+  if (data?.coeficientes && Object.keys(data.coeficientes).length > 40) {
     afState.coeficientes = data.coeficientes;
   } else {
-    // Inicializa coeficientes base
     const coefObj = {};
     Object.entries(AF_COEF_BASE).forEach(([ano, coef]) => {
       coefObj[ano] = {coef, portaria: 'Base histórica AT'};
@@ -2047,7 +2082,6 @@ async function afLoadTabelaFiscal() {
     afFBSet(`${AF_TF_PATH}/coeficientes`, coefObj);
   }
 
-  // Popula select de taxas no modal ficha
   afPopulateCodDPSelect();
 }
 
@@ -2788,116 +2822,147 @@ async function afDeleteProvisao(id) {
 // IMPORTAÇÃO EXCEL
 // ═══════════════════════════════════════════════════════════════
 
+
+// ═══════════════════════════════════════════════════════════════
+// IMPORTAÇÃO EXCEL — MODELO 32 OFICIAL (multi-ficheiro)
+// ═══════════════════════════════════════════════════════════════
+
 function afShowImportExcel() {
+  if (!afState.empKey) { afMsg('Selecione uma empresa primeiro', 'amber'); return; }
+  afState.importQueue = [];   // fila de ficheiros a importar
+  afState.importDone  = [];   // ficheiros já processados
   document.getElementById('af-import-name').textContent = '';
   document.getElementById('af-import-preview').style.display = 'none';
-  document.getElementById('af-import-map').style.display = 'none';
   document.getElementById('af-import-btn').disabled = true;
   openModal('af-modal-import');
 }
 
 function afOnImportFileSelect(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  document.getElementById('af-import-name').textContent = `✓ ${file.name}`;
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
 
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const wb = XLSX.read(ev.target.result, {type: 'binary'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const data = XLSX.utils.sheet_to_json(ws, {header: 1, defval: ''});
-      afState.importData = data;
-      afShowImportPreview(data);
-    } catch(err) {
-      afMsg('Erro ao ler o ficheiro Excel: ' + err.message, 'red');
-    }
-  };
-  reader.readAsBinaryString(file);
+  afState.importQueue = [];
+  const nameEl = document.getElementById('af-import-name');
+  nameEl.textContent = `${files.length} ficheiro(s) seleccionado(s): ${files.map(f=>f.name).join(', ')}`;
+
+  let processed = 0;
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const wb = XLSX.read(ev.target.result, {type: 'binary'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+        const parsed = afParseModelo32(raw, file.name);
+        afState.importQueue.push({nome: file.name, rows: parsed});
+      } catch(err) {
+        afState.importQueue.push({nome: file.name, rows: [], erro: err.message});
+      }
+      processed++;
+      if (processed === files.length) afShowImportPreview();
+    };
+    reader.readAsBinaryString(file);
+  });
 }
 
-function afShowImportPreview(data) {
-  const preview = document.getElementById('af-import-preview');
-  const table = document.getElementById('af-import-preview-table');
-  const count = document.getElementById('af-import-count');
+function afParseModelo32(raw, filename) {
+  // Detectar tipo de ficheiro pelo nome ou conteúdo
+  const nome = filename.toLowerCase();
+  let categoria = 'Outros';
+  if (nome.includes('viatur') || nome.includes('veic') || nome.includes('transp')) categoria = 'Viaturas';
+  else if (nome.includes('edific') || nome.includes('imovel') || nome.includes('terreno')) categoria = 'Imóveis';
+  else if (nome.includes('equip') && (nome.includes('basic') || nome.includes('prod'))) categoria = 'Equipamento Básico';
+  else if (nome.includes('inform') || nome.includes('escrit')) categoria = 'Equipamento Informático';
+  else if (nome.includes('mobil') || nome.includes('mob')) categoria = 'Mobiliário';
+  else if (nome.includes('intang') || nome.includes('softw')) categoria = 'Intangíveis';
 
-  if (!data || data.length < 2) {
-    afMsg('Ficheiro sem dados suficientes', 'amber');
-    return;
-  }
+  const ativos = [];
+  for (let i = 0; i < raw.length; i++) {
+    const row = raw[i];
+    // Linha de dados: col 4 tem descrição, col 20 tem ano, col 22 tem valor
+    const desc = String(row[4] || '').trim();
+    const ano  = parseInt(row[20]);
+    const valor = parseFloat(String(row[22] || '0').replace(',','.'));
 
-  const headers = data[0];
-  const rows = data.slice(1, 6); // primeiras 5
+    if (!desc || desc.length < 3) continue;
+    if (desc.toUpperCase().includes('TOTAL') || desc.toUpperCase().includes('TRANSPOR')) continue;
+    if (!valor || valor <= 0) continue;
 
-  table.innerHTML = `<thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
-    <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+    // Extrair código SNC da coluna 5 (ex: "16434001 - TRATOR...")
+    const codRaw = String(row[5] || '');
+    let snc = '';
+    const sncMatch = codRaw.match(/(4[3-4][0-9]|44[0-9])/);
+    if (sncMatch) snc = sncMatch[0];
 
-  count.textContent = `Total: ${data.length - 1} linhas de ativos detetadas`;
-  preview.style.display = '';
-  document.getElementById('af-import-btn').disabled = false;
-}
+    const taxa     = parseFloat(String(row[32] || '0').replace(',','.')) || 0;
+    const depAcum  = parseFloat(String(row[38] || '0').replace(',','.')) || 0;
+    const dep2024  = parseFloat(String(row[46] || '0').replace(',','.')) || 0;
 
-async function afDoImport() {
-  if (!afState.importData || !afState.empKey) { afMsg('Selecione empresa e ficheiro', 'amber'); return; }
-  if (!confirm(`Importar ${afState.importData.length - 1} ativos como saldo de migração (Ano 0 — 31/12/2024)? Esta operação não pode ser revertida automaticamente.`)) return;
+    // Dep acumuladas até 31/12/2024 = dep anteriores + dep 2024
+    const depAcumTotal = depAcum + dep2024;
 
-  const headers = afState.importData[0].map(h => String(h).toLowerCase().trim());
-  const rows = afState.importData.slice(1);
-
-  // Mapeamento flexível de colunas
-  const idx = {
-    desc: headers.findIndex(h => h.includes('descri') || h.includes('bem') || h.includes('designa')),
-    data: headers.findIndex(h => h.includes('data') || h.includes('início') || h.includes('inicio') || h.includes('aquisição')),
-    valor: headers.findIndex(h => h.includes('valor') || h.includes('aquisi') || h.includes('custo')),
-    taxa: headers.findIndex(h => h.includes('taxa') || h.includes('%')),
-    depAcum: headers.findIndex(h => (h.includes('dep') && h.includes('acum')) || h.includes('amort') || h.includes('acumul')),
-    metodo: headers.findIndex(h => h.includes('método') || h.includes('metodo')),
-    cod: headers.findIndex(h => h.includes('código') || h.includes('codigo') || h.includes('cod')),
-  };
-
-  let imported = 0;
-  const updates = {};
-
-  for (const row of rows) {
-    if (!row || row.every(c => !c)) continue;
-    const id = afGenId();
-    const desc = idx.desc >= 0 ? String(row[idx.desc] || '').trim() : `Ativo importado ${id.substr(-4)}`;
-    if (!desc) continue;
-
-    let taxa = idx.taxa >= 0 ? parseFloat(String(row[idx.taxa]).replace(',','.').replace('%','')) : 0;
-    let valor = idx.valor >= 0 ? parseFloat(String(row[idx.valor]).replace(/[€\s\.]/g,'').replace(',','.')) : 0;
-    let depAcum = idx.depAcum >= 0 ? parseFloat(String(row[idx.depAcum]).replace(/[€\s\.]/g,'').replace(',','.')) : 0;
-
-    if (isNaN(taxa)) taxa = 0;
-    if (isNaN(valor)) valor = 0;
-    if (isNaN(depAcum)) depAcum = 0;
-
-    const ficha = {
-      id, descricao: desc,
-      data_aquisicao: '2020-01-01', // data genérica se não disponível
-      valor, taxa,
-      dep_acum_migracao: depAcum,
+    ativos.push({
+      descricao: desc,
+      snc: snc || '433',
+      categoria,
+      data_aquisicao: ano ? `${ano}-01-01` : '2020-01-01',
+      valor,
+      taxa,
+      taxa_max: taxa,
+      dep_acum_migracao: depAcumTotal,
       metodo: 'QC',
       migrado: 1,
       estado: 'Ativo',
-      categoria: 'Outros',
-      obs: 'Importado do mapa Excel 2024 (Ano 0)',
-      criado_em: new Date().toISOString(),
-    };
-
-    updates[id] = ficha;
-    imported++;
+      obs: `Importado de ${filename} — Mapa 2024 (Ano 0)`,
+    });
   }
+  return ativos;
+}
+
+function afShowImportPreview() {
+  const preview = document.getElementById('af-import-preview');
+  const count   = document.getElementById('af-import-count');
+
+  let total = 0;
+  let html  = '';
+  afState.importQueue.forEach(f => {
+    if (f.erro) {
+      html += `<div style="color:var(--red);font-size:11px;padding:4px 0">❌ ${f.nome}: ${f.erro}</div>`;
+    } else {
+      html += `<div style="font-size:11px;padding:3px 0">✓ <strong>${f.nome}</strong> — ${f.rows.length} ativo(s)</div>`;
+      total += f.rows.length;
+    }
+  });
+
+  preview.innerHTML = `<div style="font-size:11px;font-weight:700;margin-bottom:6px">Resumo:</div>${html}`;
+  preview.style.display = '';
+  count.textContent = `Total a importar: ${total} ativos`;
+  document.getElementById('af-import-btn').disabled = total === 0;
+}
+
+async function afDoImport() {
+  if (!afState.empKey || !afState.importQueue?.length) return;
+
+  const total = afState.importQueue.reduce((s, f) => s + f.rows.length, 0);
+  if (!confirm(`Importar ${total} ativos de ${afState.importQueue.length} ficheiro(s) como saldo de migração (31/12/2024)?`)) return;
+
+  const updates = {};
+  afState.importQueue.forEach(f => {
+    f.rows.forEach(row => {
+      const id = afGenId();
+      updates[id] = { ...row, id, criado_em: new Date().toISOString() };
+    });
+  });
 
   const ok = await afFBPatch(`${AF_FB_PATH}/${afState.empKey}/fichas`, updates);
   if (ok) {
     Object.assign(afState.fichas, updates);
     closeModal('af-modal-import');
-    afMsg(`✓ ${imported} ativos importados com sucesso (migração Ano 0)`, 'green');
+    afMsg(`✅ ${total} ativos importados com sucesso`, 'green');
     afRenderFichas();
     afRenderDashboard();
   } else {
-    afMsg('Erro na importação. Verifique a ligação ao Firebase.', 'red');
+    afMsg('Erro na importação. Verifique a ligação.', 'red');
   }
 }
 
