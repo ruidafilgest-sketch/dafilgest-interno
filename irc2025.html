@@ -1,0 +1,1222 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IRC 2025 — Dafilgest</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--sf:#161b22;--sf2:#1c2230;--bd:#2a3444;--ac:#e8a020;--ac2:#3d8ef0;--gn:#2ea043;--rd:#da3633;--tx:#e6edf3;--tx2:#8b949e;--tx3:#6e7681;--mo:"IBM Plex Mono",monospace;--sa:"IBM Plex Sans",sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:var(--sa);font-size:13px;min-height:100vh}
+.hdr{background:var(--sf);border-bottom:1px solid var(--bd);padding:0 18px;display:flex;align-items:center;justify-content:space-between;height:48px;position:sticky;top:0;z-index:200}
+.logo{font-family:var(--mo);font-size:13px;font-weight:600;color:var(--ac);letter-spacing:.05em}
+.sep{width:1px;height:16px;background:var(--bd);margin:0 10px}
+.htit{font-size:12px;color:var(--tx2)}
+.hbdg{font-family:var(--mo);font-size:10px;background:rgba(232,160,32,.12);color:var(--ac);border:1px solid rgba(232,160,32,.25);padding:2px 7px;border-radius:3px}
+.wrap{max-width:1300px;margin:0 auto;padding:16px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.box{background:var(--sf);border:1px solid var(--bd);border-radius:5px;margin-bottom:12px;overflow:hidden}
+.bh{background:var(--sf2);border-bottom:1px solid var(--bd);padding:8px 14px;display:flex;align-items:center;gap:8px}
+.bn{font-family:var(--mo);font-size:10px;color:var(--ac);background:rgba(232,160,32,.1);border:1px solid rgba(232,160,32,.18);padding:1px 5px;border-radius:2px}
+.bt{font-size:11px;font-weight:600;color:var(--tx);letter-spacing:.04em;text-transform:uppercase}
+.bp{padding:12px}
+.row{display:grid;grid-template-columns:1fr 70px 96px;gap:5px;align-items:center;margin-bottom:3px}
+.row2{display:grid;grid-template-columns:1fr 96px;gap:5px;align-items:center;margin-bottom:3px}
+lbl,label.lbl{font-size:11px;color:var(--tx2);line-height:1.3}
+.cf{font-family:var(--mo);font-size:9px;color:var(--tx3)}
+input,select{background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-family:var(--mo);font-size:12px;padding:4px 7px;border-radius:3px;width:100%;text-align:right;transition:border-color .12s}
+input:focus,select:focus{outline:none;border-color:var(--ac2)}
+select{text-align:left;cursor:pointer}
+input[readonly]{color:var(--tx3);background:var(--sf2)}
+input.sub{background:var(--sf2);border-color:var(--ac);color:var(--ac);font-weight:600}
+input.vrd{border-color:rgba(46,160,67,.35);color:#7ee787}
+input.vrm{border-color:rgba(218,54,51,.35);color:#ff7b72}
+input.txt{text-align:left;font-family:var(--sa)}
+.dv{height:1px;background:var(--bd);margin:7px 0}
+.tabs{display:flex;border-bottom:1px solid var(--bd);background:var(--sf2);overflow-x:auto}
+.tab{padding:8px 11px;font-size:11px;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;transition:all .12s;flex-shrink:0}
+.tab:hover{color:var(--tx2)}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);background:var(--sf)}
+.tc{display:none}
+.tc.on{display:block}
+.al{padding:6px 10px;border-radius:3px;font-size:11px;margin-bottom:6px;border-left:3px solid;line-height:1.4}
+.aw{background:rgba(232,160,32,.07);border-color:var(--ac);color:var(--ac)}
+.ai{background:rgba(61,142,240,.07);border-color:var(--ac2);color:var(--ac2)}
+.aok{background:rgba(46,160,67,.07);border-color:var(--gn);color:#7ee787}
+.ae{background:rgba(218,54,51,.07);border-color:var(--rd);color:#ff7b72}
+.btn{padding:6px 12px;border-radius:3px;font-size:11px;font-weight:500;cursor:pointer;border:none;transition:all .12s}
+.btnp{background:var(--ac);color:#000}
+.btnp:hover{background:#f0b030}
+.btns{background:transparent;color:var(--tx2);border:1px solid var(--bd)}
+.btns:hover{border-color:var(--tx3);color:var(--tx)}
+.btnx{background:transparent;color:var(--rd);border:1px solid rgba(218,54,51,.25);padding:2px 6px;font-size:10px;cursor:pointer;border-radius:2px}
+.brow{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.stbl{width:100%;border-collapse:collapse}
+.stbl tr{border-bottom:1px solid var(--bd)}
+.stbl tr:last-child{border-bottom:none}
+.stbl td{padding:4px 6px;font-size:11px}
+.stbl td:first-child{color:var(--tx2)}
+.stbl td:last-child{font-family:var(--mo);text-align:right;font-size:11px}
+.stbl tr.tot td{font-weight:600;border-top:2px solid var(--ac)}
+.stbl tr.tot td:last-child{color:var(--ac);font-size:12px}
+.rbox{background:var(--bg);border:1px solid var(--bd);border-radius:4px;padding:10px 12px;margin-bottom:7px}
+.rl{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.rv{font-family:var(--mo);font-size:20px;font-weight:600}
+.rv.pg{color:#ff7b72} .rv.rc{color:#7ee787} .rv.ne{color:var(--ac)}
+.rsub{font-size:10px;color:var(--tx3);margin-top:2px}
+.tg{font-family:var(--mo);font-size:11px;color:var(--ac);text-align:center}
+.tog{position:relative;display:inline-block;width:32px;height:18px}
+.tog input{opacity:0;width:0;height:0}
+.tsl{position:absolute;cursor:pointer;inset:0;background:var(--bd);border-radius:18px;transition:.18s}
+.tsl:before{content:"";position:absolute;width:12px;height:12px;left:3px;bottom:3px;background:var(--tx3);border-radius:50%;transition:.18s}
+input:checked+.tsl{background:var(--ac)}
+input:checked+.tsl:before{transform:translateX(14px);background:#000}
+.flx{display:flex;align-items:center;gap:8px}
+.sh{font-size:10px;color:var(--tx3);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px;padding-bottom:3px;border-bottom:1px solid var(--bd)}
+.nota{font-size:10px;color:var(--tx3);font-style:italic;margin-top:6px;line-height:1.5}
+.tag{font-family:var(--mo);font-size:10px;padding:1px 5px;border-radius:2px;background:rgba(61,142,240,.12);color:var(--ac2);border:1px solid rgba(61,142,240,.25)}
+/* Balancete */
+.blrow{display:grid;grid-template-columns:60px 1fr 100px 100px;gap:5px;align-items:center;margin-bottom:2px}
+.blgrp{background:var(--sf2);border-radius:3px;padding:4px 8px;margin:4px 0;font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+/* Modelo 22 */
+.m22-section{border:1px solid var(--bd);border-radius:4px;padding:10px;margin-bottom:10px}
+.m22-title{font-size:11px;font-weight:600;color:var(--ac);margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--bd)}
+.m22-row{display:grid;grid-template-columns:40px 1fr 110px;gap:6px;align-items:center;margin-bottom:3px}
+.m22-campo{font-family:var(--mo);font-size:10px;color:var(--ac);text-align:center;background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.15);padding:1px 3px;border-radius:2px}
+/* Rows dinâmicas */
+.prow{display:grid;grid-template-columns:58px 1fr 100px 96px 22px;gap:4px;align-items:center;margin-bottom:3px}
+.tarow{display:grid;grid-template-columns:1fr 100px 52px 96px 22px;gap:4px;align-items:center;margin-bottom:3px}
+.vtrow{display:grid;grid-template-columns:105px 100px 1fr 52px 96px 22px;gap:4px;align-items:center;margin-bottom:3px}
+.bfrow{display:grid;grid-template-columns:1fr 100px 60px 96px;gap:4px;align-items:center;margin-bottom:3px}
+/* Anexo D */
+.adrow{display:grid;grid-template-columns:55px 1fr 110px;gap:6px;align-items:center;margin-bottom:3px}
+
+@media print{
+  body{background:#fff!important;color:#000!important;font-size:11px}
+  .hdr,.btns,.btnp,.btnx,.brow,.tabs{display:none!important}
+  .tc{display:block!important}
+  .box{border:1px solid #ccc;break-inside:avoid;margin-bottom:8px}
+  .bh{background:#f0f0f0!important;color:#000!important}
+  input,select{background:#fff!important;color:#000!important;border:1px solid #999!important}
+  .rv{font-size:16px!important}
+  .sf2,.sub{background:#f5f5f5!important}
+  .tab{display:none}
+  .m22-section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="hdr">
+  <div class="flx">
+    <div class="logo">DAFILGEST</div>
+    <div class="sep"></div>
+    <div class="htit">IRC 2025 — Sistema Integrado</div>
+  </div>
+  <div class="flx">
+    <span id="tag-regime" class="tag">PME</span>
+    <span class="hbdg">Exercício 2025 · Prazo 19/06/2026</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- IDENTIFICAÇÃO -->
+<div class="box">
+  <div class="bh"><span class="bn">ID</span><span class="bt">Identificação</span></div>
+  <div class="bp">
+    <div class="g4">
+      <div>
+        <label class="lbl">Designação social</label>
+        <input id="designacao" class="txt" type="text" placeholder="Nome empresa" style="margin-top:3px" oninput="calc()">
+      </div>
+      <div>
+        <label class="lbl">NIF</label>
+        <input id="nif" class="txt" type="text" placeholder="5XXXXXXXXX" style="margin-top:3px" oninput="calc()">
+      </div>
+      <div>
+        <label class="lbl">Regime fiscal</label>
+        <select id="regime" style="margin-top:3px" onchange="calc()">
+          <option value="pme">PME / Micro</option>
+          <option value="media">Média / Small Mid Cap</option>
+          <option value="geral">Geral (não PME)</option>
+          <option value="madeira">R.A. Madeira</option>
+          <option value="acores">R.A. Açores</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Município <span class="cf">OC 20288/2026</span></label>
+        <select id="municipio" style="margin-top:3px;font-size:11px" onchange="calc()"></select>
+      </div>
+    </div>
+    <div class="g4" style="margin-top:8px">
+      <div>
+        <label class="lbl">Vol. negócios 2024 (isenções derrama)</label>
+        <input id="vn2024" type="number" value="0" style="margin-top:3px" oninput="calc()">
+      </div>
+      <div>
+        <label class="lbl">Taxa derrama aplicável</label>
+        <input id="taxa-derm" type="text" readonly style="margin-top:3px;text-align:center;color:var(--ac);background:var(--sf2)">
+      </div>
+      <div>
+        <label class="lbl">Isenção / redução</label>
+        <input id="derm-info" type="text" readonly class="txt" style="margin-top:3px;font-family:var(--sa);font-size:11px;background:var(--sf2)">
+      </div>
+      <div style="padding-top:16px">
+        <div class="flx">
+          <label class="lbl">Prejuízo fiscal 2025?</label>
+          <label class="tog"><input type="checkbox" id="flag-pj" onchange="calc()"><span class="tsl"></span></label>
+          <span id="pj-txt" style="font-size:10px;color:var(--tx3)">Não</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS PRINCIPAIS -->
+<div class="box">
+  <div class="tabs">
+    <div class="tab on"   onclick="setTab(0)">📊 Balancete</div>
+    <div class="tab"      onclick="setTab(1)">Q07 · LT</div>
+    <div class="tab"      onclick="setTab(2)">Prejuízos</div>
+    <div class="tab"      onclick="setTab(3)">Trib. Autónomas</div>
+    <div class="tab"      onclick="setTab(4)">Benefícios</div>
+    <div class="tab"      onclick="setTab(5)">Q10 · Imposto</div>
+    <div class="tab"      onclick="setTab(6)">📄 Modelo 22</div>
+    <div class="tab"      onclick="setTab(7)">Anexo D</div>
+    <div class="tab"      onclick="setTab(8)">✅ Resultado</div>
+  </div>
+
+  <!-- ========== TAB 0: BALANCETE ========== -->
+  <div id="tc0" class="tc on">
+    <div class="bp">
+      <div class="al ai">Introduza os saldos do balancete analítico a 31/12/2025. O sistema calcula automaticamente o resultado contabilístico e preenche o campo C701.</div>
+      <div class="g2">
+        <div>
+          <!-- RENDIMENTOS -->
+          <div class="sh">Rendimentos (Classe 7)</div>
+          <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:5px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+            <div>Conta</div><div>Descrição</div><div>Saldo credor (€)</div>
+          </div>
+          <div class="blrow"><span class="cf">711/712</span><label class="lbl">Vendas de mercadorias e produtos</label><input id="b711" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">72</span><label class="lbl">Prestações de serviços</label><input id="b72" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">73</span><label class="lbl">Variação nos inventários da produção</label><input id="b73" type="number" value="0" oninput="calcBal()" title="Pode ser negativo"></div>
+          <div class="blrow"><span class="cf">74</span><label class="lbl">Trabalhos para a própria entidade</label><input id="b74" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">75</span><label class="lbl">Subsídios à exploração</label><input id="b75" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">76</span><label class="lbl">Reversões</label><input id="b76" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">77</span><label class="lbl">Ganhos por aumentos de justo valor</label><input id="b77" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">781</span><label class="lbl">Rendimentos e ganhos em inv. financeiros</label><input id="b781" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">782</span><label class="lbl">Rendimentos e ganhos em propriedades inv.</label><input id="b782" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">783</span><label class="lbl">Rendimentos e ganhos em outros ativos</label><input id="b783" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">784/785</span><label class="lbl">Rendimentos e ganhos financeiros</label><input id="b784" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">786</span><label class="lbl">Rendimentos suplementares</label><input id="b786" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">79</span><label class="lbl">Outros rendimentos e ganhos</label><input id="b79" type="number" value="0" oninput="calcBal()"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL RENDIMENTOS</label><input id="b-tot-rend" type="number" readonly class="sub"></div>
+
+          <!-- APURAMENTO CMVMC -->
+          <div class="sh">CMVMC (Custo Merc./Mat. Vendidas e Consumidas)</div>
+          <div class="blrow"><span class="cf">EI Merc</span><label class="lbl">Existências iniciais de mercadorias</label><input id="b-ei-merc" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">Compras</span><label class="lbl">Compras de mercadorias (611)</label><input id="b-comp-merc" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">EF Merc</span><label class="lbl">Existências finais de mercadorias</label><input id="b-ef-merc" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span></span><label class="lbl">= CMVMC Mercadorias</label><input id="b-cmvmc-merc" type="number" readonly class="vrd"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span class="cf">EI MP</span><label class="lbl">Existências iniciais de matérias-primas</label><input id="b-ei-mp" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">Compras</span><label class="lbl">Compras de matérias-primas (612)</label><input id="b-comp-mp" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">EF MP</span><label class="lbl">Existências finais de matérias-primas</label><input id="b-ef-mp" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span></span><label class="lbl">= Consumo de matérias-primas</label><input id="b-consumo-mp" type="number" readonly class="vrd"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL CMVMC (611+612)</label><input id="b-tot-cmvmc" type="number" readonly class="sub"></div>
+        </div>
+        <div>
+          <!-- GASTOS -->
+          <div class="sh">Gastos (Classe 6)</div>
+          <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:5px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+            <div>Conta</div><div>Descrição</div><div>Saldo devedor (€)</div>
+          </div>
+          <div class="blrow"><span class="cf">62</span><label class="lbl">Fornecimentos e serviços externos</label><input id="b62" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">63</span><label class="lbl">Gastos com o pessoal</label><input id="b63" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">641/642</span><label class="lbl">Depreciações e amortizações (aceites)</label><input id="b64-ac" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">641/642</span><label class="lbl">Depreciações e amortizações (excesso fiscal)</label><input id="b64-ex" type="number" value="0" oninput="calcBal()" title="Parte não aceite fiscalmente — vai para C719"></div>
+          <div class="blrow"><span class="cf">65</span><label class="lbl">Perdas por imparidade</label><input id="b65" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">66</span><label class="lbl">Perdas por reduções de justo valor</label><input id="b66" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">67</span><label class="lbl">Provisões do período</label><input id="b67" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">681/682</span><label class="lbl">Perdas em inv. financeiros e prop. inv.</label><input id="b681" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">683</span><label class="lbl">Perdas em outros ativos</label><input id="b683" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">684/685</span><label class="lbl">Juros e gastos financeiros similares</label><input id="b684" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">686</span><label class="lbl">Gastos e perdas em subsidiárias</label><input id="b686" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">69</span><label class="lbl">Outros gastos e perdas</label><input id="b69" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">6881</span><label class="lbl">IRC estimado (lançado na contab.)</label><input id="b-irc-cont" type="number" value="0" oninput="calcBal()" title="Vai automaticamente para C724"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL GASTOS (excl. CMVMC)</label><input id="b-tot-gast" type="number" readonly class="sub"></div>
+          <div class="dv"></div>
+
+          <!-- RESULTADO -->
+          <div class="sh">Resultado Contabilístico</div>
+          <div class="blrow"><span></span><label class="lbl">Total Rendimentos</label><input id="b-res-rend" type="number" readonly></div>
+          <div class="blrow"><span></span><label class="lbl">(-) CMVMC total</label><input id="b-res-cmvmc" type="number" readonly></div>
+          <div class="blrow"><span></span><label class="lbl">(-) Gastos totais (excl. CMVMC)</label><input id="b-res-gast" type="number" readonly></div>
+          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600;color:var(--ac)">RAI (Resultado Antes de Impostos)</label><input id="b-rai" type="number" readonly class="sub"></div>
+          <div class="blrow"><span class="cf">(-)</span><label class="lbl">IRC estimado contabilizado</label><input id="b-irc-cont2" type="number" readonly></div>
+          <div class="blrow"><span class="cf">8122</span><label class="lbl">Imposto diferido (devedor +, credor -)</label><input id="b-id" type="number" value="0" oninput="calcBal()"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600;color:var(--ac)">RLP = C701 → Q07</label><input id="b-rlp" type="number" readonly class="sub"></div>
+          <div id="al-bal-rlp" class="al aok" style="display:none;margin-top:6px"></div>
+          <div class="brow" style="margin-top:10px">
+            <button class="btnp" onclick="transfereBalancete()">⟶ Transferir para Q07</button>
+            <button class="btns" onclick="limparBal()">Limpar balancete</button>
+          </div>
+          <div class="nota">O botão transfere o RLP para C701 e os excessos de depreciação para C719. IRC contabilizado para C724.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 1: Q07 ========== -->
+  <div id="tc1" class="tc">
+    <div class="bp">
+      <div class="g2">
+        <div>
+          <div class="sh">Resultado + Acréscimos principais</div>
+          <div class="row"><lbl>Resultado Líquido do Período (C701)</lbl><span class="cf">C701</span><input id="c701" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Variações patrimoniais + não refletidas [art.21]</lbl><span class="cf">C702</span><input id="c702" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Variações patrimoniais − não refletidas [art.24]</lbl><span class="cf">C704</span><input id="c704" type="number" value="0" oninput="calc()"></div>
+          <div class="dv"></div>
+          <div class="row"><lbl>IRC+TA lançado contabilidade [art.23-A,a]</lbl><span class="cf">C724</span><input id="c724" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Impostos diferidos [art.23-A,a]</lbl><span class="cf">C725</span><input id="c725" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Despesas não documentadas [art.23-A,b]</lbl><span class="cf">C716</span><input id="c716" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Encargos não documentados [art.23-A,c]</lbl><span class="cf">C731</span><input id="c731" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Multas, coimas e juros [art.23-A,e]</lbl><span class="cf">C728</span><input id="c728" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Provisões/imparidades não dedutíveis [art.19,39]</lbl><span class="cf">C721</span><input id="c721" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Depreciações/amortizações não aceites [art.34]</lbl><span class="cf">C719</span><input id="c719" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Ajudas de custo não dedutíveis [art.23-A,h]</lbl><span class="cf">C730</span><input id="c730" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Aluguer viaturas sem condutor [art.23-A,i]</lbl><span class="cf">C732</span><input id="c732" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Combustíveis [art.23-A,j]</lbl><span class="cf">C733</span><input id="c733" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Dif.+ MV/mv sem reinvestimento [art.46]</lbl><span class="cf">C739</span><input id="c739" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Limitação gastos financiamento [art.67]</lbl><span class="cf">C748</span><input id="c748" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Outros acréscimos</lbl><span class="cf">C752</span><input id="c752" type="number" value="0" oninput="calc()"></div>
+        </div>
+        <div>
+          <div class="sh">Deduções ao resultado</div>
+          <div class="row"><lbl>Menos-valias contabilísticas</lbl><span class="cf">C736</span><input id="c736" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>50% dif.+ MV/mv c/ reinvestimento [art.48]</lbl><span class="cf">C740</span><input id="c740" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Ajustamentos tributáveis justo valor [art.18,9]</lbl><span class="cf">C759</span><input id="c759" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Depreciações aceites revertidas</lbl><span class="cf">C763</span><input id="c763" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Donativos dedutíveis [art.62 EBF]</lbl><span class="cf">C768</span><input id="c768" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Outras deduções</lbl><span class="cf">C775</span><input id="c775" type="number" value="0" oninput="calc()"></div>
+          <div class="dv"></div>
+          <div class="row"><lbl style="font-weight:600">LUCRO TRIBUTÁVEL / PREJUÍZO FISCAL</lbl><span class="cf">C777</span><input id="c777" type="number" readonly class="sub"></div>
+          <div id="al-lt" class="al ai" style="display:none"></div>
+          <div class="dv"></div>
+          <div class="sh">Q09 — Matéria Coletável</div>
+          <div class="row"><lbl>Prejuízos fiscais deduzidos</lbl><span class="cf">C309</span><input id="c309s" type="number" readonly class="sub"></div>
+          <div class="row"><lbl>Benef. fiscais ded. ao LT [RFAI,DLRR…]</lbl><span class="cf">C320</span><input id="c320" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl style="font-weight:600">MATÉRIA COLETÁVEL</lbl><span class="cf">C311</span><input id="c311" type="number" readonly class="sub"></div>
+          <div id="al-mc" class="al ai" style="display:none"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 2: PREJUÍZOS ========== -->
+  <div id="tc2" class="tc">
+    <div class="bp">
+      <div class="al ai">Ded. limitada a <strong>65%</strong> LT. Prazo máx. <strong>12 anos</strong> (desde 2013). FIFO — anos mais antigos primeiro.</div>
+      <div id="pj-sum" class="al aok" style="display:none"></div>
+      <div style="display:grid;grid-template-columns:58px 1fr 100px 96px 22px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+        <div>Ano</div><div>Observação</div><div>Disponível (€)</div><div>Deduzido (€)</div><div></div>
+      </div>
+      <div id="pj-rows"></div>
+      <div class="brow"><button class="btns" onclick="addPrej()">+ Adicionar ano</button></div>
+      <div class="dv"></div>
+      <div class="row2" style="max-width:360px">
+        <lbl style="font-weight:600">Total deduzido (C309)</lbl>
+        <input id="c309" type="number" readonly class="sub">
+      </div>
+      <div id="al-pj" class="al aw" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 3: TA ========== -->
+  <div id="tc3" class="tc">
+    <div class="bp">
+      <div id="al-pj-ta" class="al aw" style="display:none">Taxas agravadas <strong>+10pp</strong> — empresa c/ prejuízo fiscal [art.88 n.14]</div>
+      <div class="sh">TA sobre outras despesas — art.88 CIRC</div>
+      <div style="display:grid;grid-template-columns:1fr 100px 52px 96px 22px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+        <div>Tipo de gasto</div><div>Base (€)</div><div>Taxa</div><div>TA (€)</div><div></div>
+      </div>
+      <div id="taf-rows"></div>
+      <div class="brow"><button class="btns" onclick="addTAF()">+ Rubrica</button></div>
+      <div class="dv"></div>
+      <div class="sh">TA sobre viaturas — OE2025: limiares 37.500€ / 45.000€</div>
+      <div class="al aok" style="margin-bottom:5px;font-size:10px">Conv./GNV: &lt;37.500→8% · 37.500–45.000→25% · ≥45.000→32% | Híbr.50/50: 2,5%/7,5%/15% | Elétrico: 0%(≤62.500) · 10%(>62.500)</div>
+      <div style="display:grid;grid-template-columns:105px 100px 1fr 52px 96px 22px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+        <div>Custo aq. (€)</div><div>Encargos (€)</div><div>Tipo</div><div>Taxa</div><div>TA (€)</div><div></div>
+      </div>
+      <div id="vt-rows"></div>
+      <div class="brow"><button class="btns" onclick="addVT()">+ Viatura</button></div>
+      <div class="dv"></div>
+      <div class="row2" style="max-width:360px">
+        <lbl style="font-weight:600">TOTAL TA (C365)</lbl>
+        <input id="c365" type="number" readonly class="sub">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 4: BENEFÍCIOS ========== -->
+  <div id="tc4" class="tc">
+    <div class="bp">
+      <div class="al ai">Deduções à coleta (C355). Dedução ao LT usar campo C320 no Q07. Anexo D obrigatório para PME.</div>
+      <div class="g2">
+        <div>
+          <div class="sh">Deduções à coleta — C355</div>
+          <div style="display:grid;grid-template-columns:1fr 100px 60px 96px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+            <div>Benefício</div><div>Base (€)</div><div>Taxa %</div><div>Dedução (€)</div>
+          </div>
+          <div id="bf-rows"></div>
+          <div class="brow"><button class="btns" onclick="addBF()">+ Benefício</button></div>
+          <div class="dv"></div>
+          <div class="row2" style="max-width:360px">
+            <lbl style="font-weight:600">Total ded. coleta (C355)</lbl>
+            <input id="c355" type="number" readonly class="sub">
+          </div>
+        </div>
+        <div>
+          <div class="sh">Ref. rápida — Limites 2025</div>
+          <table class="stbl" style="font-size:10px">
+            <tr><td>RFAI crédito fiscal</td><td>25% invest.≤15M€ / 10% acima</td></tr>
+            <tr><td>RFAI ded. coleta</td><td>Máx. 50% coleta IRC</td></tr>
+            <tr><td>RFAI saldo transitar</td><td>10 períodos seguintes</td></tr>
+            <tr><td>DLRR dedução</td><td>10% lucros retidos reinvestidos</td></tr>
+            <tr><td>DLRR limite</td><td>25% coleta IRC</td></tr>
+            <tr><td>CFEI II</td><td>10% aumento invest. ativos depreciáveis</td></tr>
+            <tr><td>Minimis acumulado</td><td>Máx. €300.000 em 3 anos</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 5: Q10 ========== -->
+  <div id="tc5" class="tc">
+    <div class="bp">
+      <div class="g2">
+        <div>
+          <div class="sh">Cálculo da Coleta</div>
+          <div class="row"><lbl>IRC taxa reduzida (≤50k × 16%)</lbl><span class="cf">C347-A</span><input id="c347a" type="number" readonly></div>
+          <div class="row"><lbl>IRC taxa normal (excedente × 20%)</lbl><span class="cf">C347-B</span><input id="c347b" type="number" readonly></div>
+          <div class="row"><lbl style="font-weight:600">Coleta IRC</lbl><span class="cf">C351</span><input id="c351" type="number" readonly class="sub"></div>
+          <div class="row"><lbl>Derrama estadual [art.87-A]</lbl><span class="cf">C373</span><input id="c373" type="number" readonly></div>
+          <div class="row"><lbl style="font-weight:600">Coleta Total</lbl><span class="cf">C378</span><input id="c378" type="number" readonly class="sub"></div>
+          <div class="dv"></div>
+          <div class="sh">Deduções à Coleta</div>
+          <div class="row"><lbl>Dupla tributação internacional [art.91]</lbl><span class="cf">C353</span><input id="c353" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Benefícios fiscais [RFAI,CFEI,IFR…]</lbl><span class="cf">C355</span><input id="c355q10" type="number" readonly></div>
+          <div class="row"><lbl>PEC utilizado [art.93]</lbl><span class="cf">C356</span><input id="c356" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl style="font-weight:600">IRC Liquidado</lbl><span class="cf">C358</span><input id="c358" type="number" readonly class="sub"></div>
+          <div class="row"><lbl>Resultado liquidação art.92</lbl><span class="cf">C371</span><input id="c371" type="number" value="0" oninput="calc()"></div>
+        </div>
+        <div>
+          <div class="sh">Pagamentos / Retenções</div>
+          <div class="row"><lbl>Retenções na fonte</lbl><span class="cf">C359</span><input id="c359" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Pagamentos por conta 2025 [art.105]</lbl><span class="cf">C360</span><input id="c360" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Pagamentos adicionais p.c. [art.105-A]</lbl><span class="cf">C374</span><input id="c374" type="number" value="0" oninput="calc()"></div>
+          <div class="dv"></div>
+          <div class="sh">Outros encargos</div>
+          <div class="row"><lbl>Derrama municipal</lbl><span class="cf">C364</span><input id="c364" type="number" readonly></div>
+          <div class="row"><lbl>Tributações autónomas</lbl><span class="cf">C365</span><input id="c365q10" type="number" readonly></div>
+          <div class="row"><lbl>IRC períodos anteriores</lbl><span class="cf">C363</span><input id="c363" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Juros compensatórios</lbl><span class="cf">C366</span><input id="c366" type="number" value="0" oninput="calc()"></div>
+          <div class="row"><lbl>Juros de mora</lbl><span class="cf">C369</span><input id="c369" type="number" value="0" oninput="calc()"></div>
+          <div class="dv"></div>
+          <div class="row"><lbl style="font-weight:600;font-size:13px">IRC A PAGAR</lbl><span class="cf">C361</span><input id="c361" type="number" readonly class="sub vrm"></div>
+          <div class="row"><lbl style="font-weight:600;font-size:13px">IRC A RECUPERAR</lbl><span class="cf">C362</span><input id="c362" type="number" readonly class="sub vrd"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 6: MODELO 22 ========== -->
+  <div id="tc6" class="tc">
+    <div class="bp">
+      <div class="al ai">Resumo tipo Modelo 22 — para conferência antes de submeter no Portal AT. Todos os valores calculados automaticamente.</div>
+
+      <!-- ROSTO -->
+      <div class="m22-section">
+        <div class="m22-title">ROSTO — Identificação e Período</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">C1</span><lbl>Período de tributação</lbl><input type="text" value="2025" readonly></div>
+            <div class="m22-row"><span class="m22-campo">C2</span><lbl>Designação social</lbl><input id="m22-nome" type="text" readonly class="txt"></div>
+            <div class="m22-row"><span class="m22-campo">C3</span><lbl>NIF</lbl><input id="m22-nif" type="text" readonly class="txt"></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">C5</span><lbl>Regime tributação</lbl><input id="m22-regime" type="text" readonly class="txt"></div>
+            <div class="m22-row"><span class="m22-campo">C8</span><lbl>Tipo sujeito passivo</lbl><input type="text" value="Residente — ativ. comercial/industrial/agrícola" readonly class="txt"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q07 resumo -->
+      <div class="m22-section">
+        <div class="m22-title">QUADRO 07 — Apuramento do Lucro Tributável</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">701</span><lbl>Resultado líquido do período</lbl><input id="m701" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">702</span><lbl>Variações patrimoniais + [art.21]</lbl><input id="m702" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">704</span><lbl>Variações patrimoniais − [art.24]</lbl><input id="m704" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">724</span><lbl>IRC+TA lançado contabilidade</lbl><input id="m724" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">725</span><lbl>Impostos diferidos</lbl><input id="m725" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">716</span><lbl>Despesas não documentadas</lbl><input id="m716" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">731</span><lbl>Encargos não documentados</lbl><input id="m731" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">728</span><lbl>Multas, coimas e juros</lbl><input id="m728" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">721</span><lbl>Provisões/imparidades não ded.</lbl><input id="m721" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">719</span><lbl>Depr./amort. não aceites</lbl><input id="m719" type="number" readonly></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">730</span><lbl>Ajudas de custo não ded.</lbl><input id="m730" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">732</span><lbl>Aluguer viaturas</lbl><input id="m732" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">733</span><lbl>Combustíveis</lbl><input id="m733" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">748</span><lbl>Limitação gastos financiamento</lbl><input id="m748" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">752</span><lbl>Outros acréscimos</lbl><input id="m752" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">736</span><lbl>Menos-valias contabilísticas (ded.)</lbl><input id="m736" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">740</span><lbl>50% MV/mv reinvestimento (ded.)</lbl><input id="m740" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">775</span><lbl>Outras deduções</lbl><input id="m775" type="number" readonly></div>
+            <div class="m22-row" style="margin-top:6px"><span class="m22-campo">777</span><lbl style="font-weight:600">Lucro tributável</lbl><input id="m777" type="number" readonly class="sub"></div>
+            <div class="m22-row"><span class="m22-campo">778</span><lbl style="font-weight:600">Prejuízo fiscal</lbl><input id="m778" type="number" readonly class="sub vrd"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q09 -->
+      <div class="m22-section">
+        <div class="m22-title">QUADRO 09 — Matéria Coletável</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">309</span><lbl>Prejuízos fiscais deduzidos</lbl><input id="m309" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">320</span><lbl>Benefícios fiscais (ded. ao LT)</lbl><input id="m320" type="number" readonly></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">311</span><lbl style="font-weight:600">Matéria coletável</lbl><input id="m311" type="number" readonly class="sub"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q10 -->
+      <div class="m22-section">
+        <div class="m22-title">QUADRO 10 — Cálculo do Imposto</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">347-A</span><lbl>IRC taxa reduzida (16%)</lbl><input id="m347a" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">347-B</span><lbl>IRC taxa normal (20%)</lbl><input id="m347b" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">351</span><lbl>Coleta IRC</lbl><input id="m351" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">373</span><lbl>Derrama estadual</lbl><input id="m373" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">378</span><lbl style="font-weight:600">Coleta total</lbl><input id="m378" type="number" readonly class="sub"></div>
+            <div class="m22-row"><span class="m22-campo">353</span><lbl>Dupla tributação internacional</lbl><input id="m353" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">355</span><lbl>Benefícios fiscais</lbl><input id="m355" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">356</span><lbl>PEC</lbl><input id="m356" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">358</span><lbl style="font-weight:600">IRC liquidado</lbl><input id="m358" type="number" readonly class="sub"></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">359</span><lbl>Retenções na fonte</lbl><input id="m359" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">360</span><lbl>Pagamentos por conta</lbl><input id="m360" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">374</span><lbl>Pagamentos adicionais p.c.</lbl><input id="m374" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">364</span><lbl>Derrama municipal</lbl><input id="m364" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">365</span><lbl>Tributações autónomas</lbl><input id="m365" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">363</span><lbl>IRC períodos anteriores</lbl><input id="m363" type="number" readonly></div>
+            <div class="m22-row"><span class="m22-campo">366</span><lbl>Juros compensatórios</lbl><input id="m366" type="number" readonly></div>
+            <div class="m22-row" style="margin-top:6px"><span class="m22-campo">361</span><lbl style="font-weight:600;font-size:12px">IRC A PAGAR</lbl><input id="m361" type="number" readonly class="sub vrm"></div>
+            <div class="m22-row"><span class="m22-campo">362</span><lbl style="font-weight:600;font-size:12px">IRC A RECUPERAR</lbl><input id="m362" type="number" readonly class="sub vrd"></div>
+            <div class="m22-row" style="margin-top:6px"><span class="m22-campo">367</span><lbl style="font-weight:600;font-size:12px">TOTAL A PAGAR</lbl><input id="m367" type="number" readonly class="sub vrm"></div>
+            <div class="m22-row"><span class="m22-campo">368</span><lbl style="font-weight:600;font-size:12px">TOTAL A RECUPERAR</lbl><input id="m368" type="number" readonly class="sub vrd"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q13 TA -->
+      <div class="m22-section">
+        <div class="m22-title">QUADRO 13 — Tributações Autónomas</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">414</span><lbl>Despesas de representação</lbl><input id="m414" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">415</span><lbl>Ajudas de custo / km viatura própria</lbl><input id="m415" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">426</span><lbl>Enc. viaturas CA &lt; €27.500</lbl><input id="m426" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">427</span><lbl>Enc. viaturas CA ≥27.500 &lt;35.000</lbl><input id="m427" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">428</span><lbl>Enc. viaturas CA ≥ €35.000</lbl><input id="m428" type="number" value="0" oninput="calc()"></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">422</span><lbl>Indemnizações cessação funções</lbl><input id="m422" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">424</span><lbl>Bónus e rem. variáveis</lbl><input id="m424" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">417</span><lbl>Lucros distrib. SP c/ isenção</lbl><input id="m417" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row"><span class="m22-campo">438</span><lbl>Despesas não documentadas</lbl><input id="m438" type="number" value="0" oninput="calc()"></div>
+            <div class="m22-row" style="margin-top:6px"><span class="m22-campo">365</span><lbl style="font-weight:600">Total TA</lbl><input id="m365b" type="number" readonly class="sub"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assinatura CC -->
+      <div class="m22-section">
+        <div class="m22-title">Contabilista Certificado</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">NIF</span><lbl>NIF do CC</lbl><input id="m-cc-nif" class="txt" type="text" value="" placeholder="NIF CC"></div>
+            <div class="m22-row"><span class="m22-campo">OCC</span><lbl>N.º OCC</lbl><input id="m-cc-occ" class="txt" type="text" value="46003"></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">Nome</span><lbl>Nome CC</lbl><input id="m-cc-nome" class="txt" type="text" value="Rui Gonçalves"></div>
+            <div style="margin-top:6px"><div class="nota">Contabilista Certificado — Inscrito na OCC 46003</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="brow">
+        <button class="btnp" onclick="window.print()">🖨 Imprimir Modelo 22</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 7: ANEXO D ========== -->
+  <div id="tc7" class="tc">
+    <div class="bp">
+      <div class="al ai">Anexo D obrigatório para sujeitos passivos que apliquem taxa reduzida IRC (PME/Micro/Média/SMC) — regra de minimis. Campos 901–912.</div>
+      <div id="al-anexoD-top" class="al aw" style="display:none"></div>
+
+      <div class="m22-section">
+        <div class="m22-title">Quadro 04 — Benefícios Fiscais / Regime de Minimis</div>
+        <div class="adrow" style="font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
+          <div>Campo</div><div>Benefício</div><div>Montante (€)</div>
+        </div>
+        <div class="adrow"><span class="m22-campo">904-A</span><lbl>Taxa reduzida IRC — valor da redução</lbl><input id="ad904a" type="number" readonly class="sub"></div>
+        <div class="adrow"><span class="m22-campo">904-B</span><lbl>Taxa reduzida IRC — benefício minimis</lbl><input id="ad904b" type="number" readonly class="sub"></div>
+        <div class="nota" style="margin-top:4px">Campo 904-B = (taxa max − taxa reduzida) × MC até €50.000. Exemplo PME Continente: 4% × MC≤50k.</div>
+        <div class="dv"></div>
+        <div class="adrow"><span class="m22-campo">905</span><lbl>RFAI — dedução coleta</lbl><input id="ad905" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">906</span><lbl>RFAI — saldo não deduzido (transitado)</lbl><input id="ad906" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">907</span><lbl>DLRR — dedução coleta</lbl><input id="ad907" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">908</span><lbl>DLRR — saldo não deduzido (transitado)</lbl><input id="ad908" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">909</span><lbl>CFEI II — dedução coleta</lbl><input id="ad909" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">910</span><lbl>IFR — dedução coleta</lbl><input id="ad910" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">911</span><lbl>Outros benefícios — ded. coleta</lbl><input id="ad911" type="number" value="0" oninput="calc()"></div>
+        <div class="adrow"><span class="m22-campo">912</span><lbl>Outros benefícios — ded. LT</lbl><input id="ad912" type="number" value="0" oninput="calc()"></div>
+      </div>
+
+      <div class="m22-section">
+        <div class="m22-title">Minimis — Controlo de Acumulação</div>
+        <div class="adrow"><span class="m22-campo">2023</span><lbl>Minimis utilizado em 2023</lbl><input id="min2023" type="number" value="0" oninput="calcMini()"></div>
+        <div class="adrow"><span class="m22-campo">2024</span><lbl>Minimis utilizado em 2024</lbl><input id="min2024" type="number" value="0" oninput="calcMini()"></div>
+        <div class="adrow"><span class="m22-campo">2025</span><lbl>Minimis 2025 (calculado)</lbl><input id="min2025" type="number" readonly class="sub"></div>
+        <div class="adrow"><span class="m22-campo">Total</span><lbl>Acumulado 3 anos</lbl><input id="min-total" type="number" readonly class="sub"></div>
+        <div id="al-mini" class="al aw" style="display:none;margin-top:6px"></div>
+      </div>
+
+      <div class="brow">
+        <button class="btnp" onclick="window.print()">🖨 Imprimir Anexo D</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB 8: RESULTADO ========== -->
+  <div id="tc8" class="tc">
+    <div class="bp">
+      <div class="g2">
+        <div>
+          <div id="rbox" class="rbox">
+            <div class="rl">Total a pagar / recuperar</div>
+            <div id="rv" class="rv ne">— €</div>
+            <div id="rsub" class="rsub"></div>
+          </div>
+          <table class="stbl">
+            <tr><td>Resultado Líquido <span class="cf">C701</span></td><td id="s701">—</td></tr>
+            <tr><td>Lucro / Prejuízo Fiscal <span class="cf">C777/778</span></td><td id="s777">—</td></tr>
+            <tr><td>Prejuízos deduzidos <span class="cf">C309</span></td><td id="s309">—</td></tr>
+            <tr><td>Matéria Coletável <span class="cf">C311</span></td><td id="s311">—</td></tr>
+            <tr><td>Coleta IRC <span class="cf">C351</span></td><td id="s351">—</td></tr>
+            <tr><td>Derrama estadual <span class="cf">C373</span></td><td id="s373">—</td></tr>
+            <tr><td>Coleta Total <span class="cf">C378</span></td><td id="s378">—</td></tr>
+            <tr><td>IRC Liquidado <span class="cf">C358</span></td><td id="s358">—</td></tr>
+            <tr><td>Derrama Municipal <span class="cf">C364</span></td><td id="s364">—</td></tr>
+            <tr><td>Tributações Autónomas <span class="cf">C365</span></td><td id="s365">—</td></tr>
+            <tr class="tot"><td>TOTAL A PAGAR / (RECUPERAR)</td><td id="s367">—</td></tr>
+          </table>
+        </div>
+        <div>
+          <div class="sh">Taxas Efetivas</div>
+          <table class="stbl">
+            <tr><td>Regime</td><td id="r-reg">—</td></tr>
+            <tr><td>Taxa IRC</td><td id="r-taxa">—</td></tr>
+            <tr><td>Derrama municipal</td><td id="r-derm">—</td></tr>
+            <tr><td>Carga fiscal / MC</td><td id="r-carga">—</td></tr>
+          </table>
+          <div class="sh" style="margin-top:10px">PC 2026 (estimativa)</div>
+          <table class="stbl">
+            <tr><td>Base (Coleta 2025)</td><td id="pc-b">—</td></tr>
+            <tr><td>Total PC (95% × Coleta)</td><td id="pc-t">—</td></tr>
+            <tr><td>Julho 2026</td><td id="pc1">—</td></tr>
+            <tr><td>Setembro 2026</td><td id="pc2">—</td></tr>
+            <tr><td>Dezembro 2026</td><td id="pc3">—</td></tr>
+          </table>
+          <div id="al-ad-res" class="al aw" style="display:none;margin-top:8px"></div>
+          <div class="brow">
+            <button class="btnp" onclick="window.print()">🖨 Imprimir</button>
+            <button class="btns" onclick="limpar()">Limpar tudo</button>
+          </div>
+          <div class="nota">⚠ Informativo — verificar sempre na AT. OE2025 (Lei 45-A/2024). Derrama: OC 20288/2026. CC OCC 46003. v4.0 — Dafilgest</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /box tabs -->
+</div><!-- /wrap -->
+
+<script>
+
+// ======================================================
+// BASE MUNICÍPIOS — OC 20288/2026 — Período 2025
+// [cod, nome, taxa_geral, taxa_red, lim_red, isencao_vn, lim_isencao]
+// ======================================================
+const MUN=[
+['0101','Águeda',0.015,null,null,true,150000],['0102','Albergaria-a-Velha',0.012,0.002,150000,false,null],
+['0103','Anadia',0.0075,null,null,true,150000],['0104','Arouca',0.010,0.005,150000,false,null],
+['0105','Aveiro',0.015,null,null,false,null],['0106','Castelo de Paiva',0.015,null,null,false,null],
+['0107','Espinho',0.013,null,null,false,null],['0108','Estarreja',0.015,0.0001,150000,false,null],
+['0109','Santa Maria da Feira',0.015,0.010,150000,false,null],['0110','Ílhavo',0.015,null,null,true,150000],
+['0111','Mealhada',0.0075,null,null,true,150000],['0112','Murtosa',0.010,0.0001,150000,false,null],
+['0113','Oliveira de Azeméis',0.012,null,null,true,150000],['0114','Oliveira do Bairro',0.008,0.001,150000,false,null],
+['0115','Ovar',0.015,null,null,true,150000],['0116','S. João da Madeira',0.0145,0.0085,150000,false,null],
+['0117','Sever do Vouga',0.015,0.0001,150000,false,null],['0118','Vagos',0.015,0.001,150000,false,null],
+['0119','Vale de Cambra',0.010,null,null,false,null],
+['0201','Aljustrel',0.015,null,null,false,null],['0202','Almodôvar',0.015,null,null,false,null],
+['0203','Alvito',0.015,null,null,false,null],['0204','Barrancos',0.0125,null,null,true,150000],
+['0205','Beja',0.015,0.0001,150000,false,null],['0206','Castro Verde',0.015,0.010,150000,false,null],
+['0207','Cuba',0.015,0.010,150000,false,null],['0208','Ferreira do Alentejo',0.015,0.010,150000,false,null],
+['0209','Mértola',0.013,null,null,true,150000],['0210','Moura',0.010,0.0001,150000,false,null],
+['0211','Odemira',0.010,0.0001,150000,false,null],['0212','Ourique',0.0125,null,null,true,150000],
+['0213','Serpa',0.010,0.0001,150000,false,null],['0214','Vidigueira',0.015,null,null,false,null],
+['0301','Amares',0.011,null,null,true,150000],['0302','Barcelos',0.015,null,null,true,150000],
+['0303','Braga',0.010,0.005,150000,false,null],['0304','Cabeceiras de Basto',0.015,null,null,false,null],
+['0305','Celorico de Basto',0.015,null,null,false,null],['0306','Esposende',0.012,null,null,true,150000],
+['0307','Fafe',0.015,0.010,150000,false,null],['0308','Guimarães',0.012,0.0001,150000,false,null],
+['0309','Póvoa do Lanhoso',0.014,0.001,150000,false,null],['0310','Terras de Bouro',0.015,null,null,true,250000],
+['0311','Vieira do Minho',0.012,null,null,true,250000],['0312','Vila Nova de Famalicão',0.015,null,null,false,null],
+['0313','Vila Verde',0.015,null,null,false,null],['0314','Vizela',0.015,null,null,true,150000],
+['0401','Alfândega da Fé',0.015,null,null,false,null],['0402','Bragança',0.015,null,null,false,null],
+['0403','Carrazeda de Ansiães',0.015,null,null,false,null],['0404','Freixo Espada à Cinta',0.015,null,null,false,null],
+['0405','Macedo de Cavaleiros',0.015,0.0001,150000,false,null],['0406','Miranda do Douro',0.005,0.0001,150000,false,null],
+['0407','Mirandela',0.015,null,null,false,null],['0408','Mogadouro',0.015,null,null,false,null],
+['0409','Torre de Moncorvo',0.015,null,null,false,null],['0410','Vila Flor',0.015,null,null,false,null],
+['0411','Vimioso',0.015,null,null,false,null],['0412','Vinhais',0.015,null,null,false,null],
+['0501','Belmonte',0.010,0.001,150000,false,null],['0502','Castelo Branco',0.015,null,null,false,null],
+['0503','Covilhã',0.015,null,null,false,null],['0504','Fundão',0.015,null,null,false,null],
+['0505','Idanha-a-Nova',0.0001,null,null,false,null],['0506','Oleiros',0.015,null,null,false,null],
+['0507','Penamacor',0.015,null,null,false,null],['0508','Proença-a-Nova',0.010,null,null,true,150000],
+['0509','Sertã',0.015,null,null,false,null],['0510','Vila de Rei',0.015,null,null,false,null],
+['0511','Vila Velha de Ródão',0.012,0.006,150000,false,null],
+['0601','Arganil',0.015,null,null,true,150000],['0602','Cantanhede',0.0145,null,null,false,null],
+['0603','Coimbra',0.012,null,null,true,150000],['0604','Condeixa-a-Nova',0.015,null,null,true,150000],
+['0605','Figueira da Foz',0.015,null,null,false,null],['0606','Góis',0.013,null,null,false,null],
+['0607','Lousã',0.015,null,null,false,null],['0608','Mira',0.010,null,null,false,null],
+['0609','Miranda do Corvo',0.015,null,null,false,null],['0610','Montemor-o-Velho',0.014,null,null,false,null],
+['0611','Oliveira do Hospital',0.015,null,null,false,null],['0612','Pampilhosa da Serra',0.015,null,null,false,null],
+['0613','Penacova',0.015,null,null,false,null],['0614','Penela',0.010,null,null,false,null],
+['0615','Soure',0.015,null,null,true,150000],['0616','Tábua',0.015,null,null,false,null],
+['0617','Vila Nova de Poiares',0.015,null,null,false,null],
+['0701','Alandroal',0.015,null,null,false,null],['0702','Arraiolos',0.015,0.005,150000,false,null],
+['0703','Borba',0.010,0.0001,150000,false,null],['0704','Estremoz',0.015,0.005,150000,false,null],
+['0705','Évora',0.010,0.0001,150000,false,null],['0706','Montemor-o-Novo',0.015,0.005,150000,false,null],
+['0707','Mora',0.010,null,null,true,150000],['0708','Mourão',0.015,0.0075,150000,false,null],
+['0709','Portel',0.015,null,null,false,null],['0710','Redondo',0.0125,0.001,150000,false,null],
+['0711','Reguengos de Monsaraz',0.015,0.0075,150000,false,null],['0712','Vendas Novas',0.015,0.005,150000,false,null],
+['0713','Viana do Alentejo',0.015,0.005,150000,false,null],['0714','Vila Viçosa',0.015,null,null,false,null],
+['0801','Albufeira',0.015,null,null,true,1500000],['0802','Alcoutim',0.015,0.001,150000,false,null],
+['0803','Aljezur',0.001,null,null,false,null],['0804','Castro Marim',0.012,null,null,true,150000],
+['0805','Faro',0.015,null,null,false,null],['0806','Lagoa',0.001,null,null,false,null],
+['0807','Lagos',0.015,null,null,false,null],['0808','Loulé',0.015,null,null,false,null],
+['0809','Monchique',0.015,null,null,false,null],['0810','Olhão',0.009,null,null,true,150000],
+['0811','Portimão',0.015,null,null,false,null],['0812','S. Brás de Alportel',0.015,null,null,false,null],
+['0813','Silves',0.005,null,null,true,150000],['0814','Tavira',0.015,null,null,false,null],
+['0815','Vila do Bispo',0.015,null,null,false,null],['0816','Vila Real Sto. António',0.015,null,null,false,null],
+['0901','Aguiar da Beira',0.015,null,null,false,null],['0902','Almeida',0.015,0.0001,150000,false,null],
+['0903','Celorico da Beira',0.015,null,null,true,150000],['0904','Figueira C. Rodrigo',0.015,null,null,false,null],
+['0905','Fornos de Algodres',0.015,null,null,false,null],['0906','Gouveia',0.009,0.0001,150000,false,null],
+['0907','Guarda',0.010,0.0001,150000,false,null],['0908','Manteigas',0.015,null,null,false,null],
+['0909','Meda',0.015,null,null,false,null],['0910','Pinhel',0.015,0.0001,150000,false,null],
+['0911','Sabugal',0.010,0.0001,150000,false,null],['0912','Seia',0.015,null,null,false,null],
+['0913','Trancoso',0.015,0.0001,150000,false,null],['0914','Vila Nova de Foz Côa',0.013,0.0001,150000,false,null],
+['1001','Alcobaça',0.013,0.0001,150000,false,null],['1002','Alvaiázere',0.015,null,null,false,null],
+['1003','Ansião',0.012,0.0095,150000,false,null],['1004','Batalha',0.015,null,null,false,null],
+['1005','Bombarral',0.0033,null,null,false,null],['1006','Caldas da Rainha',0.015,null,null,false,null],
+['1007','Castanheira de Pêra',0.015,null,null,false,null],['1008','Figueiró dos Vinhos',0.015,null,null,false,null],
+['1009','Leiria',0.015,0.0001,150000,false,null],['1010','Marinha Grande',0.010,null,null,false,null],
+['1011','Nazaré',0.015,null,null,false,null],['1012','Óbidos',0.015,null,null,false,null],
+['1013','Pedrógão Grande',0.015,null,null,false,null],['1014','Peniche',0.015,0.001,150000,false,null],
+['1015','Pombal',0.010,null,null,false,null],['1016','Porto de Mós',0.013,0.0045,150000,false,null],
+['1101','Alenquer',0.015,null,null,true,150000],['1102','Arruda dos Vinhos',0.015,null,null,true,150000],
+['1103','Azambuja',0.010,null,null,true,150000],['1104','Cadaval',0.010,null,null,true,150000],
+['1105','Cascais',0.015,null,null,false,null],['1106','Lisboa',0.015,null,null,false,null],
+['1107','Loures',0.015,null,null,false,null],['1108','Lourinhã',0.015,null,null,false,null],
+['1109','Mafra',0.015,null,null,false,null],['1110','Oeiras',0.015,null,null,false,null],
+['1111','Sintra',0.015,null,null,true,150000],['1112','Sobral Monte Agraço',0.015,null,null,true,150000],
+['1113','Torres Vedras',0.015,null,null,false,null],['1114','Vila Franca de Xira',0.015,null,null,true,150000],
+['1115','Amadora',0.015,null,null,false,null],['1116','Odivelas',0.015,null,null,false,null],
+['1201','Alter do Chão',0.0075,0.0001,150000,false,null],['1202','Arronches',0.010,0.0001,150000,false,null],
+['1203','Avis',0.015,null,null,false,null],['1204','Campo Maior',0.015,null,null,false,null],
+['1205','Castelo de Vide',0.015,null,null,true,150000],['1206','Crato',0.015,0.005,150000,false,null],
+['1207','Elvas',0.004,null,null,false,null],['1208','Fronteira',0.015,null,null,false,null],
+['1209','Gavião',0.015,null,null,false,null],['1210','Marvão',0.015,null,null,false,null],
+['1211','Monforte',0.010,0.0001,150000,false,null],['1212','Nisa',0.015,null,null,true,150000],
+['1213','Ponte de Sor',0.015,null,null,false,null],['1214','Portalegre',0.010,null,null,true,150000],
+['1215','Sousel',0.010,null,null,true,150000],
+['1301','Amarante',0.015,0.0001,150000,false,null],['1302','Baião',0.0125,null,null,true,150000],
+['1303','Felgueiras',0.015,null,null,false,null],['1304','Gondomar',0.015,null,null,false,null],
+['1305','Lousada',0.015,0.001,150000,false,null],['1306','Maia',0.010,null,null,false,null],
+['1307','Marco de Canaveses',0.015,null,null,false,null],['1308','Matosinhos',0.015,null,null,true,150000],
+['1309','Paços de Ferreira',0.015,null,null,false,null],['1310','Paredes',0.015,null,null,false,null],
+['1311','Penafiel',0.015,0.005,150000,false,null],['1312','Porto',0.015,null,null,false,null],
+['1313','Póvoa do Varzim',0.012,0.001,150000,false,null],['1314','Santo Tirso',0.015,0.010,150000,false,null],
+['1315','Valongo',0.015,0.005,150000,false,null],['1316','Vila do Conde',0.0125,0.009,150000,false,null],
+['1317','Vila Nova de Gaia',0.015,0.0075,150000,false,null],['1318','Trofa',0.014,0.0001,150000,false,null],
+['1401','Abrantes',0.014,null,null,false,null],['1402','Alpiarça',0.015,null,null,false,null],
+['1403','Almeirim',0.015,0.0001,150000,false,null],['1404','Alcanena',0.015,null,null,false,null],
+['1405','Benavente',0.010,null,null,true,149999],['1406','Cartaxo',0.015,null,null,false,null],
+['1407','Chamusca',0.015,0.0001,150000,false,null],['1408','Constância',0.009,0.0001,150000,false,null],
+['1409','Coruche',0.015,null,null,false,null],['1410','Entroncamento',0.015,null,null,false,null],
+['1411','Ferreira do Zêzere',0.015,null,null,false,null],['1412','Golegã',0.015,null,null,false,null],
+['1413','Mação',0.010,null,null,false,null],['1414','Rio Maior',0.015,0.0001,150000,false,null],
+['1415','Salvaterra de Magos',0.015,null,null,true,150000],['1416','Santarém',0.015,null,null,true,150000],
+['1417','Sardoal',0.015,null,null,false,null],['1418','Tomar',0.015,null,null,false,null],
+['1501','Alcácer do Sal',0.015,null,null,false,null],['1502','Alcochete',0.015,null,null,false,null],
+['1503','Almada',0.015,null,null,false,null],['1504','Barreiro',0.015,0.005,150000,false,null],
+['1505','Grândola',0.015,null,null,false,null],['1506','Moita',0.015,null,null,false,null],
+['1507','Montijo',0.015,null,null,false,null],['1508','Palmela',0.015,null,null,false,null],
+['1509','Santiago do Cacém',0.015,null,null,false,null],['1510','Sesimbra',0.015,null,null,false,null],
+['1511','Setúbal',0.015,null,null,false,null],['1512','Sines',0.015,null,null,false,null],
+['1601','Arcos de Valdevez',0.015,null,null,false,null],['1602','Caminha',0.015,null,null,false,null],
+['1603','Melgaço',0.015,null,null,false,null],['1604','Monção',0.015,null,null,false,null],
+['1605','Paredes de Coura',0.015,null,null,false,null],['1606','Ponte da Barca',0.015,null,null,false,null],
+['1607','Ponte de Lima',0.015,0.005,150000,false,null],['1608','Valença',0.015,null,null,false,null],
+['1609','Viana do Castelo',0.015,0.005,150000,false,null],['1610','Vila Nova de Cerveira',0.015,null,null,false,null],
+['1701','Alijó',0.015,null,null,false,null],['1702','Boticas',0.015,null,null,false,null],
+['1703','Chaves',0.015,0.0001,150000,false,null],['1704','Mesão Frio',0.015,null,null,false,null],
+['1705','Mondim de Basto',0.015,null,null,false,null],['1706','Montalegre',0.015,null,null,false,null],
+['1707','Murça',0.015,null,null,false,null],['1708','Peso da Régua',0.015,null,null,false,null],
+['1709','Ribeira de Pena',0.015,null,null,false,null],['1710','Sabrosa',0.015,null,null,false,null],
+['1711','Santa Marta de Penaguião',0.015,null,null,false,null],['1712','Valpaços',0.015,null,null,false,null],
+['1713','Vila Pouca de Aguiar',0.015,null,null,false,null],['1714','Vila Real',0.015,0.001,150000,false,null],
+['1801','Armamar',0.015,null,null,false,null],['1802','Carregal do Sal',0.015,null,null,false,null],
+['1803','Castro Daire',0.015,null,null,false,null],['1804','Cinfães',0.015,null,null,false,null],
+['1805','Lamego',0.015,null,null,false,null],['1806','Mangualde',0.015,0.005,150000,false,null],
+['1807','Moimenta da Beira',0.015,null,null,false,null],['1808','Mortágua',0.015,null,null,false,null],
+['1809','Nelas',0.015,null,null,false,null],['1810','Oliveira de Frades',0.015,null,null,false,null],
+['1811','Penalva do Castelo',0.015,null,null,false,null],['1812','Penedono',0.015,null,null,false,null],
+['1813','Resende',0.015,null,null,false,null],['1814','Santa Comba Dão',0.015,null,null,false,null],
+['1815','S. João da Pesqueira',0.015,null,null,false,null],['1816','S. Pedro do Sul',0.015,null,null,false,null],
+['1817','Sátão',0.015,null,null,false,null],['1818','Sernancelhe',0.015,null,null,false,null],
+['1819','Tabuaço',0.015,null,null,false,null],['1820','Tarouca',0.015,null,null,false,null],
+['1821','Tondela',0.015,null,null,false,null],['1822','Vila Nova de Paiva',0.015,null,null,false,null],
+['1823','Viseu',0.015,0.0005,150000,false,null],['1824','Vouzela',0.015,null,null,false,null],
+];
+const DISTS={'01':'Aveiro','02':'Beja','03':'Braga','04':'Bragança','05':'Castelo Branco','06':'Coimbra','07':'Évora','08':'Faro','09':'Guarda','10':'Leiria','11':'Lisboa','12':'Portalegre','13':'Porto','14':'Santarém','15':'Setúbal','16':'Viana do Castelo','17':'Vila Real','18':'Viseu'};
+
+const TA_PRE=[
+  {id:'nd',l:'Despesas não documentadas [art.88,1]',tn:.50,ta:.60},
+  {id:'rp',l:'Despesas de representação [art.88,7]',tn:.10,ta:.20},
+  {id:'ac',l:'Ajudas custo / km viatura própria [art.88,9]',tn:.05,ta:.15},
+  {id:'ld',l:'Lucros distrib. SP c/ isenção [art.88,11]',tn:.23,ta:.33},
+  {id:'of',l:'Pagamentos a offshores [art.88,8]',tn:.35,ta:.45},
+  {id:'ic',l:'Indem. cessação gestor/admin [art.88,13a]',tn:.35,ta:.45},
+  {id:'bo',l:'Bónus/rem.variáveis gestores [art.88,13b]',tn:.35,ta:.45},
+];
+const BF_PRE=[
+  {l:'RFAI — 25% invest.≤15M€ / 10% acima',p:25},
+  {l:'DLRR — 10% lucros retidos reinvestidos',p:10},
+  {l:'CFEI II — 10% aumento invest.',p:10},
+  {l:'IFR — Incentivo Fiscal à Recuperação',p:12.87},
+  {l:'Incentivo Valorização Salarial',p:50},
+  {l:'Outro benefício fiscal',p:0},
+];
+const VTTIP=[
+  {v:'conv',l:'Convencional (gasolina/gasóleo/híbrido normal)'},
+  {v:'h50',l:'Híbrido Plug-In 50/50 (≥50km, <50gCO2)'},
+  {v:'gnv',l:'GNV'},
+  {v:'ele',l:'100% Elétrico [art.88 n.20]'},
+];
+const VTTAX={conv:[.08,.25,.32],h50:[.025,.075,.15],gnv:[.025,.075,.15]};
+
+let tafData=[],vtIds=[],pjIds=[],bfIds=[];
+
+window.onload=function(){
+  // Municípios
+  const sel=document.getElementById('municipio');
+  let dA='';
+  MUN.forEach(m=>{
+    const d=m[0].substring(0,2);
+    if(d!==dA){dA=d;const og=document.createElement('optgroup');og.label='── '+DISTS[d];sel.appendChild(og);}
+    const o=document.createElement('option');o.value=m[0];o.textContent=m[1];
+    if(m[0]==='0314')o.selected=true;
+    sel.appendChild(o);
+  });
+  TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));
+  addVT();addPrej();addBF();
+  calc();
+};
+
+function getMun(){const c=document.getElementById('municipio').value;return MUN.find(m=>m[0]===c)||MUN[0];}
+
+function getDerm(vn){
+  const m=getMun();
+  if(m[5]&&m[6]&&vn<=m[6])return{t:0,info:'Isenção — VN ≤ €'+fm(m[6])};
+  if(m[3]!=null&&m[4]&&vn<=m[4])return{t:m[3],info:'Taxa reduzida — VN ≤ €'+fm(m[4])};
+  return{t:m[2],info:'Taxa normal'};
+}
+
+function getTVT(tipo,ca){
+  if(tipo==='ele')return ca>62500?.10:.00;
+  const t=VTTAX[tipo]||VTTAX.conv;
+  if(ca<37500)return t[0];if(ca<45000)return t[1];return t[2];
+}
+
+// ====== BALANCETE ======
+function calcBal(){
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  // Rendimentos
+  const rend=g('b711')+g('b72')+g('b73')+g('b74')+g('b75')+g('b76')+g('b77')+g('b781')+g('b782')+g('b783')+g('b784')+g('b786')+g('b79');
+  sv('b-tot-rend',rend);
+  // CMVMC
+  const cmvmc_merc=g('b-ei-merc')+g('b-comp-merc')-g('b-ef-merc');
+  sv('b-cmvmc-merc',cmvmc_merc);
+  const consumo_mp=g('b-ei-mp')+g('b-comp-mp')-g('b-ef-mp');
+  sv('b-consumo-mp',consumo_mp);
+  const tot_cmvmc=cmvmc_merc+consumo_mp;
+  sv('b-tot-cmvmc',tot_cmvmc);
+  // Gastos (excl CMVMC)
+  const irc_cont=g('b-irc-cont');
+  const gast=g('b62')+g('b63')+g('b64-ac')+g('b64-ex')+g('b65')+g('b66')+g('b67')+g('b681')+g('b683')+g('b684')+g('b686')+g('b69')+irc_cont;
+  sv('b-tot-gast',gast);
+  // Resultado
+  const rai=rend-tot_cmvmc-gast;
+  sv('b-rai',rai);sv('b-res-rend',rend);sv('b-res-cmvmc',tot_cmvmc);sv('b-res-gast',gast);sv('b-irc-cont2',irc_cont);
+  // RLP = RAI - IRC + ID
+  const id_val=g('b-id');
+  const rlp=rai-irc_cont+id_val; // RAI já inclui o IRC contabilizado como gasto; RLP = RAI - IRC estimado + ID
+  // Correto: RLP = RAI (que já deduziu IRC como gasto 6881)
+  // Mas campo 701 = RLP = resultado líquido = RAI - Imposto período
+  // Se IRC já está em 6881, então RAI já é líquido de IRC contab.
+  // RLP = RAI + imposto diferido (se credor 8122 reduz RLP)
+  const rlp_final = rai + id_val;
+  sv('b-rlp',rlp_final);
+  const al=document.getElementById('al-bal-rlp');
+  if(al){al.style.display='block';al.textContent='RLP = €'+fm(rlp_final)+' → será transferido para C701 ao clicar no botão';}
+}
+
+function transfereBalancete(){
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const rlp=g('b-rlp');
+  const irc_cont=g('b-irc-cont');
+  const dep_ex=g('b64-ex');
+  // Preencher Q07
+  sv('c701',rlp);
+  if(irc_cont>0)sv('c724',irc_cont);
+  if(dep_ex>0)sv('c719',dep_ex);
+  calc();
+  setTab(1); // ir para Q07
+  alert('Transferido! Verifique o Q07 e ajuste os restantes acréscimos/deduções necessários.');
+}
+
+function limparBal(){
+  ['b711','b72','b73','b74','b75','b76','b77','b781','b782','b783','b784','b786','b79',
+   'b-ei-merc','b-comp-merc','b-ef-merc','b-ei-mp','b-comp-mp','b-ef-mp',
+   'b62','b63','b64-ac','b64-ex','b65','b66','b67','b681','b683','b684','b686','b69',
+   'b-irc-cont','b-id'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='0';});
+  calcBal();
+}
+
+// ====== TA FIXAS ======
+function addTAF(lbl='',base=0,tn=.10,ta=.20){
+  const id=Date.now()+Math.random();
+  tafData.push({id,tn,ta});
+  const c=document.getElementById('taf-rows');
+  const d=document.createElement('div');d.className='tarow';d.id='taf-'+id;
+  const opts=TA_PRE.map(p=>`<option value="${p.tn}|${p.ta}"${p.tn===tn&&p.ta===ta?' selected':''}>${p.l}</option>`).join('')+'<option value="c|c">Outro…</option>';
+  d.innerHTML=`<select style="font-size:10px" onchange="updTAF(${id},this)">${opts}</select><input type="number" value="${base}" oninput="calc()" style="text-align:right"><div class="tg" id="tftx-${id}">${pc(tn)}</div><input type="number" readonly id="tfrs-${id}" style="text-align:right;color:var(--ac)"><button class="btnx" onclick="rmTAF(${id})">✕</button>`;
+  c.appendChild(d);
+}
+function updTAF(id,sel){if(sel.value.startsWith('c'))return;const[tn,ta]=sel.value.split('|').map(Number);const d=tafData.find(x=>x.id===id);if(d){d.tn=tn;d.ta=ta;}calc();}
+function rmTAF(id){document.getElementById('taf-'+id)?.remove();tafData=tafData.filter(x=>x.id!==id);calc();}
+
+// ====== VIATURAS ======
+function addVT(){
+  const id=Date.now();vtIds.push(id);
+  const c=document.getElementById('vt-rows');
+  const d=document.createElement('div');d.className='vtrow';d.id='vt-'+id;
+  const opts=VTTIP.map(t=>`<option value="${t.v}">${t.l}</option>`).join('');
+  d.innerHTML=`<input type="number" placeholder="Custo aq." value="0" oninput="calcVT(${id})" style="font-size:11px;text-align:right"><input type="number" placeholder="Encargos" value="0" oninput="calcVT(${id})" style="text-align:right"><select style="font-size:10px" onchange="calcVT(${id})">${opts}</select><div class="tg" id="vttx-${id}">8%</div><input type="number" readonly id="vtrs-${id}" style="text-align:right;color:var(--ac)"><button class="btnx" onclick="rmVT(${id})">✕</button>`;
+  c.appendChild(d);
+}
+function calcVT(id){
+  const d=document.getElementById('vt-'+id);if(!d)return;
+  const ins=d.querySelectorAll('input');const sel=d.querySelector('select');
+  const ca=parseFloat(ins[0].value)||0,enc=parseFloat(ins[1].value)||0;
+  const tipo=sel.value,pj=document.getElementById('flag-pj').checked;
+  let t=getTVT(tipo,ca);if(pj&&tipo!=='ele')t=Math.min(t+.10,1);
+  document.getElementById('vttx-'+id).textContent=pc(t);
+  document.getElementById('vtrs-'+id).value=f2(enc*t);
+  calc();
+}
+function rmVT(id){document.getElementById('vt-'+id)?.remove();vtIds=vtIds.filter(x=>x!==id);calc();}
+
+// ====== PREJUÍZOS ======
+function addPrej(){
+  const id=Date.now();pjIds.push(id);
+  const c=document.getElementById('pj-rows');
+  const d=document.createElement('div');d.className='prow';d.id='pj-'+id;
+  const ano=2024-c.children.length;
+  d.innerHTML=`<input type="number" value="${ano}" min="2013" max="2024" style="text-align:center;font-size:11px" oninput="calc()"><input type="text" placeholder="obs." style="text-align:left;font-family:sans-serif;font-size:11px"><input type="number" value="0" oninput="calc()" style="text-align:right"><input type="number" readonly class="vrd" style="text-align:right"><button class="btnx" onclick="rmPJ(${id})">✕</button>`;
+  c.appendChild(d);calc();
+}
+function rmPJ(id){document.getElementById('pj-'+id)?.remove();pjIds=pjIds.filter(x=>x!==id);calc();}
+
+// ====== BENEFÍCIOS ======
+function addBF(){
+  const id=Date.now()+Math.random();bfIds.push(id);
+  const c=document.getElementById('bf-rows');
+  const d=document.createElement('div');d.className='bfrow';d.id='bf-'+id;
+  const opts=BF_PRE.map(x=>`<option value="${x.p}">${x.l}</option>`).join('');
+  d.innerHTML=`<select style="font-size:10px" onchange="updBF(${id},this)">${opts}</select><input type="number" value="0" oninput="calc()" style="text-align:right"><input type="number" id="bfp-${id}" value="25" oninput="calc()" style="text-align:right;font-size:11px"><input type="number" readonly id="bfr-${id}" style="text-align:right;color:var(--ac)">`;
+  c.appendChild(d);calc();
+}
+function updBF(id,sel){const el=document.getElementById('bfp-'+id);if(el)el.value=sel.value;calc();}
+
+// ====== CALC MINIMIS ======
+function calcMini(){
+  const g=id=>parseFloat(document.getElementById(id)?.value)||0;
+  const m25=g('min2025'),m24=g('min2024'),m23=g('min2023');
+  const tot=m25+m24+m23;
+  sv('min-total',tot);
+  const al=document.getElementById('al-mini');
+  if(tot>300000){al.style.display='block';al.className='al ae';al.textContent='ATENÇÃO: Acumulado minimis (€'+fm(tot)+') excede o limite de €300.000!';}
+  else if(tot>250000){al.style.display='block';al.className='al aw';al.textContent='Atenção: Acumulado minimis €'+fm(tot)+' — próximo do limite €300.000.';}
+  else if(tot>0){al.style.display='block';al.className='al aok';al.textContent='Minimis acumulado: €'+fm(tot)+' — dentro do limite €300.000.';}
+  else al.style.display='none';
+}
+
+// ====== CALC PRINCIPAL ======
+function calc(){
+  const reg=document.getElementById('regime').value;
+  const vn=parseFloat(document.getElementById('vn2024')?.value)||0;
+  const pj=document.getElementById('flag-pj').checked;
+  let tr=.16,tn=.20,lim=50000,rl='PME';
+  if(reg==='media'){tr=.20;tn=.20;lim=0;rl='Média/SMC';}
+  else if(reg==='geral'){tr=.20;tn=.20;lim=0;rl='Geral';}
+  else if(reg==='madeira'){tr=.0875;tn=.14;lim=50000;rl='RAM';}
+  else if(reg==='acores'){tr=.0875;tn=.14;lim=50000;rl='RAA';}
+  document.getElementById('tag-regime').textContent=rl;
+  document.getElementById('pj-txt').textContent=pj?'SIM — taxas TA agravadas':'Não';
+
+  // Rosto M22
+  const nom=document.getElementById('designacao')?.value||'';
+  const nif=document.getElementById('nif')?.value||'';
+  const setTxt=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v;};
+  setTxt('m22-nome',nom);setTxt('m22-nif',nif);
+  setTxt('m22-regime',{pme:'Regime Geral — PME/Micro',media:'Regime Geral — Média/SMC',geral:'Regime Geral',madeira:'R.A. Madeira',acores:'R.A. Açores'}[reg]||'');
+
+  // Q07
+  const c701=v('c701'),c702=v('c702'),c704=v('c704');
+  const acr=v('c724')+v('c725')+v('c716')+v('c731')+v('c728')+v('c721')+v('c719')+v('c730')+v('c732')+v('c733')+v('c739')+v('c748')+v('c752');
+  const ded=v('c736')+v('c740')+v('c759')+v('c763')+v('c768')+v('c775');
+  const lt=c701+c702-c704+acr-ded;
+  sv('c777',lt);
+  // Mirror para M22
+  ['c701','c702','c704','c724','c725','c716','c731','c728','c721','c719','c730','c732','c733','c748','c752','c736','c740','c775'].forEach(id=>{
+    const el=document.getElementById('m'+id.replace('c',''));
+    if(el)el.value=f2(v(id));
+  });
+  sv('m777',Math.max(0,lt));sv('m778',Math.max(0,-lt));
+  const alLT=document.getElementById('al-lt');
+  if(lt<0){alLT.style.display='block';alLT.className='al ae';alLT.textContent='Prejuízo Fiscal: €'+fm(Math.abs(lt))+' — TA agravadas [art.88 n.14]';}
+  else if(lt>0){alLT.style.display='block';alLT.className='al aok';alLT.textContent='Lucro Tributável: €'+fm(lt);}
+  else alLT.style.display='none';
+
+  // Prejuízos
+  const lim_pj=lt>0?lt*.65:0;
+  let tot_pj=0;
+  document.querySelectorAll('#pj-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');
+    const disp=parseFloat(ins[2]?.value)||0;
+    let dp=0;if(lt>0&&disp>0)dp=Math.min(disp,Math.max(0,lim_pj-tot_pj));
+    tot_pj+=dp;if(ins[3])ins[3].value=f2(dp);
+  });
+  sv('c309',tot_pj);sv('c309s',tot_pj);sv('m309',tot_pj);
+  const pjSum=document.getElementById('pj-sum');
+  if(lt>0&&tot_pj>0){pjSum.style.display='block';pjSum.textContent='Limite 65%: €'+fm(lim_pj)+' · Deduzido: €'+fm(tot_pj)+(tot_pj>=lim_pj-.01?' ← limite atingido':' (saldo: €'+fm(lim_pj-tot_pj)+')');}
+  else pjSum.style.display='none';
+  const alPJ=document.getElementById('al-pj');
+  if(lt>0&&tot_pj>=lim_pj-.01&&lim_pj>0){alPJ.style.display='block';alPJ.textContent='Limite 65% atingido. Saldo transita para anos seguintes.';}
+  else alPJ.style.display='none';
+
+  // Q09
+  const c320=v('c320');sv('m320',c320);
+  const mc=Math.max(0,lt-tot_pj-c320);
+  sv('c311',mc);sv('m311',mc);
+  const alMC=document.getElementById('al-mc');
+  const bf_mm=Math.min(mc,50000)*(tn-tr);
+  if((reg==='pme'||reg==='media')&&mc>0){
+    const dec=lim>0&&mc>lim?`€${fm(lim)}×${pc(tr)}+€${fm(mc-lim)}×${pc(tn)}`:`€${fm(mc)}×${pc(tr)}`;
+    alMC.style.display='block';alMC.className='al ai';
+    alMC.innerHTML=`${dec} &nbsp;·&nbsp; ⚠ <strong>Anexo D obrig.</strong> — campo 904-B: €${fm(bf_mm)}`;
+  }else alMC.style.display='none';
+
+  // Coleta IRC
+  let c347a=0,c347b=0;
+  if(mc>0){if(lim>0){c347a=Math.min(mc,lim)*tr;c347b=Math.max(0,mc-lim)*tn;}else c347b=mc*tn;}
+  sv('c347a',c347a);sv('c347b',c347b);sv('m347a',c347a);sv('m347b',c347b);
+  const c351=c347a+c347b;sv('c351',c351);sv('m351',c351);
+
+  // Derrama estadual
+  let c373=0;
+  if(lt>1500000){const e1=Math.min(lt,7500000)-1500000;const e2=lt>7500000?Math.min(lt,35000000)-7500000:0;const e3=lt>35000000?lt-35000000:0;c373=e1*.03+e2*.05+e3*.09;}
+  sv('c373',c373);sv('m373',c373);
+  const c378=c351+c373;sv('c378',c378);sv('m378',c378);
+
+  // Derrama municipal
+  const derm=getDerm(vn);
+  const c364=lt>0?lt*derm.t:0;
+  sv('c364',c364);sv('m364',c364);
+  setTxt('taxa-derm',pc(derm.t)+' — '+getMun()[1]);
+  setTxt('derm-info',derm.info);
+
+  // TA fixas
+  let ta_f=0;
+  document.querySelectorAll('#taf-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');
+    const rid=d.id.replace('taf-','');
+    const dat=tafData.find(x=>String(x.id)===String(rid));
+    let taxa=dat?(pj?dat.ta:dat.tn):.10;
+    const base=parseFloat(ins[0]?.value)||0;
+    const res=base*taxa;ta_f+=res;
+    const et=document.getElementById('tftx-'+rid);const er=document.getElementById('tfrs-'+rid);
+    if(et)et.textContent=pc(taxa);if(er)er.value=f2(res);
+  });
+
+  // TA viaturas
+  let ta_v=0;
+  document.querySelectorAll('#vt-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');const sel=d.querySelector('select');
+    const ca=parseFloat(ins[0]?.value)||0,enc=parseFloat(ins[1]?.value)||0;
+    const tipo=sel?.value||'conv';
+    let t=getTVT(tipo,ca);if(pj&&tipo!=='ele')t=Math.min(t+.10,1);
+    const res=enc*t;ta_v+=res;
+    const rid=d.id.replace('vt-','');
+    const et=document.getElementById('vttx-'+rid);const er=document.getElementById('vtrs-'+rid);
+    if(et)et.textContent=pc(t);if(er)er.value=f2(res);
+  });
+  const c365=ta_f+ta_v;sv('c365',c365);sv('m365',c365);sv('m365b',c365);
+  const c365q10=document.getElementById('c365q10');if(c365q10)c365q10.value=f2(c365);
+  document.getElementById('al-pj-ta').style.display=pj?'block':'none';
+
+  // Benefícios coleta
+  let tot_bf=0;
+  document.querySelectorAll('#bf-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');
+    const base=parseFloat(ins[0]?.value)||0,pct_v=parseFloat(ins[1]?.value)||0;
+    const res=base*(pct_v/100);tot_bf+=res;
+    const rid=d.id.replace('bf-','');
+    const er=document.getElementById('bfr-'+rid);if(er)er.value=f2(res);
+  });
+  sv('c355',tot_bf);sv('m355',tot_bf);
+  const c355q10=document.getElementById('c355q10');if(c355q10)c355q10.value=f2(tot_bf);
+
+  // IRC liquidado
+  const c353=v('c353'),c356=v('c356');sv('m353',c353);sv('m356',c356);
+  const tot_ded=Math.min(c353+tot_bf+c356,c378);
+  const c358=Math.max(0,c378-tot_ded);sv('c358',c358);sv('m358',c358);
+
+  // Q10 final
+  const c371=v('c371'),c359=v('c359'),c360=v('c360'),c374=v('c374');
+  const c363=v('c363'),c366=v('c366'),c369=v('c369');
+  sv('m359',c359);sv('m360',c360);sv('m374',c374);sv('m363',c363);sv('m366',c366);
+  const base_liq=c358+c371-c359-c360-c374;
+  const c361=Math.max(0,base_liq),c362=Math.max(0,-base_liq);
+  sv('c361',c361);sv('c362',c362);sv('m361',c361);sv('m362',c362);
+  const tot_pg=c361+c363+c364+c365+c366+c369;
+  const tot_rc=c362;
+  sv('m367',Math.max(0,tot_pg));sv('m368',Math.max(0,tot_rc));
+  const tf=tot_pg-tot_rc;
+
+  // Resultado visual
+  const elrv=document.getElementById('rv');
+  const rbox=document.getElementById('rbox');
+  document.getElementById('rsub').textContent=(document.getElementById('designacao')?.value||'—')+' · NIF '+(document.getElementById('nif')?.value||'—')+' · Exercício 2025';
+  if(tf>.005){elrv.className='rv pg';elrv.textContent='▲ '+fm(tf)+' €';rbox.style.borderColor='rgba(218,54,51,.4)';}
+  else if(tf<-.005){elrv.className='rv rc';elrv.textContent='▼ '+fm(Math.abs(tf))+' € a recuperar';rbox.style.borderColor='rgba(46,160,67,.4)';}
+  else{elrv.className='rv ne';elrv.textContent='0,00 €';rbox.style.borderColor='var(--bd)';}
+
+  // Summary
+  const st=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=fm(val)+' €';};
+  st('s701',c701);st('s777',lt);st('s309',tot_pj);st('s311',mc);
+  st('s351',c351);st('s373',c373);st('s378',c378);st('s358',c358);
+  st('s364',c364);st('s365',c365);
+  const s367=document.getElementById('s367');
+  if(s367){s367.textContent=tf>=0?fm(tf)+' €':'('+fm(Math.abs(tf))+' €)';s367.style.color=tf>=0?'#ff7b72':'#7ee787';}
+
+  // Taxas
+  const stx=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  stx('r-reg',rl);
+  stx('r-taxa',lim>0?`${pc(tr)} (≤€${fm(lim)}) + ${pc(tn)}`:`${pc(tn)}`);
+  stx('r-derm',pc(derm.t)+' ('+getMun()[1]+')');
+  const carga=mc>0?(c351+c373+c365+c364)/mc:0;
+  stx('r-carga',pc(carga));
+
+  // PC 2026
+  const pc_t=c351*.95,pc_p=pc_t/3;
+  stx('pc-b',fm(c351)+' €');stx('pc-t',fm(pc_t)+' €');
+  stx('pc1',fm(pc_p)+' €');stx('pc2',fm(pc_p)+' €');stx('pc3',fm(pc_p)+' €');
+
+  // Anexo D
+  const is_pme=reg==='pme'||reg==='media';
+  const alAD=document.getElementById('al-anexoD-top');
+  const alADr=document.getElementById('al-ad-res');
+  if(is_pme&&mc>0){
+    const bf904a=Math.min(mc,50000)*tr; // coleta à taxa reduzida
+    const bf904b=bf_mm; // benefício minimis = diferença de taxa
+    sv('ad904a',bf904a);sv('ad904b',bf904b);
+    sv('min2025',bf904b);calcMini();
+    alAD.style.display='block';alAD.className='al aw';
+    alAD.innerHTML=`⚠ <strong>Anexo D obrigatório</strong> — C904-A: €${fm(bf904a)} · C904-B: €${fm(bf904b)}`;
+    if(alADr){alADr.style.display='block';alADr.innerHTML=`⚠ <strong>Anexo D</strong> — campo 904-B = €${fm(bf904b)} (benefício minimis taxa reduzida)`;}
+  }else{
+    if(alAD)alAD.style.display='none';
+    if(alADr)alADr.style.display='none';
+    sv('ad904a',0);sv('ad904b',0);sv('min2025',0);calcMini();
+  }
+}
+
+// ====== HELPERS ======
+function v(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function sv(id,val){const el=document.getElementById(id);if(el)el.value=f2(val);}
+function fm(n){return(Math.round(n*100)/100).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function f2(n){return(Math.round(n*100)/100).toFixed(2);}
+function pc(n){const p=n*100;return(p<1?p.toFixed(2):p.toFixed(1)).replace(/\.0$/,'')+'%';}
+
+function setTab(n){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('on',i===n));
+  document.querySelectorAll('.tc').forEach((t,i)=>{t.classList.toggle('on',i===n);t.style.display=i===n?'block':'none';});
+}
+
+function limpar(){
+  if(!confirm('Limpar todos os dados?'))return;
+  document.querySelectorAll('input[type=number]').forEach(el=>{if(!el.readOnly)el.value='0';});
+  document.querySelectorAll('input[type=text]').forEach(el=>{
+    if(!el.readOnly&&!el.id.includes('taxa')&&!el.id.includes('derm')&&!el.id.includes('m22')&&el.id!=='m-cc-occ'&&el.id!=='m-cc-nome')el.value='';
+  });
+  ['pj-rows','taf-rows','vt-rows','bf-rows'].forEach(id=>document.getElementById(id).innerHTML='');
+  tafData=[];vtIds=[];pjIds=[];bfIds=[];
+  TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));
+  addVT();addPrej();addBF();limparBal();calc();
+}
+</script>
+</body>
+</html>
