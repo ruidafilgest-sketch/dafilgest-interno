@@ -1738,33 +1738,42 @@ async function carregarLista(){
 // Ao selecionar empresa — preencher nome+NIF automaticamente se ainda não gravada
 async function carregarEmpresa(chave){
   if(!chave){ novaSimulacao(); return; }
-  
-  // Ver se já tem dados no Firebase
   fbStatus('A carregar…','loading');
   const data = await fbGet(FB_PATH+'/'+chave);
-  
   if(data && data.designacao){
-    // Tem dados gravados — carregar tudo
-    Object.entries(data).forEach(([id, val])=>{
-      const el = document.getElementById(id);
-      if(el && !el.readOnly){
-        if(el.type==='checkbox') el.checked = !!val;
-        else el.value = val;
-      }
+    // Limpar campos dinâmicos
+    ['pj-rows','taf-rows','vt-rows','bf-rows'].forEach(id=>document.getElementById(id).innerHTML='');
+    tafData=[];vtIds=[];pjIds=[];bfIds=[];
+    // Campos estáticos
+    Object.entries(data).forEach(([id,val])=>{
+      if(id.startsWith('_')) return;
+      const el=document.getElementById(id);
+      if(el&&!el.readOnly){if(el.type==='checkbox')el.checked=!!val;else el.value=val;}
     });
-    calc(); calcBal();
+    // Prejuízos
+    const pj=data._pj||[];
+    if(pj.length>0){pj.forEach(p=>{addPrej();const rows=document.querySelectorAll('#pj-rows > div');const last=rows[rows.length-1];if(last){const ins=last.querySelectorAll('input');if(ins[0])ins[0].value=p.ano||'';if(ins[1])ins[1].value=p.obs||'';if(ins[2])ins[2].value=p.disp||0;}});}
+    else{addPrej();}
+    // TA fixas
+    const taf=data._taf||[];
+    if(taf.length>0){taf.forEach(t=>{addTAF();const rows=document.querySelectorAll('#taf-rows > div');const last=rows[rows.length-1];if(last){const ins=last.querySelectorAll('input');const sel=last.querySelector('select');if(sel)sel.value=t.tipo||'';if(ins[0])ins[0].value=t.base||0;}});}
+    else{TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));}
+    // Viaturas
+    const vt=data._vt||[];
+    if(vt.length>0){vt.forEach(v=>{addVT();const rows=document.querySelectorAll('#vt-rows > div');const last=rows[rows.length-1];if(last){const ins=last.querySelectorAll('input');const sel=last.querySelector('select');if(ins[0])ins[0].value=v.ca||0;if(ins[1])ins[1].value=v.enc||0;if(sel)sel.value=v.tipo||'conv';}});}
+    else{addVT();}
+    // Benefícios
+    const bf=data._bf||[];
+    if(bf.length>0){bf.forEach(b=>{addBF();const rows=document.querySelectorAll('#bf-rows > div');const last=rows[rows.length-1];if(last){const ins=last.querySelectorAll('input');const sel=last.querySelector('select');if(sel)sel.value=b.tipo||'';if(ins[0])ins[0].value=b.base||0;if(ins[1])ins[1].value=b.pct||0;}});}
+    else{addBF();}
+    calc();calcBal();
     fbStatus('Carregado: '+data.designacao,'ok');
   } else {
-    // Não tem dados — apenas preencher nome e NIF
-    const emp = EMPRESAS_DAFILGEST.find(e=>{
-      const c = e.nif ? e.nif.replace(/[^a-zA-Z0-9]/g,'') : 'emp'+e.num;
-      return c === chave;
-    });
+    TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));addVT();addPrej();addBF();
+    const emp=EMPRESAS_DAFILGEST.find(e=>{const c=e.nif?e.nif.replace(/[^a-zA-Z0-9]/g,''):'emp'+e.num;return c===chave;});
     if(emp){
-      const elNome = document.getElementById('designacao');
-      const elNif  = document.getElementById('nif');
-      if(elNome) elNome.value = emp.nome;
-      if(elNif && emp.nif)  elNif.value  = emp.nif;
+      const elNome=document.getElementById('designacao');const elNif=document.getElementById('nif');
+      if(elNome)elNome.value=emp.nome;if(elNif&&emp.nif)elNif.value=emp.nif;
       fbStatus('Nova simulação — '+emp.nome,'ok');
     }
   }
@@ -1773,32 +1782,53 @@ async function carregarEmpresa(chave){
 
 // Recolher todos os dados do formulário
 function recolherDados(){
-  const dados = {};
-  // Função para limpar keys — Firebase não aceita . # $ [ ]
   const cleanKey = k => k.replace(/[.#$\[\]]/g,'_');
-
+  const dados = {};
+  // Campos estáticos — ignorar IDs dinâmicos
   document.querySelectorAll('input:not([readonly]), select').forEach(el=>{
-    if(el.id && el.id !== 'emp-sel'){
-      const key = cleanKey(el.id);
-      if(el.type==='checkbox'){
-        dados[key] = el.checked;
-      } else if(el.type==='number'){
-        const n = parseFloat(el.value);
-        dados[key] = (isNaN(n)||!isFinite(n)) ? 0 : n;
-      } else {
-        dados[key] = el.value || '';
-      }
-    }
+    if(!el.id||el.id==='emp-sel') return;
+    if(/^pj-|^taf-|^vt-|^bf-/.test(el.id)) return;
+    const key=cleanKey(el.id);
+    if(el.type==='checkbox') dados[key]=el.checked;
+    else if(el.type==='number'){const n=parseFloat(el.value);dados[key]=(isNaN(n)||!isFinite(n))?0:n;}
+    else dados[key]=el.value||'';
   });
-  // Campos readonly importantes
-  ['c701','c724','b-rai','c777','c309','c311','c351','c373',
-   'c378','c358','c364','c365','c361','c362'].forEach(id=>{
+  // Campos readonly
+  ['c701','c724','b-rai','c777','c309','c311','c351','c373','c378','c358','c364','c365','c361','c362'].forEach(id=>{
     const el=document.getElementById(id);
     if(el){const n=parseFloat(el.value);dados[cleanKey(id)]=(isNaN(n)||!isFinite(n))?0:n;}
   });
-  dados.designacao = document.getElementById('designacao')?.value || '';
-  dados.nif        = document.getElementById('nif')?.value || '';
-  dados._updated   = new Date().toISOString();
+  // PREJUIZOS como array
+  const pj=[];
+  document.querySelectorAll('#pj-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');
+    pj.push({ano:parseFloat(ins[0]?.value)||0,obs:ins[1]?.value||'',disp:parseFloat(ins[2]?.value)||0});
+  });
+  dados._pj=pj;
+  // TA FIXAS como array
+  const taf=[];
+  document.querySelectorAll('#taf-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');const sel=d.querySelector('select');
+    taf.push({tipo:sel?.value||'',base:parseFloat(ins[0]?.value)||0});
+  });
+  dados._taf=taf;
+  // VIATURAS como array
+  const vt=[];
+  document.querySelectorAll('#vt-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');const sel=d.querySelector('select');
+    vt.push({ca:parseFloat(ins[0]?.value)||0,enc:parseFloat(ins[1]?.value)||0,tipo:sel?.value||'conv'});
+  });
+  dados._vt=vt;
+  // BENEFICIOS como array
+  const bf=[];
+  document.querySelectorAll('#bf-rows > div').forEach(d=>{
+    const ins=d.querySelectorAll('input');const sel=d.querySelector('select');
+    bf.push({tipo:sel?.value||'',base:parseFloat(ins[0]?.value)||0,pct:parseFloat(ins[1]?.value)||0});
+  });
+  dados._bf=bf;
+  dados.designacao=document.getElementById('designacao')?.value||'';
+  dados.nif=document.getElementById('nif')?.value||'';
+  dados._updated=new Date().toISOString();
   return dados;
 }
 
