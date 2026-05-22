@@ -326,11 +326,7 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
           <div class="dv"></div>
           <div class="blrow"><span class="cf">818</span><label class="lbl" style="font-weight:600;color:#7ee787">RLP = Resultado Líquido do Período → C701</label><input id="b-rlp" type="number" readonly class="sub vrd"></div>
           <div id="al-bal-rlp" class="al aok" style="display:none;margin-top:6px"></div>
-          <div class="brow" style="margin-top:10px">
-            <button class="btnp" onclick="transfereBalancete()">⟶ Transferir para Q07</button>
-            <button class="btns" onclick="limparBal()">Limpar balancete</button>
-          </div>
-          <div class="nota">Transfere: RLP→C701 · IRC estimado→C724 · Excesso depreciações→C719.</div>
+          <div class="nota" style="margin-top:8px">✓ Todos os valores propagam automaticamente para Q07, IRC, derrama e resultado final em tempo real.</div>
         </div>
       </div>
     </div>
@@ -344,6 +340,13 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
       </div>
       <div class="g2">
         <div>
+          <div class="sh">Ponto de partida — RAI</div>
+          <div class="row">
+            <lbl style="font-weight:600;color:var(--ac)">RAI — Resultado Antes de Impostos (vem do balancete ou introduz aqui)</lbl>
+            <span class="cf">RAI</span>
+            <input id="rai-manual" type="number" value="0" oninput="calc()" style="border-color:var(--ac);color:var(--ac);font-weight:600" title="Se preencheste o balancete este valor é preenchido automaticamente. Caso contrário introduz aqui o RAI.">
+          </div>
+          <div class="dv"></div>
           <div class="sh">Resultado + Acréscimos principais</div>
           <div class="row">
             <lbl style="font-weight:600">Resultado Líquido do Período = RAI − IRC (C701)</lbl>
@@ -1208,17 +1211,19 @@ function calcBal(){
     al.style.display='block';
     const tipo = rlp>=0 ? 'Resultado positivo' : 'Prejuízo';
     al.className = rlp>=0 ? 'al aok' : 'al ae';
-    al.innerHTML = `<strong>${tipo}: €${fm(Math.abs(rlp))}</strong> → C701 ao transferir &nbsp;|&nbsp; CMVMC: €${fm(tot_cmvmc)} &nbsp;|&nbsp; Var.Prod. (73): €${fm(c73)}`;
+    al.innerHTML = `<strong>${tipo}: €${fm(Math.abs(rlp))}</strong> &nbsp;|&nbsp; CMVMC: €${fm(tot_cmvmc)} &nbsp;|&nbsp; Var.Prod. (73): €${fm(c73)}`;
   }
+  // Cascata automática — qualquer alteração no balancete propaga para Q07/IRC/resultado
+  calc();
 }
 
 function transfereBalancete(){
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
   const rai_val = g('b-rai');   // RAI do balancete
   const dep_ex  = g('b64-ex'); // excesso depreciações → C719
-  // C701 recebe o RAI — o sistema calcula IRC e C724 automaticamente
-  const elC701 = document.getElementById('c701');
-  if(elC701) elC701.value = f2(rai_val);
+  // Passa RAI para o campo rai-manual no Q07
+  const elRai = document.getElementById('rai-manual');
+  if(elRai) elRai.value = f2(rai_val);
   if(dep_ex>0) sv('c719', dep_ex);
   calc();
   setTab(1);
@@ -1345,7 +1350,14 @@ function calc(){
   //   LT   = C701 + C724 + outros acréscimos − deduções = RAI + outros − ded ✓
   // ══════════════════════════════════════════════════════
 
-  const rai = v('c701'); // C701 recebe o RAI do balancete (antes de IRC)
+  // RAI vem sempre do balancete em tempo real — nunca circular
+  // b-rai é calculado pelo calcBal() sempre que qualquer campo do balancete muda
+  // Se balancete vazio, usa rai-manual como fallback para entrada directa
+  const rai_bal = v('b-rai');
+  const rai_man = v('rai-manual');
+  const rai = rai_bal !== 0 ? rai_bal : rai_man;
+  // Sincronizar rai-manual com b-rai para consistência
+  if(rai_bal !== 0){ const el=document.getElementById('rai-manual'); if(el) el.value=f2(rai_bal); }
   const c702=v('c702'), c704=v('c704');
   const acr_outros = v('c725')+v('c716')+v('c731')+v('c728')+v('c721')+v('c719')+v('c730')+v('c732')+v('c733')+v('c739')+v('c748')+v('c752');
   const ded = v('c736')+v('c740')+v('c759')+v('c763')+v('c768')+v('c775');
