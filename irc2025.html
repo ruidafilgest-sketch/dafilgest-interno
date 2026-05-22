@@ -1150,6 +1150,7 @@ const VTTIP=[
 const VTTAX={conv:[.08,.25,.32],h50:[.025,.075,.15],gnv:[.025,.075,.15]};
 
 let tafData=[],vtIds=[],pjIds=[],bfIds=[];
+let _carregando=false; // bloqueia calc() durante carregamento
 
 window.onload=function(){
   // Municípios
@@ -1188,6 +1189,7 @@ function getTVT(tipo,ca){
 
 // ====== BALANCETE ======
 function calcBal(){
+  if(_carregando) return;
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
 
   // ── RENDIMENTOS (classe 7, excl. 73) ──
@@ -1359,6 +1361,7 @@ function calcMini(){
 
 // ====== CALC PRINCIPAL ======
 function calc(){
+  if(_carregando) return; // aguardar fim do carregamento
   const reg=document.getElementById('regime').value;
   const vn=parseFloat(document.getElementById('vn2024')?.value)||0;
   const pj=document.getElementById('flag-pj').checked;
@@ -1744,6 +1747,7 @@ async function carregarEmpresa(chave){
     // Limpar campos dinâmicos
     ['pj-rows','taf-rows','vt-rows','bf-rows'].forEach(id=>document.getElementById(id).innerHTML='');
     tafData=[];vtIds=[];pjIds=[];bfIds=[];
+    _carregando=true;
     // Campos estáticos
     Object.entries(data).forEach(([id,val])=>{
       if(id.startsWith('_')) return;
@@ -1766,7 +1770,8 @@ async function carregarEmpresa(chave){
     const bf=data._bf||[];
     if(bf.length>0){bf.forEach(b=>{addBF();const rows=document.querySelectorAll('#bf-rows > div');const last=rows[rows.length-1];if(last){const ins=last.querySelectorAll('input');const sel=last.querySelector('select');if(sel)sel.value=b.tipo||'';if(ins[0])ins[0].value=b.base||0;if(ins[1])ins[1].value=b.pct||0;}});}
     else{addBF();}
-    calc();calcBal();
+    _carregando=false;
+    calcBal();
     fbStatus('Carregado: '+data.designacao,'ok');
   } else {
     TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));addVT();addPrej();addBF();
