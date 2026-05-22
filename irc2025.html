@@ -1383,14 +1383,17 @@ function calc(){
     return total;
   }
 
-  // ITERAÇÃO — 6 ciclos garantem convergência
+  // ITERAÇÃO — LT = RAI + outros acréscimos − deduções (constante)
+  // C701 + C724 = (RAI−IRC) + IRC = RAI → LT = RAI + outros − ded sempre
+  // A iteração é apenas para calcular IRC correcto sobre o LT correcto
+  const lt_final = lt_base; // LT não depende do IRC — é sempre RAI + outros − ded
+
   let irc_iter = 0;
   for(let i=0; i<6; i++){
-    const lt_iter  = lt_base + irc_iter; // LT = RAI_base + C724(IRC)
-    const pj_iter  = calcPrej(lt_iter);
-    const mc_iter  = Math.max(0, lt_iter - pj_iter - c320);
+    const pj_iter  = calcPrej(lt_final);
+    const mc_iter  = Math.max(0, lt_final - pj_iter - c320);
     const col_iter = calcColeta(mc_iter);
-    const derm_iter= lt_iter>0 ? lt_iter*derm_info.t : 0;
+    const derm_iter= lt_final>0 ? lt_final*derm_info.t : 0;
     irc_iter = col_iter + derm_iter; // IRC = coleta + derrama
   }
 
@@ -1398,7 +1401,7 @@ function calc(){
   const irc_final = Math.round(irc_iter*100)/100;
   const c724_final = irc_final;
   const c701_final = rai - irc_final; // RLP = RAI − IRC
-  const lt_final   = lt_base + c724_final; // = RAI + outros − ded
+  // lt_final já calculado acima = lt_base = RAI + outros − ded
 
   // Actualizar campos C701 e C724 e IRC ref
   sv('irc-apurado', irc_final);
