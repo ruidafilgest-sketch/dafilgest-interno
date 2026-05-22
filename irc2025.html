@@ -1730,27 +1730,27 @@ async function carregarEmpresa(chave){
 // Recolher todos os dados do formulário
 function recolherDados(){
   const dados = {};
-  // Campos de input e select — limpar NaN/Infinity/undefined
+  // Função para limpar keys — Firebase não aceita . # $ [ ]
+  const cleanKey = k => k.replace(/[.#$\[\]]/g,'_');
+
   document.querySelectorAll('input:not([readonly]), select').forEach(el=>{
     if(el.id && el.id !== 'emp-sel'){
+      const key = cleanKey(el.id);
       if(el.type==='checkbox'){
-        dados[el.id] = el.checked;
+        dados[key] = el.checked;
       } else if(el.type==='number'){
         const n = parseFloat(el.value);
-        dados[el.id] = (isNaN(n)||!isFinite(n)) ? 0 : n;
+        dados[key] = (isNaN(n)||!isFinite(n)) ? 0 : n;
       } else {
-        dados[el.id] = el.value || '';
+        dados[key] = el.value || '';
       }
     }
   });
-  // Também guardar campos readonly calculados (C701, C724, etc.)
-  ['c701','c724','irc-apurado','b-rai','b-rlp','c777','c309','c311',
-   'c351','c373','c378','c358','c364','c365','c361','c362'].forEach(id=>{
+  // Campos readonly importantes
+  ['c701','c724','b-rai','c777','c309','c311','c351','c373',
+   'c378','c358','c364','c365','c361','c362'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el){
-      const n=parseFloat(el.value);
-      dados[id]=(isNaN(n)||!isFinite(n))?0:n;
-    }
+    if(el){const n=parseFloat(el.value);dados[cleanKey(id)]=(isNaN(n)||!isFinite(n))?0:n;}
   });
   dados.designacao = document.getElementById('designacao')?.value || '';
   dados.nif        = document.getElementById('nif')?.value || '';
@@ -1767,6 +1767,14 @@ async function guardarEmpresa(){
   const chave = nif.replace(/[^a-zA-Z0-9]/g,'');
   try{
     const url = FB_URL+FB_PATH+'/'+chave+'.json?auth='+FB_KEY;
+    // Verificar payload antes de enviar
+    const json_str = JSON.stringify(dados);
+    if(json_str.includes('NaN')||json_str.includes('Infinity')){
+      alert('Erro: dados contêm valores inválidos (NaN/Infinity). Verifica a consola.');
+      console.error('Payload inválido:', json_str.substring(0,500));
+      fbStatus('Erro dados inválidos','err');
+      return;
+    }
     const r = await fetch(url,{
       method:'PUT',
       body:JSON.stringify(dados),
