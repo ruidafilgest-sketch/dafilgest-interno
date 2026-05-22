@@ -346,19 +346,19 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
         <div>
           <div class="sh">Resultado + Acréscimos principais</div>
           <div class="row">
-            <lbl style="font-weight:600">Resultado Líquido do Período (C701)</lbl>
+            <lbl style="font-weight:600">Resultado Líquido do Período = RAI − IRC (C701)</lbl>
             <span class="cf">C701</span>
-            <input id="c701" type="number" value="0" oninput="calc()" style="border-color:var(--ac);color:var(--ac);font-weight:600">
+            <input id="c701" type="number" value="0" readonly class="sub vrd" title="Calculado automaticamente: RAI − IRC">
           </div>
           <div class="row">
-            <lbl>IRC apurado — calculado automaticamente</lbl>
-            <span class="cf">IRC</span>
-            <input id="irc-apurado" type="number" readonly style="color:#ff7b72;background:var(--sf2)">
+            <lbl>IRC calculado (referência — confere com o 8121 que lançaste)</lbl>
+            <span class="cf">IRC ref.</span>
+            <input id="irc-apurado" type="number" readonly style="color:#ff7b72;background:var(--sf2)" title="IRC calculado pela ferramenta">
           </div>
           <div class="row"><lbl>Variações patrimoniais + não refletidas [art.21]</lbl><span class="cf">C702</span><input id="c702" type="number" value="0" oninput="calc()"></div>
           <div class="row"><lbl>Variações patrimoniais − não refletidas [art.24]</lbl><span class="cf">C704</span><input id="c704" type="number" value="0" oninput="calc()"></div>
           <div class="dv"></div>
-          <div class="row"><lbl>IRC+TA lançado contabilidade [art.23-A,a] <span class="cf">(calculado auto)</span></lbl><span class="cf">C724</span><input id="c724" type="number" value="0" oninput="calc()" style="color:rgba(255,123,114,.8)"></div>
+          <div class="row"><lbl>IRC+TA lançado contabilidade [art.23-A,a] <span class="cf">(auto)</span></lbl><span class="cf">C724</span><input id="c724" type="number" value="0" readonly style="color:rgba(255,123,114,.8);background:var(--sf2)" title="Calculado automaticamente = IRC coleta + derrama"></div>
           <div class="row"><lbl>Impostos diferidos [art.23-A,a]</lbl><span class="cf">C725</span><input id="c725" type="number" value="0" oninput="calc()"></div>
           <div class="row"><lbl>Despesas não documentadas [art.23-A,b]</lbl><span class="cf">C716</span><input id="c716" type="number" value="0" oninput="calc()"></div>
           <div class="row"><lbl>Encargos não documentados [art.23-A,c]</lbl><span class="cf">C731</span><input id="c731" type="number" value="0" oninput="calc()"></div>
@@ -1122,11 +1122,15 @@ window.onload=function(){
 
 function getMun(){const c=document.getElementById('municipio').value;return MUN.find(m=>m[0]===c)||MUN[0];}
 
-function getDerm(vn){
+function getDermVN(vn){
   const m=getMun();
   if(m[5]&&m[6]&&vn<=m[6])return{t:0,info:'Isenção — VN ≤ €'+fm(m[6])};
   if(m[3]!=null&&m[4]&&vn<=m[4])return{t:m[3],info:'Taxa reduzida — VN ≤ €'+fm(m[4])};
   return{t:m[2],info:'Taxa normal'};
+}
+
+function getDerm(vn){
+  return getDermVN(vn);
 }
 
 function getTVT(tipo,ca){
@@ -1210,15 +1214,15 @@ function calcBal(){
 
 function transfereBalancete(){
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
-  const rai_val = g('b-rai');   // RAI = resultado antes de impostos
-  const dep_ex  = g('b64-ex');  // excesso depreciações → C719
-  // C701 = RAI (antes de IRC) — o sistema calcula IRC e C724 automaticamente
-  sv('c701', rai_val);
-  sv('c724', 0); // limpar para recalcular automaticamente
+  const rai_val = g('b-rai');   // RAI do balancete
+  const dep_ex  = g('b64-ex'); // excesso depreciações → C719
+  // C701 recebe o RAI — o sistema calcula IRC e C724 automaticamente
+  const elC701 = document.getElementById('c701');
+  if(elC701) elC701.value = f2(rai_val);
   if(dep_ex>0) sv('c719', dep_ex);
   calc();
   setTab(1);
-  alert('Transferido!\n\nC701 = RAI = €'+fm(rai_val)+'\nO IRC foi calculado automaticamente e colocado em C724.\n\nVerifique o Q07 e preencha os restantes acréscimos/deduções necessários.');
+  alert('Transferido!\n\nRAI = €'+fm(rai_val)+'\nIRC e C724 calculados automaticamente.\nC701 (RLP) = €'+fm(rai_val - (parseFloat(document.getElementById('irc-apurado')?.value)||0))+'\n\nVerifique o Q07.');
 }
 
 function limparBal(){
@@ -1324,49 +1328,91 @@ function calc(){
   setTxt('m22-nome',nom);setTxt('m22-nif',nif);
   setTxt('m22-regime',{pme:'Regime Geral — PME/Micro',media:'Regime Geral — Média/SMC',geral:'Regime Geral',madeira:'R.A. Madeira',acores:'R.A. Açores'}[reg]||'');
 
-  // ── LÓGICA C701 → IRC automático ──
-  // C701 = Resultado Líquido do Período (introduzido pelo utilizador ou vindo do balancete)
-  // O sistema calcula o IRC sobre o LT e mostra em irc-apurado
-  // C724 = IRC (acréscimo no Q07 — lançado na contabilidade)
-  // Nota: C701 já inclui ou não o IRC — o utilizador controla
-  // Para uso profissional: C701 = RAI (antes de IRC) → sistema calcula IRC → C724 = IRC
+  // ══════════════════════════════════════════════════════
+  // LÓGICA ITERATIVA — RAI → IRC → C701 → C724
+  // ══════════════════════════════════════════════════════
+  // O balancete calcula o RAI (resultado antes de impostos)
+  // que é transferido para C701.
+  // O IRC depende do LT que depende do C724 que é o IRC.
+  // Resolve-se iterativamente em 5 ciclos (converge sempre).
+  //
+  // Fluxo:
+  //   RAI = resultado do balancete (antes de qualquer imposto)
+  //   LT  = RAI + outros acréscimos − deduções (C724 incluso)
+  //   IRC = coleta(LT) + derrama(LT) — simplificado para convergência
+  //   C724 = IRC (acréscimo obrigatório art.23-A,a)
+  //   C701 = RAI − IRC (resultado líquido do período)
+  //   LT   = C701 + C724 + outros acréscimos − deduções = RAI + outros − ded ✓
+  // ══════════════════════════════════════════════════════
 
-  const c701=v('c701');
-  const c702=v('c702'),c704=v('c704');
+  const rai = v('c701'); // C701 recebe o RAI do balancete (antes de IRC)
+  const c702=v('c702'), c704=v('c704');
   const acr_outros = v('c725')+v('c716')+v('c731')+v('c728')+v('c721')+v('c719')+v('c730')+v('c732')+v('c733')+v('c739')+v('c748')+v('c752');
   const ded = v('c736')+v('c740')+v('c759')+v('c763')+v('c768')+v('c775');
-  const c320=v('c320');
+  const c320 = v('c320');
 
-  // Calcular LT provisório (sem C724 ainda)
-  const lt_prov = c701 + c702 - c704 + acr_outros - ded;
-  // Prejuízos provisórios
-  const lim_pj_prov = lt_prov>0 ? lt_prov*.65 : 0;
-  let tot_pj_prov=0;
-  document.querySelectorAll('#pj-rows > div').forEach(d=>{
-    const ins=d.querySelectorAll('input');
-    const disp=parseFloat(ins[2]?.value)||0;
-    let dp=0; if(lt_prov>0&&disp>0) dp=Math.min(disp,Math.max(0,lim_pj_prov-tot_pj_prov));
-    tot_pj_prov+=dp;
-  });
-  const mc_prov = Math.max(0, lt_prov - tot_pj_prov - c320);
-  // Coleta provisória = IRC calculado
-  let irc_auto=0;
-  if(mc_prov>0){
-    if(lim>0) irc_auto=Math.min(mc_prov,lim)*tr+Math.max(0,mc_prov-lim)*tn;
-    else irc_auto=mc_prov*tn;
+  // VN para derrama vem directamente do balancete (711+712-717-718+72)
+  const vn_bal = v('b711')+v('b712')-v('b717')-v('b718')+v('b72');
+  const vn_derm = vn_bal > 0 ? vn_bal : (parseFloat(document.getElementById('vn2024')?.value)||0);
+
+  // Derrama municipal — taxa baseada no VN real do balancete
+  const derm_info = getDermVN(vn_derm);
+
+  // Calcular LT base = RAI + outros acréscimos − deduções (sem IRC ainda)
+  const lt_base = rai + c702 - c704 + acr_outros - ded;
+
+  // Função auxiliar — calcular coleta sobre MC
+  function calcColeta(mc){
+    if(mc<=0) return 0;
+    if(lim>0) return Math.min(mc,lim)*tr + Math.max(0,mc-lim)*tn;
+    return mc*tn;
   }
-  // Mostrar IRC apurado
-  sv('irc-apurado', irc_auto);
-  // C724 — se utilizador não preencheu manualmente, sugerir o valor calculado
-  // (C724 fica editável — utilizador pode ajustar se IRC real for diferente)
-  const c724_manual = v('c724');
-  // Se C724 está a zero e há IRC calculado, preencher automaticamente
-  if(c724_manual===0 && irc_auto>0) sv('c724', irc_auto);
 
-  // Q07 com valores finais
-  const acr=v('c724')+v('c725')+v('c716')+v('c731')+v('c728')+v('c721')+v('c719')+v('c730')+v('c732')+v('c733')+v('c739')+v('c748')+v('c752');
-  const lt=c701+c702-c704+acr-ded;
-  sv('c777',lt);
+  // Função auxiliar — calcular prejuízos dedutíveis dado um LT
+  function calcPrej(lt_val){
+    const lim65 = lt_val>0 ? lt_val*0.65 : 0;
+    let total=0;
+    document.querySelectorAll('#pj-rows > div').forEach(d=>{
+      const ins=d.querySelectorAll('input');
+      const disp=parseFloat(ins[2]?.value)||0;
+      if(lt_val>0&&disp>0){
+        const dp=Math.min(disp,Math.max(0,lim65-total));
+        total+=dp;
+      }
+    });
+    return total;
+  }
+
+  // ITERAÇÃO — 6 ciclos garantem convergência
+  let irc_iter = 0;
+  for(let i=0; i<6; i++){
+    const lt_iter  = lt_base + irc_iter; // LT = RAI_base + C724(IRC)
+    const pj_iter  = calcPrej(lt_iter);
+    const mc_iter  = Math.max(0, lt_iter - pj_iter - c320);
+    const col_iter = calcColeta(mc_iter);
+    const derm_iter= lt_iter>0 ? lt_iter*derm_info.t : 0;
+    irc_iter = col_iter + derm_iter; // IRC = coleta + derrama
+  }
+
+  // Valores finais convergidos
+  const irc_final = Math.round(irc_iter*100)/100;
+  const c724_final = irc_final;
+  const c701_final = rai - irc_final; // RLP = RAI − IRC
+  const lt_final   = lt_base + c724_final; // = RAI + outros − ded
+
+  // Actualizar campos C701 e C724 e IRC ref
+  sv('irc-apurado', irc_final);
+  // Actualizar display C701 (readonly agora — vem do cálculo)
+  const elC701 = document.getElementById('c701');
+  if(elC701){ elC701.value = f2(c701_final); }
+  // C724 — preencher automaticamente com IRC calculado
+  const elC724 = document.getElementById('c724');
+  if(elC724){ elC724.value = f2(c724_final); }
+
+  const c701 = c701_final;
+  const acr = c724_final + acr_outros;
+  const lt = lt_final;
+  sv('c777', lt);
   // Mirror para M22
   ['c701','c702','c704','c724','c725','c716','c731','c728','c721','c719','c730','c732','c733','c748','c752','c736','c740','c775'].forEach(id=>{
     const el=document.getElementById('m'+id.replace('c',''));
@@ -1419,8 +1465,8 @@ function calc(){
   sv('c373',c373);sv('m373',c373);
   const c378=c351+c373;sv('c378',c378);sv('m378',c378);
 
-  // Derrama municipal
-  const derm=getDerm(vn);
+  // Derrama municipal — usa VN do balancete (711+712) ou campo manual se balancete vazio
+  const derm=getDermVN(vn_derm);
   const c364=lt>0?lt*derm.t:0;
   sv('c364',c364);sv('m364',c364);
   setTxt('taxa-derm',pc(derm.t)+' — '+getMun()[1]);
@@ -1599,7 +1645,7 @@ function fbStatus(txt, tipo){
 
 
 // Lista de empresas embebida (78 clientes Dafilgest)
-const EMPRESAS_DAFILGEST = [{"num": 1, "nome": "1966 A Evolução do Parquet Unipessoal, Lda.", "nif": ""}, {"num": 2, "nome": "ACOLHINICIATIVA UNIPESSOAL LDA", "nif": "502217677"}, {"num": 3, "nome": "Adão Carlos Ferreira Pereira", "nif": "507550200"}, {"num": 4, "nome": "Agostinho Eduardo Silva Magalhães", "nif": "510397859"}, {"num": 5, "nome": "Albino Ricardo Carvalho Unipessoal, Lda", "nif": "506027104"}, {"num": 6, "nome": "Alcina de Jesus Pereira Alves", "nif": "509309127"}, {"num": 7, "nome": "Alesckdoom Unipessoal,Lda", "nif": "510360858"}, {"num": 8, "nome": "ANA CRISTINA FERREIRA DOS SANTOS", "nif": "515279293"}, {"num": 9, "nome": "André Filipe de Oliveira Moutas Macedo", "nif": "510247717"}, {"num": 10, "nome": "André Ribas Ribeiro Unipessoal, Lda.", "nif": "513363696"}, {"num": 11, "nome": "Angela Beatriz Gomes da Silva", "nif": "513033556"}, {"num": 12, "nome": "Antonio Miguel Costa Silva", "nif": "505403447"}, {"num": 13, "nome": "ARMINDA ALVES BAPTISTA", "nif": ""}, {"num": 14, "nome": "ARMINDO FERNANDO PINTO MONTEIRO", "nif": "505102498"}, {"num": 15, "nome": "AROMA ASSIDUO LAVANDARIAS SELF SERV.LDA.", "nif": ""}, {"num": 16, "nome": "Augusto Leite da Costa", "nif": "517260255"}, {"num": 17, "nome": "Bruno António de Oliveira Moutas Macedo", "nif": "513360212"}, {"num": 18, "nome": "Calculo Vibrante Unipessoal,Lda", "nif": "513415076"}, {"num": 19, "nome": "Carlos Ferreira Magalhães", "nif": "513074805"}, {"num": 20, "nome": "Carlos Silva & Rui Silva - Construções e Remodelações Lda", "nif": "513030425"}, {"num": 21, "nome": "CASUAL E BREVE CONSTRUÇÕES UNIPESSOAL,LDA", "nif": "510557759"}, {"num": 22, "nome": "CONSTRUÇÕES PEDRO VAZ FERREIRA LDA", "nif": "517502070"}, {"num": 23, "nome": "CRISTINA MOITA UNIPESSOAL, LDA.", "nif": ""}, {"num": 24, "nome": "Daniel Jose da Costa Ferreira", "nif": ""}, {"num": 25, "nome": "Diamantino Costa Alonso Lda", "nif": ""}, {"num": 26, "nome": "DIGNIDADE GARRIDA TRANSPORTES UNIPESSOAL LDA", "nif": ""}, {"num": 27, "nome": "Doce Forum Unipessoal, Lda", "nif": ""}, {"num": 28, "nome": "ENJOY VIEW GESTÃO E ADMINISTRAÇÃO DE BENS S A", "nif": ""}, {"num": 29, "nome": "Espírito Inalterável, Lda", "nif": "507620178"}, {"num": 30, "nome": "EXTRURECICLA,LDA.", "nif": "242550789"}, {"num": 31, "nome": "Fanviclima - Instalações de Climatização, lda", "nif": ""}, {"num": 32, "nome": "Fernando Brás Martins Unipessoal, Lda", "nif": ""}, {"num": 33, "nome": "FEYDOM SOFA SYSTEMS UNIPESSOAL LDA", "nif": ""}, {"num": 34, "nome": "Filipe Silva Lopes Unipessoal, Lda", "nif": ""}, {"num": 35, "nome": "FRANCISCO DANIEL PEDROSA DA SILVA UNIPESSOAL LDA.", "nif": ""}, {"num": 36, "nome": "H.C Araújo,Lda", "nif": "506223434"}, {"num": 37, "nome": "Helder Carneiro Unipessoal, Lda", "nif": "506844226"}, {"num": 38, "nome": "Joao Pedro Coelho Magalhaes", "nif": "226566773"}, {"num": 39, "nome": "JOAQUIM CUNHA FARIA UNIPESSOAL LDA.", "nif": "518017230"}, {"num": 40, "nome": "Joaquim David Abreu Unipessoal, Lda", "nif": "518124665"}, {"num": 41, "nome": "João Carlos Ferreira Pereira", "nif": "518242226"}, {"num": 42, "nome": "João Fernandes de Castro", "nif": "504518879"}, {"num": 43, "nome": "JP INOVAÇÕES UNIPESSOAL LDA", "nif": "186833237"}, {"num": 44, "nome": "Justina Pereira da Costa", "nif": "243304293"}, {"num": 45, "nome": "Luis Manuel Costa Unipessoal,Lda", "nif": "510513719"}, {"num": 46, "nome": "Manuel António Mendes Ribeiro", "nif": "509842054"}, {"num": 47, "nome": "Manuel Costa & Filhos Lda.", "nif": "193639190"}, {"num": 48, "nome": "Manuel Fernando Ferreira Gomes", "nif": "507209710"}, {"num": 49, "nome": "MARCO PAULO RIBEIRO ALVES", "nif": "513659099"}, {"num": 50, "nome": "MARIA DA CONCEIÇÃO FERREIRA LEAO TORRES", "nif": "517384825"}, {"num": 51, "nome": "Maria de Fátima Miranda Vaz", "nif": ""}, {"num": 52, "nome": "MARIA JÚLIA AMORIM DE BARROS", "nif": "515473154"}, {"num": 53, "nome": "Maria Machado Almeida Unipessoal, Lda", "nif": "514857501"}, {"num": 54, "nome": "Maria Orquídia Alves Ferreira Silva", "nif": "514263890"}, {"num": 55, "nome": "MARIANA GABRIELA DE FREITAS GOMES", "nif": "513713182"}, {"num": 56, "nome": "Marina Fernanda R. Martins", "nif": "514182628"}, {"num": 57, "nome": "Maura Marlene Ferreira Silva Unipessoal, Lda", "nif": "516152467"}, {"num": 58, "nome": "Mendes de Freitas, Lda", "nif": "515100803"}, {"num": 59, "nome": "MOTIVOS UNIVERSAIS UNIPESSOAL,LDA", "nif": "517110008"}, {"num": 60, "nome": "Nelson Fernando Gomes Silva", "nif": ""}, {"num": 61, "nome": "Original Flame, Lda", "nif": ""}, {"num": 62, "nome": "Paulo Joaquim Faria Leite", "nif": ""}, {"num": 63, "nome": "PAULO JORGE FELIX UNIPESSOAL LDA", "nif": ""}, {"num": 64, "nome": "Pedro Abreu - Materiais de Construção, Unipessoal Lda", "nif": ""}, {"num": 65, "nome": "PORTAL FUCHSIA UNIPESSOAL LDA.", "nif": ""}, {"num": 66, "nome": "POSTURA DE FADA UNIPESSOAL,LDA", "nif": ""}, {"num": 67, "nome": "Ricardo Mendes Fernandes, Unipessoal, Lda", "nif": ""}, {"num": 68, "nome": "ROGERIO DE SOUSA PEREIRA CARNEIRO", "nif": ""}, {"num": 69, "nome": "ROSA MARIA GOMES DA SILVA", "nif": ""}, {"num": 70, "nome": "Sara Maria Costa Oliveira", "nif": ""}, {"num": 71, "nome": "SOCIEDADE AGRICOLA SOCALCOS DE TRESOURAS LDA", "nif": ""}, {"num": 72, "nome": "SPORTCALÇAR UNIPESSOAL LDA", "nif": ""}, {"num": 73, "nome": "Supermercados Vilela, Lda", "nif": ""}, {"num": 74, "nome": "Susana Filipa Oliveira Novais", "nif": ""}, {"num": 75, "nome": "Tania Patricia Silva Pinto", "nif": ""}, {"num": 76, "nome": "TC Mendes Têxtil, Lda", "nif": ""}, {"num": 77, "nome": "URBOOST CREATIVE SOLUTIONS, LDA", "nif": ""}, {"num": 78, "nome": "WELCOME GENIALITY UNIPESSOAL, LDA", "nif": ""}];
+const EMPRESAS_DAFILGEST = [{"num": 1, "nome": "1966 A Evolução do Parquet Unipessoal, Lda.", "nif": ""}, {"num": 2, "nome": "ACOLHINICIATIVA UNIPESSOAL LDA", "nif": "517502070"}, {"num": 3, "nome": "Adão Carlos Ferreira Pereira", "nif": "193639190"}, {"num": 4, "nome": "Agostinho Eduardo Silva Magalhães", "nif": "510397859"}, {"num": 5, "nome": "Albino Ricardo Carvalho Unipessoal, Lda", "nif": "506027104"}, {"num": 6, "nome": "Alcina de Jesus Pereira Alves", "nif": "509309127"}, {"num": 7, "nome": "Alesckdoom Unipessoal,Lda", "nif": "510360858"}, {"num": 8, "nome": "ANA CRISTINA FERREIRA DOS SANTOS", "nif": "515279293"}, {"num": 9, "nome": "André Filipe de Oliveira Moutas Macedo", "nif": "242550789"}, {"num": 10, "nome": "André Ribas Ribeiro Unipessoal, Lda.", "nif": "513363696"}, {"num": 11, "nome": "Angela Beatriz Gomes da Silva", "nif": "513033556"}, {"num": 12, "nome": "Antonio Miguel Costa Silva", "nif": "513415076"}, {"num": 13, "nome": "ARMINDA ALVES BAPTISTA", "nif": ""}, {"num": 14, "nome": "ARMINDO FERNANDO PINTO MONTEIRO", "nif": "505102498"}, {"num": 15, "nome": "AROMA ASSIDUO LAVANDARIAS SELF SERV.LDA.", "nif": ""}, {"num": 16, "nome": "Augusto Leite da Costa", "nif": "517260255"}, {"num": 17, "nome": "Bruno António de Oliveira Moutas Macedo", "nif": "226566773"}, {"num": 18, "nome": "Calculo Vibrante Unipessoal,Lda", "nif": "510360858"}, {"num": 19, "nome": "Carlos Ferreira Magalhães", "nif": "513074805"}, {"num": 20, "nome": "Carlos Silva & Rui Silva - Construções e Remodelações Lda", "nif": "513030425"}, {"num": 21, "nome": "CASUAL E BREVE CONSTRUÇÕES UNIPESSOAL,LDA", "nif": "510557759"}, {"num": 22, "nome": "CONSTRUÇÕES PEDRO VAZ FERREIRA LDA", "nif": "517502070"}, {"num": 23, "nome": "CRISTINA MOITA UNIPESSOAL, LDA.", "nif": ""}, {"num": 24, "nome": "Daniel Jose da Costa Ferreira", "nif": ""}, {"num": 25, "nome": "Diamantino Costa Alonso Lda", "nif": "513074805"}, {"num": 26, "nome": "DIGNIDADE GARRIDA TRANSPORTES UNIPESSOAL LDA", "nif": ""}, {"num": 27, "nome": "Doce Forum Unipessoal, Lda", "nif": "510247717"}, {"num": 28, "nome": "ENJOY VIEW GESTÃO E ADMINISTRAÇÃO DE BENS S A", "nif": "513033556"}, {"num": 29, "nome": "Espírito Inalterável, Lda", "nif": "507620178"}, {"num": 30, "nome": "EXTRURECICLA,LDA.", "nif": "242550789"}, {"num": 31, "nome": "Fanviclima - Instalações de Climatização, lda", "nif": "504518879"}, {"num": 32, "nome": "Fernando Brás Martins Unipessoal, Lda", "nif": "513363696"}, {"num": 33, "nome": "FEYDOM SOFA SYSTEMS UNIPESSOAL LDA", "nif": "517260255"}, {"num": 34, "nome": "Filipe Silva Lopes Unipessoal, Lda", "nif": "513360212"}, {"num": 35, "nome": "FRANCISCO DANIEL PEDROSA DA SILVA UNIPESSOAL LDA.", "nif": "518529347"}, {"num": 36, "nome": "H.C Araújo,Lda", "nif": "506223434"}, {"num": 37, "nome": "Helder Carneiro Unipessoal, Lda", "nif": "506844226"}, {"num": 38, "nome": "Joao Pedro Coelho Magalhaes", "nif": "243304293"}, {"num": 39, "nome": "JOAQUIM CUNHA FARIA UNIPESSOAL LDA.", "nif": "518017230"}, {"num": 40, "nome": "Joaquim David Abreu Unipessoal, Lda", "nif": "518124665"}, {"num": 41, "nome": "João Carlos Ferreira Pereira", "nif": "518242226"}, {"num": 42, "nome": "João Fernandes de Castro", "nif": "504518879"}, {"num": 43, "nome": "JP INOVAÇÕES UNIPESSOAL LDA", "nif": "518373212"}, {"num": 44, "nome": "Justina Pereira da Costa", "nif": "243304293"}, {"num": 45, "nome": "Luis Manuel Costa Unipessoal,Lda", "nif": "509842054"}, {"num": 46, "nome": "Manuel António Mendes Ribeiro", "nif": "509842054"}, {"num": 47, "nome": "Manuel Costa & Filhos Lda.", "nif": "502217677"}, {"num": 48, "nome": "Manuel Fernando Ferreira Gomes", "nif": "507209710"}, {"num": 49, "nome": "MARCO PAULO RIBEIRO ALVES", "nif": "513659099"}, {"num": 50, "nome": "MARIA DA CONCEIÇÃO FERREIRA LEAO TORRES", "nif": "517384825"}, {"num": 51, "nome": "Maria de Fátima Miranda Vaz", "nif": "193639190"}, {"num": 52, "nome": "MARIA JÚLIA AMORIM DE BARROS", "nif": "515473154"}, {"num": 53, "nome": "Maria Machado Almeida Unipessoal, Lda", "nif": "514857501"}, {"num": 54, "nome": "Maria Orquídia Alves Ferreira Silva", "nif": "514263890"}, {"num": 55, "nome": "MARIANA GABRIELA DE FREITAS GOMES", "nif": "513713182"}, {"num": 56, "nome": "Marina Fernanda R. Martins", "nif": "514182628"}, {"num": 57, "nome": "Maura Marlene Ferreira Silva Unipessoal, Lda", "nif": "516152467"}, {"num": 58, "nome": "Mendes de Freitas, Lda", "nif": "515100803"}, {"num": 59, "nome": "MOTIVOS UNIVERSAIS UNIPESSOAL,LDA", "nif": "517110008"}, {"num": 60, "nome": "Nelson Fernando Gomes Silva", "nif": ""}, {"num": 61, "nome": "Original Flame, Lda", "nif": "517384825"}, {"num": 62, "nome": "Paulo Joaquim Faria Leite", "nif": "513659099"}, {"num": 63, "nome": "PAULO JORGE FELIX UNIPESSOAL LDA", "nif": "515473154"}, {"num": 64, "nome": "Pedro Abreu - Materiais de Construção, Unipessoal Lda", "nif": "510937330"}, {"num": 65, "nome": "PORTAL FUCHSIA UNIPESSOAL LDA.", "nif": "510102662"}, {"num": 66, "nome": "POSTURA DE FADA UNIPESSOAL,LDA", "nif": "514857501"}, {"num": 67, "nome": "Ricardo Mendes Fernandes, Unipessoal, Lda", "nif": "514263890"}, {"num": 68, "nome": "ROGERIO DE SOUSA PEREIRA CARNEIRO", "nif": ""}, {"num": 69, "nome": "ROSA MARIA GOMES DA SILVA", "nif": ""}, {"num": 70, "nome": "Sara Maria Costa Oliveira", "nif": ""}, {"num": 71, "nome": "SOCIEDADE AGRICOLA SOCALCOS DE TRESOURAS LDA", "nif": ""}, {"num": 72, "nome": "SPORTCALÇAR UNIPESSOAL LDA", "nif": "517437538"}, {"num": 73, "nome": "Supermercados Vilela, Lda", "nif": "507550200"}, {"num": 74, "nome": "Susana Filipa Oliveira Novais", "nif": "297310317"}, {"num": 75, "nome": "Tania Patricia Silva Pinto", "nif": "296661309"}, {"num": 76, "nome": "TC Mendes Têxtil, Lda", "nif": "514182628"}, {"num": 77, "nome": "URBOOST CREATIVE SOLUTIONS, LDA", "nif": "516152467"}, {"num": 78, "nome": "WELCOME GENIALITY UNIPESSOAL, LDA", "nif": "515100803"}];
 
 // Carregar lista — combina empresas locais + simulações gravadas no Firebase
 async function carregarLista(){
