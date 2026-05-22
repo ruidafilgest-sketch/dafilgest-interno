@@ -94,6 +94,16 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
 /* Anexo D */
 .adrow{display:grid;grid-template-columns:55px 1fr 110px;gap:6px;align-items:center;margin-bottom:3px}
 
+
+/* Firebase bar */
+.fb-bar{background:var(--sf2);border-bottom:1px solid var(--bd);padding:6px 18px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fb-status{font-size:10px;font-family:var(--mo);padding:2px 8px;border-radius:3px}
+.fb-ok{background:rgba(46,160,67,.15);color:#7ee787;border:1px solid rgba(46,160,67,.3)}
+.fb-err{background:rgba(218,54,51,.12);color:#ff7b72;border:1px solid rgba(218,54,51,.3)}
+.fb-loading{background:rgba(232,160,32,.12);color:var(--ac);border:1px solid rgba(232,160,32,.3)}
+.emp-sel{background:var(--bg);border:1px solid var(--bd);color:var(--tx);font-family:var(--mo);font-size:11px;padding:4px 8px;border-radius:3px;cursor:pointer;min-width:200px}
+.emp-sel:focus{outline:none;border-color:var(--ac2)}
+
 @media print{
   body{background:#fff!important;color:#000!important;font-size:11px}
   .hdr,.btns,.btnp,.btnx,.brow,.tabs{display:none!important}
@@ -119,6 +129,20 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
     <span id="tag-regime" class="tag">PME</span>
     <span class="hbdg">Exercício 2025 · Prazo 19/06/2026</span>
   </div>
+</div>
+
+
+<!-- FIREBASE BAR -->
+<div class="fb-bar" id="fb-bar">
+  <span style="font-size:11px;color:var(--tx2);font-weight:600">Empresa:</span>
+  <select class="emp-sel" id="emp-sel" onchange="carregarEmpresa(this.value)">
+    <option value="">— Nova simulação —</option>
+  </select>
+  <button class="btn btnp" onclick="guardarEmpresa()" style="font-size:11px;padding:4px 10px">💾 Guardar</button>
+  <button class="btns" onclick="novaSimulacao()" style="font-size:11px;padding:4px 10px">+ Nova</button>
+  <button class="btns" onclick="eliminarEmpresa()" style="font-size:11px;padding:4px 10px;color:var(--rd);border-color:rgba(218,54,51,.3)" id="btn-eliminar">🗑 Eliminar</button>
+  <span class="fb-status fb-loading" id="fb-status">A conectar…</span>
+  <span style="font-size:10px;color:var(--tx3);margin-left:auto">Firebase: dafilgest-interno · /irc2025</span>
 </div>
 
 <div class="wrap">
@@ -192,84 +216,121 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
   <!-- ========== TAB 0: BALANCETE ========== -->
   <div id="tc0" class="tc on">
     <div class="bp">
-      <div class="al ai">Introduza os saldos do balancete analítico a 31/12/2025. O sistema calcula automaticamente o resultado contabilístico e preenche o campo C701.</div>
-      <div class="g2">
+      <div class="al ai"><strong>Balancete analítico SNC a 31/12/2025.</strong> Contas 31x = compras do exercício (saldo devedor). Contas 32–37 = existências (saldo balanço: abertura=EI, encerramento=EF). 61x nunca é entrada — é calculado automaticamente. Variação produção (73) = EF(34+35+36) − EI(34+35+36), calculada automaticamente.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+
+        <!-- COLUNA 1: RENDIMENTOS + COMPRAS/EXISTÊNCIAS -->
         <div>
-          <!-- RENDIMENTOS -->
-          <div class="sh">Rendimentos (Classe 7)</div>
-          <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:5px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
-            <div>Conta</div><div>Descrição</div><div>Saldo credor (€)</div>
-          </div>
-          <div class="blrow"><span class="cf">711/712</span><label class="lbl">Vendas de mercadorias e produtos</label><input id="b711" type="number" value="0" oninput="calcBal()"></div>
+          <div class="sh">Rendimentos — Classe 7 (saldos credores)</div>
+          <div style="display:grid;grid-template-columns:52px 1fr 96px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:3px"><div>Conta</div><div>Descrição</div><div>Valor (€)</div></div>
+          <div class="blrow"><span class="cf">711</span><label class="lbl">Vendas de mercadorias</label><input id="b711" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">712</span><label class="lbl">Vendas de produtos acabados</label><input id="b712" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">717</span><label class="lbl">Devoluções de vendas (−)</label><input id="b717" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">718</span><label class="lbl">Descontos e abatimentos em vendas (−)</label><input id="b718" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">72</span><label class="lbl">Prestações de serviços</label><input id="b72" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">73</span><label class="lbl">Variação nos inventários da produção</label><input id="b73" type="number" value="0" oninput="calcBal()" title="Pode ser negativo"></div>
           <div class="blrow"><span class="cf">74</span><label class="lbl">Trabalhos para a própria entidade</label><input id="b74" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">75</span><label class="lbl">Subsídios à exploração</label><input id="b75" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">76</span><label class="lbl">Reversões</label><input id="b76" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">77</span><label class="lbl">Ganhos por aumentos de justo valor</label><input id="b77" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">781</span><label class="lbl">Rendimentos e ganhos em inv. financeiros</label><input id="b781" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">782</span><label class="lbl">Rendimentos e ganhos em propriedades inv.</label><input id="b782" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">783</span><label class="lbl">Rendimentos e ganhos em outros ativos</label><input id="b783" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">784/785</span><label class="lbl">Rendimentos e ganhos financeiros</label><input id="b784" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">786</span><label class="lbl">Rendimentos suplementares</label><input id="b786" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">79</span><label class="lbl">Outros rendimentos e ganhos</label><input id="b79" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">781</span><label class="lbl">Rend. e ganhos em invest. financeiros</label><input id="b781" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">782</span><label class="lbl">Rend. e ganhos em prop. investimento</label><input id="b782" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">783</span><label class="lbl">Rend. e ganhos em outros ativos</label><input id="b783" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">785</span><label class="lbl">Rend. e ganhos em subsidiárias/assoc.</label><input id="b785" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">786</span><label class="lbl">Rend. suplementares (781x aluguer, etc.)</label><input id="b786" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">788</span><label class="lbl">Outros rendimentos e ganhos</label><input id="b788" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">79</span><label class="lbl">Rendimentos e ganhos de financiamento</label><input id="b79" type="number" value="0" oninput="calcBal()"></div>
           <div class="dv"></div>
-          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL RENDIMENTOS</label><input id="b-tot-rend" type="number" readonly class="sub"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL RENDIMENTOS (excl. 73)</label><input id="b-tot-rend" type="number" readonly class="sub"></div>
 
-          <!-- APURAMENTO CMVMC -->
-          <div class="sh">CMVMC (Custo Merc./Mat. Vendidas e Consumidas)</div>
-          <div class="blrow"><span class="cf">EI Merc</span><label class="lbl">Existências iniciais de mercadorias</label><input id="b-ei-merc" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">Compras</span><label class="lbl">Compras de mercadorias (611)</label><input id="b-comp-merc" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">EF Merc</span><label class="lbl">Existências finais de mercadorias</label><input id="b-ef-merc" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span></span><label class="lbl">= CMVMC Mercadorias</label><input id="b-cmvmc-merc" type="number" readonly class="vrd"></div>
+          <div class="sh" style="margin-top:10px">Variação da Produção — Conta 73 (automática)</div>
+          <div class="al ai" style="font-size:10px;margin-bottom:4px">73 = EF(34+35+36) − EI(34+35+36). Positiva = aumento produção; negativa = diminuição.</div>
+          <div class="blrow"><span class="cf">73</span><label class="lbl">Variação nos inventários da produção</label><input id="b73" type="number" readonly class="sub"></div>
           <div class="dv"></div>
-          <div class="blrow"><span class="cf">EI MP</span><label class="lbl">Existências iniciais de matérias-primas</label><input id="b-ei-mp" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">Compras</span><label class="lbl">Compras de matérias-primas (612)</label><input id="b-comp-mp" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">EF MP</span><label class="lbl">Existências finais de matérias-primas</label><input id="b-ef-mp" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span></span><label class="lbl">= Consumo de matérias-primas</label><input id="b-consumo-mp" type="number" readonly class="vrd"></div>
-          <div class="dv"></div>
-          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL CMVMC (611+612)</label><input id="b-tot-cmvmc" type="number" readonly class="sub"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL RENDIMENTOS + VAR. PRODUÇÃO</label><input id="b-tot-rend-total" type="number" readonly class="sub"></div>
         </div>
+
+        <!-- COLUNA 2: COMPRAS (31x) + EXISTÊNCIAS (32–37) + CMVMC -->
         <div>
-          <!-- GASTOS -->
-          <div class="sh">Gastos (Classe 6)</div>
-          <div style="display:grid;grid-template-columns:60px 1fr 100px;gap:5px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:4px">
-            <div>Conta</div><div>Descrição</div><div>Saldo devedor (€)</div>
-          </div>
+          <div class="sh">Compras — Conta 31x (saldos devedores do balancete)</div>
+          <div style="display:grid;grid-template-columns:52px 1fr 96px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:3px"><div>Conta</div><div>Descrição</div><div>Valor (€)</div></div>
+          <div class="blrow"><span class="cf">311</span><label class="lbl">Compras de mercadorias</label><input id="b311" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">312</span><label class="lbl">Compras de mat.-primas, subs. e cons.</label><input id="b312" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">313</span><label class="lbl">Compras ativos biológicos</label><input id="b313" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">317 (−)</span><label class="lbl">Devoluções de compras</label><input id="b317" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">318 (−)</span><label class="lbl">Descontos e abatimentos em compras</label><input id="b318" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">Compras líquidas</label><input id="b-comp-liq" type="number" readonly class="vrd"></div>
+
+          <div class="sh" style="margin-top:10px">Existências — Contas 32/33/34/35/36/37 (saldos de balanço)</div>
+          <div class="al ai" style="font-size:10px;margin-bottom:4px">EI = saldo abertura 01/01/2025 · EF = saldo encerramento 31/12/2025 (inventário físico)</div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:4px 0 2px;font-weight:600">Mercadorias (32)</div>
+          <div class="blrow"><span class="cf">32 EI</span><label class="lbl">Existências iniciais mercadorias</label><input id="b-ei-32" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">32 EF</span><label class="lbl">Existências finais mercadorias</label><input id="b-ef-32" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">611</span><label class="lbl">= CMVMC Mercadorias (auto)</label><input id="b-611" type="number" readonly class="vrd"></div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px;font-weight:600">Matérias-primas, subs. e consumo (33)</div>
+          <div class="blrow"><span class="cf">33 EI</span><label class="lbl">Existências iniciais mat.-primas</label><input id="b-ei-33" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">33 EF</span><label class="lbl">Existências finais mat.-primas</label><input id="b-ef-33" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">612</span><label class="lbl">= Consumo mat.-primas (auto)</label><input id="b-612" type="number" readonly class="vrd"></div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px;font-weight:600">Produtos acabados e intermédios (34)</div>
+          <div class="blrow"><span class="cf">34 EI</span><label class="lbl">Existências iniciais produtos acabados</label><input id="b-ei-34" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">34 EF</span><label class="lbl">Existências finais produtos acabados</label><input id="b-ef-34" type="number" value="0" oninput="calcBal()"></div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px;font-weight:600">Subprodutos, desperdícios (35)</div>
+          <div class="blrow"><span class="cf">35 EI</span><label class="lbl">Existências iniciais subprodutos</label><input id="b-ei-35" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">35 EF</span><label class="lbl">Existências finais subprodutos</label><input id="b-ef-35" type="number" value="0" oninput="calcBal()"></div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px;font-weight:600">Produtos e trabalhos em curso (36)</div>
+          <div class="blrow"><span class="cf">36 EI</span><label class="lbl">Existências iniciais TEC/PI</label><input id="b-ei-36" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">36 EF</span><label class="lbl">Existências finais TEC/PI</label><input id="b-ef-36" type="number" value="0" oninput="calcBal()"></div>
+
+          <div style="font-size:10px;color:var(--tx3);margin:6px 0 2px;font-weight:600">Ativos biológicos (37)</div>
+          <div class="blrow"><span class="cf">37 EI</span><label class="lbl">Existências iniciais ativos biológicos</label><input id="b-ei-37" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">37 EF</span><label class="lbl">Existências finais ativos biológicos</label><input id="b-ef-37" type="number" value="0" oninput="calcBal()"></div>
+          <div class="dv"></div>
+          <div class="blrow"><span class="cf">61x</span><label class="lbl" style="font-weight:600">TOTAL CMVMC (611+612+613 auto)</label><input id="b-tot-cmvmc" type="number" readonly class="sub"></div>
+        </div>
+
+        <!-- COLUNA 3: GASTOS + RESULTADO -->
+        <div>
+          <div class="sh">Gastos — Classe 6 (saldos devedores, excl. 61x)</div>
+          <div style="display:grid;grid-template-columns:52px 1fr 96px;gap:4px;font-size:10px;color:var(--tx3);padding-bottom:3px;border-bottom:1px solid var(--bd);margin-bottom:3px"><div>Conta</div><div>Descrição</div><div>Valor (€)</div></div>
           <div class="blrow"><span class="cf">62</span><label class="lbl">Fornecimentos e serviços externos</label><input id="b62" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">63</span><label class="lbl">Gastos com o pessoal</label><input id="b63" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">641/642</span><label class="lbl">Depreciações e amortizações (aceites)</label><input id="b64-ac" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">641/642</span><label class="lbl">Depreciações e amortizações (excesso fiscal)</label><input id="b64-ex" type="number" value="0" oninput="calcBal()" title="Parte não aceite fiscalmente — vai para C719"></div>
+          <div class="blrow"><span class="cf">641/642</span><label class="lbl">Depreciações/amortizações (total 64x)</label><input id="b64" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">64 excesso</span><label class="lbl">↳ excesso fiscal (parte não aceite → C719)</label><input id="b64-ex" type="number" value="0" oninput="calcBal()" title="Introduzir apenas a parte que excede os limites fiscais"></div>
           <div class="blrow"><span class="cf">65</span><label class="lbl">Perdas por imparidade</label><input id="b65" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">66</span><label class="lbl">Perdas por reduções de justo valor</label><input id="b66" type="number" value="0" oninput="calcBal()"></div>
           <div class="blrow"><span class="cf">67</span><label class="lbl">Provisões do período</label><input id="b67" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">681/682</span><label class="lbl">Perdas em inv. financeiros e prop. inv.</label><input id="b681" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">683</span><label class="lbl">Perdas em outros ativos</label><input id="b683" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">684/685</span><label class="lbl">Juros e gastos financeiros similares</label><input id="b684" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">686</span><label class="lbl">Gastos e perdas em subsidiárias</label><input id="b686" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">69</span><label class="lbl">Outros gastos e perdas</label><input id="b69" type="number" value="0" oninput="calcBal()"></div>
-          <div class="blrow"><span class="cf">6881</span><label class="lbl">IRC estimado (lançado na contab.)</label><input id="b-irc-cont" type="number" value="0" oninput="calcBal()" title="Vai automaticamente para C724"></div>
+          <div class="blrow"><span class="cf">681</span><label class="lbl">Impostos (681x — IRC não estimado)</label><input id="b681" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">682</span><label class="lbl">Descontos de pronto pagamento concedidos</label><input id="b682" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">683</span><label class="lbl">Dívidas incobráveis</label><input id="b683" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">684</span><label class="lbl">Perdas em inventários (sinistros, quebras)</label><input id="b684" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">685/686</span><label class="lbl">Perdas em investimentos financeiros</label><input id="b685" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">687</span><label class="lbl">Perdas em investimentos não financeiros</label><input id="b687" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">688</span><label class="lbl">Outros gastos (donativos, quotizações…)</label><input id="b688" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">69</span><label class="lbl">Gastos e perdas de financiamento (juros)</label><input id="b69" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">8121</span><label class="lbl">IRC estimado lançado na contab. (→ C724)</label><input id="b-irc-cont" type="number" value="0" oninput="calcBal()" style="border-color:rgba(232,160,32,.4)"></div>
           <div class="dv"></div>
-          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL GASTOS (excl. CMVMC)</label><input id="b-tot-gast" type="number" readonly class="sub"></div>
-          <div class="dv"></div>
+          <div class="blrow"><span></span><label class="lbl" style="font-weight:600">TOTAL GASTOS (excl. 61x e 8121)</label><input id="b-tot-gast" type="number" readonly class="sub"></div>
 
-          <!-- RESULTADO -->
-          <div class="sh">Resultado Contabilístico</div>
-          <div class="blrow"><span></span><label class="lbl">Total Rendimentos</label><input id="b-res-rend" type="number" readonly></div>
-          <div class="blrow"><span></span><label class="lbl">(-) CMVMC total</label><input id="b-res-cmvmc" type="number" readonly></div>
-          <div class="blrow"><span></span><label class="lbl">(-) Gastos totais (excl. CMVMC)</label><input id="b-res-gast" type="number" readonly></div>
+          <div class="sh" style="margin-top:10px">Resultado Contabilístico</div>
+          <div class="blrow"><span></span><label class="lbl">Rendimentos totais (incl. 73)</label><input id="b-res-rend" type="number" readonly></div>
+          <div class="blrow"><span></span><label class="lbl">(−) CMVMC total (61x)</label><input id="b-res-cmvmc" type="number" readonly></div>
+          <div class="blrow"><span></span><label class="lbl">(−) Gastos totais (excl. 61x)</label><input id="b-res-gast" type="number" readonly></div>
           <div class="dv"></div>
-          <div class="blrow"><span></span><label class="lbl" style="font-weight:600;color:var(--ac)">RAI (Resultado Antes de Impostos)</label><input id="b-rai" type="number" readonly class="sub"></div>
-          <div class="blrow"><span class="cf">(-)</span><label class="lbl">IRC estimado contabilizado</label><input id="b-irc-cont2" type="number" readonly></div>
-          <div class="blrow"><span class="cf">8122</span><label class="lbl">Imposto diferido (devedor +, credor -)</label><input id="b-id" type="number" value="0" oninput="calcBal()"></div>
+          <div class="blrow"><span class="cf">811</span><label class="lbl" style="font-weight:600;color:var(--ac)">RAI — Resultado Antes de Impostos</label><input id="b-rai" type="number" readonly class="sub"></div>
+          <div class="blrow"><span class="cf">8121(−)</span><label class="lbl">IRC estimado contabilizado</label><input id="b-irc-cont2" type="number" readonly></div>
+          <div class="blrow"><span class="cf">8122</span><label class="lbl">Imposto diferido (+ ativo / − passivo)</label><input id="b-id" type="number" value="0" oninput="calcBal()"></div>
           <div class="dv"></div>
-          <div class="blrow"><span></span><label class="lbl" style="font-weight:600;color:var(--ac)">RLP = C701 → Q07</label><input id="b-rlp" type="number" readonly class="sub"></div>
+          <div class="blrow"><span class="cf">818</span><label class="lbl" style="font-weight:600;color:#7ee787">RLP = Resultado Líquido do Período → C701</label><input id="b-rlp" type="number" readonly class="sub vrd"></div>
           <div id="al-bal-rlp" class="al aok" style="display:none;margin-top:6px"></div>
           <div class="brow" style="margin-top:10px">
             <button class="btnp" onclick="transfereBalancete()">⟶ Transferir para Q07</button>
             <button class="btns" onclick="limparBal()">Limpar balancete</button>
           </div>
-          <div class="nota">O botão transfere o RLP para C701 e os excessos de depreciação para C719. IRC contabilizado para C724.</div>
+          <div class="nota">Transfere: RLP→C701 · IRC estimado→C724 · Excesso depreciações→C719.</div>
         </div>
       </div>
     </div>
@@ -443,6 +504,31 @@ input:checked+.tsl:before{transform:translateX(14px);background:#000}
   <div id="tc6" class="tc">
     <div class="bp">
       <div class="al ai">Resumo tipo Modelo 22 — para conferência antes de submeter no Portal AT. Todos os valores calculados automaticamente.</div>
+
+
+      <!-- Q04 -->
+      <div class="m22-section">
+        <div class="m22-title">QUADRO 04 — Volume de Negócios e Enquadramento</div>
+        <div class="g2">
+          <div>
+            <div class="m22-row"><span class="m22-campo">04-A</span><lbl>Volume de negócios do período (71+72 líq.)</lbl><input id="m04a" type="number" readonly style="color:var(--ac);font-weight:600"></div>
+            <div class="m22-row"><span class="m22-campo">04-B</span><lbl>Total de rendimentos e ganhos (classe 7)</lbl><input id="m04b" type="number" readonly style="color:var(--ac);font-weight:600"></div>
+            <div class="m22-row"><span class="m22-campo">04-C</span><lbl>Resultado líquido do período (818)</lbl><input id="m04c" type="number" readonly></div>
+          </div>
+          <div>
+            <div class="m22-row"><span class="m22-campo">040</span><lbl>Qualificação da empresa</lbl>
+              <select id="m040" style="font-size:11px;text-align:left" onchange="calc()">
+                <option value="1">Microentidade</option>
+                <option value="2" selected>Pequena empresa (PME)</option>
+                <option value="3">Média empresa</option>
+                <option value="4">Grande empresa</option>
+              </select>
+            </div>
+            <div class="m22-row"><span class="m22-campo">041</span><lbl>CAE principal</lbl><input id="m041" class="txt" type="text" placeholder="ex: 47110"></div>
+            <div class="m22-row"><span class="m22-campo">042</span><lbl>N.º trabalhadores ao serviço</lbl><input id="m042" type="number" value="0"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- ROSTO -->
       <div class="m22-section">
@@ -882,55 +968,103 @@ function getTVT(tipo,ca){
 // ====== BALANCETE ======
 function calcBal(){
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
-  // Rendimentos
-  const rend=g('b711')+g('b72')+g('b73')+g('b74')+g('b75')+g('b76')+g('b77')+g('b781')+g('b782')+g('b783')+g('b784')+g('b786')+g('b79');
-  sv('b-tot-rend',rend);
-  // CMVMC
-  const cmvmc_merc=g('b-ei-merc')+g('b-comp-merc')-g('b-ef-merc');
-  sv('b-cmvmc-merc',cmvmc_merc);
-  const consumo_mp=g('b-ei-mp')+g('b-comp-mp')-g('b-ef-mp');
-  sv('b-consumo-mp',consumo_mp);
-  const tot_cmvmc=cmvmc_merc+consumo_mp;
-  sv('b-tot-cmvmc',tot_cmvmc);
-  // Gastos (excl CMVMC)
-  const irc_cont=g('b-irc-cont');
-  const gast=g('b62')+g('b63')+g('b64-ac')+g('b64-ex')+g('b65')+g('b66')+g('b67')+g('b681')+g('b683')+g('b684')+g('b686')+g('b69')+irc_cont;
-  sv('b-tot-gast',gast);
-  // Resultado
-  const rai=rend-tot_cmvmc-gast;
-  sv('b-rai',rai);sv('b-res-rend',rend);sv('b-res-cmvmc',tot_cmvmc);sv('b-res-gast',gast);sv('b-irc-cont2',irc_cont);
-  // RLP = RAI - IRC + ID
-  const id_val=g('b-id');
-  const rlp=rai-irc_cont+id_val; // RAI já inclui o IRC contabilizado como gasto; RLP = RAI - IRC estimado + ID
-  // Correto: RLP = RAI (que já deduziu IRC como gasto 6881)
-  // Mas campo 701 = RLP = resultado líquido = RAI - Imposto período
-  // Se IRC já está em 6881, então RAI já é líquido de IRC contab.
-  // RLP = RAI + imposto diferido (se credor 8122 reduz RLP)
-  const rlp_final = rai + id_val;
-  sv('b-rlp',rlp_final);
+
+  // ── RENDIMENTOS (classe 7, excl. 73) ──
+  const rend = g('b711')+g('b712')-g('b717')-g('b718')  // vendas líquidas
+             + g('b72')   // prestações de serviços
+             + g('b74')   // trabalhos p/ própria entidade
+             + g('b75')   // subsídios à exploração
+             + g('b76')   // reversões
+             + g('b77')   // ganhos justo valor
+             + g('b781')+g('b782')+g('b783')+g('b785')+g('b786')+g('b788') // outros rend.
+             + g('b79');  // rend. financiamento
+  sv('b-tot-rend', rend);
+
+  // ── COMPRAS LÍQUIDAS (31x) ──
+  const comp_liq = g('b311')+g('b312')+g('b313') - g('b317') - g('b318');
+  sv('b-comp-liq', comp_liq);
+
+  // ── CMVMC (61x) — EI(32/33) + Compras líquidas(311/312) − EF(32/33) ──
+  const c611 = g('b-ei-32') + g('b311') - g('b317') - g('b318') - g('b-ef-32'); // mercadorias
+  const c612 = g('b-ei-33') + g('b312') - g('b-ef-33');                          // mat.-primas
+  const c613 = g('b-ei-37') + g('b313') - g('b-ef-37');                          // ativos biológicos
+  sv('b-611', c611);
+  sv('b-612', c612);
+  const tot_cmvmc = c611 + c612 + c613;
+  sv('b-tot-cmvmc', tot_cmvmc);
+
+  // ── VARIAÇÃO DA PRODUÇÃO (73) = EF(34+35+36) − EI(34+35+36) ──
+  const ei_prod = g('b-ei-34')+g('b-ei-35')+g('b-ei-36');
+  const ef_prod = g('b-ef-34')+g('b-ef-35')+g('b-ef-36');
+  const c73 = ef_prod - ei_prod; // positivo = aumento produção; negativo = diminuição
+  sv('b73', c73);
+
+  // Total rendimentos incluindo variação produção
+  const rend_total = rend + c73;
+  sv('b-tot-rend-total', rend_total);
+
+  // ── GASTOS (classe 6, excl. 61x e 8121) ──
+  const irc_cont = g('b-irc-cont');
+  const gast = g('b62')+g('b63')+g('b64')+g('b65')+g('b66')+g('b67')
+             + g('b681')+g('b682')+g('b683')+g('b684')+g('b685')+g('b687')+g('b688')
+             + g('b69')
+             + irc_cont; // 8121 faz parte dos gastos contabilísticos
+  sv('b-tot-gast', gast);
+
+  // ── RESULTADO ──
+  // RAI = Rendimentos totais − CMVMC − Gastos (incl. 8121)
+  // Nota: se 8121 está nos gastos, RAI já inclui o efeito do IRC estimado
+  // RLP = RAI − IRC estimado (8121) + Imposto diferido (8122)
+  // = (Rend − CMVMC − Gastos_excl_IRC) − IRC + ID
+  const gast_excl_irc = gast - irc_cont;
+  const rai = rend_total - tot_cmvmc - gast; // RAI já com IRC nos gastos
+  sv('b-rai', rai);
+  sv('b-res-rend', rend_total);
+  sv('b-res-cmvmc', tot_cmvmc);
+  sv('b-res-gast', gast);
+  sv('b-irc-cont2', irc_cont);
+
+  // RLP = RAI + ID (o IRC já está deduzido no RAI via 8121)
+  const id_val = g('b-id');
+  const rlp = rai + id_val;
+  sv('b-rlp', rlp);
+
   const al=document.getElementById('al-bal-rlp');
-  if(al){al.style.display='block';al.textContent='RLP = €'+fm(rlp_final)+' → será transferido para C701 ao clicar no botão';}
+  if(al){
+    al.style.display='block';
+    const tipo = rlp>=0 ? 'Resultado positivo' : 'Prejuízo';
+    al.className = rlp>=0 ? 'al aok' : 'al ae';
+    al.innerHTML = `<strong>${tipo}: €${fm(Math.abs(rlp))}</strong> → C701 ao transferir &nbsp;|&nbsp; CMVMC: €${fm(tot_cmvmc)} &nbsp;|&nbsp; Var.Prod. (73): €${fm(c73)}`;
+  }
 }
 
 function transfereBalancete(){
   const g=id=>parseFloat(document.getElementById(id)?.value)||0;
-  const rlp=g('b-rlp');
-  const irc_cont=g('b-irc-cont');
-  const dep_ex=g('b64-ex');
-  // Preencher Q07
-  sv('c701',rlp);
-  if(irc_cont>0)sv('c724',irc_cont);
-  if(dep_ex>0)sv('c719',dep_ex);
+  const rlp   = g('b-rlp');
+  const irc   = g('b-irc-cont');
+  const dep_ex= g('b64-ex');
+  // C701 = RLP
+  sv('c701', rlp);
+  // C724 = IRC+TA lançado na contabilidade
+  if(irc>0) sv('c724', irc);
+  // C719 = depreciações/amortizações não aceites fiscalmente
+  if(dep_ex>0) sv('c719', dep_ex);
   calc();
-  setTab(1); // ir para Q07
-  alert('Transferido! Verifique o Q07 e ajuste os restantes acréscimos/deduções necessários.');
+  setTab(1);
+  alert('Transferido!\n\nVerifique o Q07 e preencha os restantes acréscimos e deduções necessários (multas, provisões não aceites, etc.).');
 }
 
 function limparBal(){
-  ['b711','b72','b73','b74','b75','b76','b77','b781','b782','b783','b784','b786','b79',
-   'b-ei-merc','b-comp-merc','b-ef-merc','b-ei-mp','b-comp-mp','b-ef-mp',
-   'b62','b63','b64-ac','b64-ex','b65','b66','b67','b681','b683','b684','b686','b69',
-   'b-irc-cont','b-id'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='0';});
+  ['b711','b712','b717','b718','b72','b74','b75','b76','b77',
+   'b781','b782','b783','b785','b786','b788','b79',
+   'b311','b312','b313','b317','b318',
+   'b-ei-32','b-ef-32','b-ei-33','b-ef-33',
+   'b-ei-34','b-ef-34','b-ei-35','b-ef-35','b-ei-36','b-ef-36',
+   'b-ei-37','b-ef-37',
+   'b62','b63','b64','b64-ex','b65','b66','b67',
+   'b681','b682','b683','b684','b685','b687','b688','b69',
+   'b-irc-cont','b-id'
+  ].forEach(id=>{const el=document.getElementById(id);if(el)el.value='0';});
   calcBal();
 }
 
@@ -1217,6 +1351,177 @@ function limpar(){
   TA_PRE.forEach(p=>addTAF(p.l,0,p.tn,p.ta));
   addVT();addPrej();addBF();limparBal();calc();
 }
+
+// ============================================================
+// FIREBASE — IRC 2025 · dafilgest-interno · /irc2025
+// ============================================================
+const FB_URL  = 'https://dafilgest-interno-default-rtdb.europe-west1.firebasedatabase.app';
+const FB_PATH = '/dafilgest/irc2025';
+const FB_KEY  = 'NLehfqIr5GqKyyKaIGg8YPSloZVo3qrrxcgboG2x';
+
+async function fbGet(path){
+  try{
+    const r = await fetch(FB_URL+path+'.json?auth='+FB_KEY,{cache:'no-store'});
+    if(!r.ok) return null;
+    return await r.json();
+  }catch{return null;}
+}
+async function fbSet(path, data){
+  try{
+    const r = await fetch(FB_URL+path+'.json?auth='+FB_KEY,{
+      method:'PUT', body:JSON.stringify(data),
+      headers:{'Content-Type':'application/json'}
+    });
+    return r.ok;
+  }catch{return false;}
+}
+async function fbDelete(path){
+  try{
+    const r = await fetch(FB_URL+path+'.json?auth='+FB_KEY,{method:'DELETE'});
+    return r.ok;
+  }catch{return false;}
+}
+
+function fbStatus(txt, tipo){
+  const el = document.getElementById('fb-status');
+  if(!el) return;
+  el.textContent = txt;
+  el.className = 'fb-status ' + (tipo==='ok'?'fb-ok':tipo==='err'?'fb-err':'fb-loading');
+}
+
+// Carregar lista de empresas
+async function carregarLista(){
+  fbStatus('A carregar…','loading');
+  const data = await fbGet(FB_PATH);
+  const sel = document.getElementById('emp-sel');
+  if(!sel) return;
+  // guardar opção atual
+  const atual = sel.value;
+  // limpar excepto primeiro
+  while(sel.options.length > 1) sel.remove(1);
+  if(data){
+    Object.entries(data).sort((a,b)=>a[1].designacao?.localeCompare(b[1].designacao)||0).forEach(([nif,emp])=>{
+      const o = document.createElement('option');
+      o.value = nif;
+      o.textContent = (emp.designacao||nif) + (emp.nif?' ('+emp.nif+')':'');
+      sel.appendChild(o);
+    });
+    fbStatus(Object.keys(data).length+' empresas','ok');
+  } else {
+    fbStatus('Sem dados','ok');
+  }
+  if(atual) sel.value = atual;
+}
+
+// Carregar dados de uma empresa
+async function carregarEmpresa(nif){
+  if(!nif){ novaSimulacao(); return; }
+  fbStatus('A carregar…','loading');
+  const data = await fbGet(FB_PATH+'/'+nif);
+  if(!data){ fbStatus('Erro ao carregar','err'); return; }
+  // Preencher todos os campos
+  Object.entries(data).forEach(([id, val])=>{
+    const el = document.getElementById(id);
+    if(el && !el.readOnly){
+      if(el.type==='checkbox') el.checked = !!val;
+      else el.value = val;
+    }
+  });
+  calc();
+  calcBal();
+  fbStatus('Carregado: '+( data.designacao||nif),'ok');
+  document.getElementById('btn-eliminar').style.display='';
+}
+
+// Recolher todos os dados do formulário
+function recolherDados(){
+  const dados = {};
+  // Campos de input e select
+  document.querySelectorAll('input:not([readonly]), select').forEach(el=>{
+    if(el.id && el.id !== 'emp-sel'){
+      dados[el.id] = el.type==='checkbox' ? el.checked : (parseFloat(el.value)||el.value||0);
+    }
+  });
+  // Garantir NIF como chave
+  dados.designacao = document.getElementById('designacao')?.value || '';
+  dados.nif = document.getElementById('nif')?.value || '';
+  dados._updated = new Date().toISOString();
+  return dados;
+}
+
+// Guardar empresa
+async function guardarEmpresa(){
+  const nif = document.getElementById('nif')?.value?.trim();
+  if(!nif){ alert('Preencha o NIF da empresa antes de guardar.'); return; }
+  fbStatus('A guardar…','loading');
+  const dados = recolherDados();
+  // Usar NIF como chave (remover caracteres especiais)
+  const chave = nif.replace(/[^a-zA-Z0-9]/g,'');
+  const ok = await fbSet(FB_PATH+'/'+chave, dados);
+  if(ok){
+    fbStatus('Guardado ✓','ok');
+    await carregarLista();
+    document.getElementById('emp-sel').value = chave;
+    document.getElementById('btn-eliminar').style.display='';
+  } else {
+    fbStatus('Erro ao guardar','err');
+  }
+}
+
+// Nova simulação — limpar tudo
+function novaSimulacao(){
+  if(!confirm('Limpar todos os dados para nova simulação?')) return;
+  document.getElementById('emp-sel').value = '';
+  document.getElementById('btn-eliminar').style.display='none';
+  limpar();
+  fbStatus('Nova simulação','ok');
+}
+
+// Eliminar empresa
+async function eliminarEmpresa(){
+  const sel = document.getElementById('emp-sel');
+  const nif = sel?.value;
+  const nome = sel?.options[sel.selectedIndex]?.text || nif;
+  if(!nif){ alert('Nenhuma empresa selecionada.'); return; }
+  if(!confirm('Eliminar dados de:\n'+nome+'\n\nEsta ação não pode ser revertida.')) return;
+  fbStatus('A eliminar…','loading');
+  const ok = await fbDelete(FB_PATH+'/'+nif);
+  if(ok){
+    fbStatus('Eliminado','ok');
+    novaSimulacao();
+    await carregarLista();
+  } else {
+    fbStatus('Erro ao eliminar','err');
+  }
+}
+
+// Q04 — calcular VN e total rendimentos automaticamente
+function calcQ04(){
+  const g = id => parseFloat(document.getElementById(id)?.value)||0;
+  // Volume de negócios = 711+712-717-718+72
+  const vn = g('b711')+g('b712')-g('b717')-g('b718')+g('b72');
+  sv('m04a', vn);
+  // Atualizar campo vn2024 se estiver vazio (para derrama)
+  // (não sobrepor — o VN para derrama é do ano anterior)
+  // Total rendimentos = toda classe 7
+  const tot_rend = g('b-tot-rend-total');
+  sv('m04b', tot_rend);
+  // RLP
+  sv('m04c', g('b-rlp'));
+}
+
+// Inicialização Firebase
+window.addEventListener('load', async ()=>{
+  document.getElementById('btn-eliminar').style.display='none';
+  await carregarLista();
+  // Chamar calcQ04 quando balancete muda
+  const orig_calcBal = calcBal;
+  window.calcBal = function(){
+    orig_calcBal();
+    calcQ04();
+  };
+});
+
 </script>
 </body>
 </html>
