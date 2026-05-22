@@ -1730,16 +1730,31 @@ async function carregarEmpresa(chave){
 // Recolher todos os dados do formulário
 function recolherDados(){
   const dados = {};
-  // Campos de input e select
+  // Campos de input e select — limpar NaN/Infinity/undefined
   document.querySelectorAll('input:not([readonly]), select').forEach(el=>{
     if(el.id && el.id !== 'emp-sel'){
-      dados[el.id] = el.type==='checkbox' ? el.checked : (parseFloat(el.value)||el.value||0);
+      if(el.type==='checkbox'){
+        dados[el.id] = el.checked;
+      } else if(el.type==='number'){
+        const n = parseFloat(el.value);
+        dados[el.id] = (isNaN(n)||!isFinite(n)) ? 0 : n;
+      } else {
+        dados[el.id] = el.value || '';
+      }
     }
   });
-  // Garantir NIF como chave
+  // Também guardar campos readonly calculados (C701, C724, etc.)
+  ['c701','c724','irc-apurado','b-rai','b-rlp','c777','c309','c311',
+   'c351','c373','c378','c358','c364','c365','c361','c362'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){
+      const n=parseFloat(el.value);
+      dados[id]=(isNaN(n)||!isFinite(n))?0:n;
+    }
+  });
   dados.designacao = document.getElementById('designacao')?.value || '';
-  dados.nif = document.getElementById('nif')?.value || '';
-  dados._updated = new Date().toISOString();
+  dados.nif        = document.getElementById('nif')?.value || '';
+  dados._updated   = new Date().toISOString();
   return dados;
 }
 
@@ -1749,16 +1764,29 @@ async function guardarEmpresa(){
   if(!nif){ alert('Preencha o NIF da empresa antes de guardar.'); return; }
   fbStatus('A guardar…','loading');
   const dados = recolherDados();
-  // Usar NIF como chave (remover caracteres especiais)
   const chave = nif.replace(/[^a-zA-Z0-9]/g,'');
-  const ok = await fbSet(FB_PATH+'/'+chave, dados);
-  if(ok){
-    fbStatus('Guardado ✓','ok');
-    await carregarLista();
-    document.getElementById('emp-sel').value = chave;
-    document.getElementById('btn-eliminar').style.display='';
-  } else {
-    fbStatus('Erro ao guardar','err');
+  try{
+    const url = FB_URL+FB_PATH+'/'+chave+'.json?auth='+FB_KEY;
+    const r = await fetch(url,{
+      method:'PUT',
+      body:JSON.stringify(dados),
+      headers:{'Content-Type':'application/json'}
+    });
+    const txt = await r.text();
+    if(r.ok){
+      fbStatus('Guardado ✓','ok');
+      await carregarLista();
+      document.getElementById('emp-sel').value = chave;
+      document.getElementById('btn-eliminar').style.display='';
+    } else {
+      fbStatus('Erro '+r.status,'err');
+      console.error('Firebase erro:',r.status,txt);
+      alert('Erro ao guardar ('+r.status+'): '+txt);
+    }
+  }catch(e){
+    fbStatus('Erro de rede','err');
+    console.error('Firebase excepção:',e);
+    alert('Erro de rede: '+e.message);
   }
 }
 
