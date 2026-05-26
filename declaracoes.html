@@ -518,6 +518,8 @@ function renderDashboard() {
 
   const pctM22 = total ? Math.round(m22total/total*100) : 0;
   const pctIES = total ? Math.round(iesTotal/total*100) : 0;
+  const pdfMod22Count = empresas.filter(e => mod22Cache[e.nif]?.pdfMod22).length;
+  const pdfIESCount = empresas.filter(e => iesCache[e.nif]?.pdfIES).length;
 
   return `
 <div class="dash-prazo">
@@ -596,16 +598,20 @@ ${alertas.length > 0 ? `
 </div>
 
 <div style="background:var(--branco);border-radius:var(--radius);padding:20px 24px;box-shadow:var(--sombra);margin-bottom:20px;">
-  <h3 style="font-size:0.85rem;color:var(--azul);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.5px;">Progresso</h3>
+  <h3 style="font-size:0.85rem;color:var(--azul);margin-bottom:16px;text-transform:uppercase;letter-spacing:0.5px;">Progresso da Campanha ${anoActivo}</h3>
   <div class="progress-row">
     <span class="progress-label">Mod. 22</span>
     <div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${pctM22}%"></div></div>
-    <span class="progress-count">${m22total}/${total}</span>
+    <span class="progress-count">${m22total}/${total} <small style="color:var(--cinza)">(${pctM22}%)</small></span>
   </div>
   <div class="progress-row">
     <span class="progress-label">IES</span>
     <div class="progress-bar-outer"><div class="progress-bar-inner" style="width:${pctIES}%;background:var(--azul2)"></div></div>
-    <span class="progress-count">${iesTotal}/${total}</span>
+    <span class="progress-count">${iesTotal}/${total} <small style="color:var(--cinza)">(${pctIES}%)</small></span>
+  </div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--borda);display:flex;gap:24px;font-size:12px;color:var(--cinza)">
+    <span>📄 PDFs Mod.22 arquivados: <strong style="color:${pdfMod22Count>0?'var(--verde)':'var(--cinza)'}">${pdfMod22Count}/${total}</strong></span>
+    <span>📄 PDFs IES arquivados: <strong style="color:${pdfIESCount>0?'var(--verde)':'var(--cinza)'}">${pdfIESCount}/${total}</strong></span>
   </div>
 </div>
 `;
@@ -652,6 +658,7 @@ function renderMod22() {
   <th>Método Pag.</th>
   <th>Data Pag.</th>
   <th>IES</th>
+  <th>PDF</th>
   ${userRole==='admin' ? '<th>Acções</th>' : ''}
 </tr>
 </thead>
@@ -690,6 +697,7 @@ function renderRowMod22(e, i) {
   <td>${m.metodoPag || '—'}</td>
   <td>${m.dataPag || '—'}</td>
   <td>${alertaIES ? '<span class="badge badge-pend-ies">⚠ Pendente</span>' : '<span class="badge badge-' + (iesFase==='validado'||iesFase==='enviado' ? 'yes' : 'pendente') + '">' + faseLbl(iesFase) + '</span>'}</td>
+  <td>${m.pdfMod22 ? `<button class="btn btn-ghost btn-sm" onclick="verPDF('mod22','${e.nif}')" title="${m.pdfMod22Nome||'PDF'}">📄</button>` : '—'}</td>
   ${userRole==='admin' ? `<td><button class="btn btn-primary btn-sm" onclick="editarMod22('${e.nif}')">✏ Editar</button></td>` : ''}
 </tr>`;
 }
@@ -765,6 +773,19 @@ window.editarMod22 = function(nif) {
   <div class="form-group"><label>Data Envio AT</label><input type="date" id="m22-dataenvio" value="${m.dataEnvio||''}"></div>
   <div class="form-group"><label>Data Validação AT</label><input type="date" id="m22-datavalid" value="${m.dataValidacao||''}"></div>
   <div class="form-group"><label>Data Pagamento</label><input type="date" id="m22-datapag" value="${m.dataPag||''}"></div>
+  <div class="form-group span2"><div class="form-section">Arquivo PDF — Mod.22 Validada</div></div>
+  <div class="form-group span2">
+    <label>PDF da Declaração Validada pelo AT</label>
+    ${m.pdfMod22
+      ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+           <span style="color:var(--verde);font-size:13px">✅ PDF arquivado</span>
+           <button type="button" class="btn btn-ghost btn-sm" onclick="verPDF('mod22','${nif}')">👁 Ver</button>
+           <button type="button" class="btn btn-sm btn-warn" onclick="apagarPDF('mod22','${nif}')">🗑 Remover</button>
+         </div>`
+      : ''}
+    <input type="file" id="m22-pdf" accept="application/pdf" style="font-size:12px;color:var(--texto)">
+    <small style="color:var(--cinza);font-size:11px">Máx. 1MB · Apenas PDF · Substitui o anterior se já existir</small>
+  </div>
   <div class="form-group span2"><div class="form-section">IES (associada)</div></div>
   <div class="form-group">
     <label>IES entregue?</label>
@@ -794,11 +815,22 @@ window.guardarMod22 = async function(nif) {
     obs: document.getElementById('m22-obs').value,
     actualizadoEm: Date.now()
   };
+  // Manter PDF existente
+  if (mod22Cache[nif]?.pdfMod22) dados.pdfMod22 = mod22Cache[nif].pdfMod22;
+  // Novo PDF
+  const fileInput = document.getElementById('m22-pdf');
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    if (file.size > 1.5 * 1024 * 1024) { toast('PDF demasiado grande (máx. 1.5MB)!', 'error'); return; }
+    dados.pdfMod22 = await lerFicheiroBase64(file);
+    dados.pdfMod22Nome = file.name;
+    dados.pdfMod22Data = new Date().toLocaleDateString('pt-PT');
+  }
   await set(ref(db, `anos/${anoActivo}/mod22/${nif}`), dados);
   mod22Cache[nif] = dados;
   closeModal();
   showTab('mod22');
-  toast('Mod. 22 guardado!', 'success');
+  toast('Mod. 22 guardado!' + (fileInput?.files.length > 0 ? ' PDF arquivado ✅' : ''), 'success');
 };
 
 // ===================== IES =====================
@@ -831,6 +863,7 @@ function renderIES() {
   <th>Mod.22 Assoc.</th>
   <th>Contab. Anex.</th>
   <th>Despacho</th>
+  <th>PDF</th>
   ${userRole==='admin' ? '<th>Acções</th>' : ''}
 </tr>
 </thead>
@@ -854,6 +887,7 @@ function renderRowIES(e, i) {
   <td><span class="badge badge-${d.mod22Assoc==='sim'?'yes':'no'}">${d.mod22Assoc==='sim'?'Sim':'Não'}</span></td>
   <td><span class="badge badge-${d.contabAnex==='sim'?'yes':'no'}">${d.contabAnex==='sim'?'Sim':'Não'}</span></td>
   <td>${d.despacho || '—'}</td>
+  <td>${d.pdfIES ? `<button class="btn btn-ghost btn-sm" onclick="verPDF('ies','${e.nif}')" title="${d.pdfIESNome||'PDF'}">📄</button>` : '—'}</td>
   ${userRole==='admin' ? `<td><button class="btn btn-primary btn-sm" onclick="editarIES('${e.nif}')">✏ Editar</button></td>` : ''}
 </tr>`;
 }
@@ -904,6 +938,19 @@ window.editarIES = function(nif) {
   </div>
   <div class="form-group"><label>Despacho / Referência</label><input type="text" id="ies-despacho" value="${d.despacho||''}" placeholder="Nº despacho AT"></div>
   <div class="form-group span2"><label>Observações</label><textarea id="ies-obs" rows="2">${d.obs||''}</textarea></div>
+  <div class="form-group span2"><div class="form-section">Arquivo PDF — IES Validada</div></div>
+  <div class="form-group span2">
+    <label>PDF da IES Validada pelo AT</label>
+    ${d.pdfIES
+      ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+           <span style="color:var(--verde);font-size:13px">✅ PDF arquivado</span>
+           <button type="button" class="btn btn-ghost btn-sm" onclick="verPDF('ies','${nif}')">👁 Ver</button>
+           <button type="button" class="btn btn-sm btn-warn" onclick="apagarPDF('ies','${nif}')">🗑 Remover</button>
+         </div>`
+      : ''}
+    <input type="file" id="ies-pdf" accept="application/pdf" style="font-size:12px;color:var(--texto)">
+    <small style="color:var(--cinza);font-size:11px">Máx. 2MB · Apenas PDF · Substitui o anterior se já existir</small>
+  </div>
 </div>`;
   document.getElementById('modal-footer').innerHTML = `
 <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
@@ -922,11 +969,22 @@ window.guardarIES = async function(nif) {
     obs: document.getElementById('ies-obs').value,
     actualizadoEm: Date.now()
   };
+  // Manter PDF existente
+  if (iesCache[nif]?.pdfIES) dados.pdfIES = iesCache[nif].pdfIES;
+  // Novo PDF
+  const fileInput = document.getElementById('ies-pdf');
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    if (file.size > 2.5 * 1024 * 1024) { toast('PDF demasiado grande (máx. 2.5MB)!', 'error'); return; }
+    dados.pdfIES = await lerFicheiroBase64(file);
+    dados.pdfIESNome = file.name;
+    dados.pdfIESData = new Date().toLocaleDateString('pt-PT');
+  }
   await set(ref(db, `anos/${anoActivo}/ies/${nif}`), dados);
   iesCache[nif] = dados;
   closeModal();
   showTab('ies');
-  toast('IES guardada!', 'success');
+  toast('IES guardada!' + (fileInput?.files.length > 0 ? ' PDF arquivado ✅' : ''), 'success');
 };
 
 // ===================== EMPRESAS =====================
@@ -1080,6 +1138,40 @@ function downloadCSV(csv, filename) {
   a.click(); URL.revokeObjectURL(url);
   toast('Exportação concluída!', 'success');
 }
+
+// ===================== PDF HELPERS =====================
+function lerFicheiroBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+window.verPDF = function(tipo, nif) {
+  const cache = tipo === 'mod22' ? mod22Cache : iesCache;
+  const campo = tipo === 'mod22' ? 'pdfMod22' : 'pdfIES';
+  const d = cache[nif];
+  if (!d || !d[campo]) { toast('PDF não encontrado!', 'error'); return; }
+  const win = window.open('', '_blank');
+  win.document.write(`<html><head><title>${d[campo+'Nome']||'Declaração'}</title></head><body style="margin:0"><embed src="${d[campo]}" type="application/pdf" width="100%" height="100%"></body></html>`);
+};
+
+window.apagarPDF = async function(tipo, nif) {
+  if (!confirm('Remover PDF arquivado?')) return;
+  const path = tipo === 'mod22' ? `anos/${anoActivo}/mod22/${nif}` : `anos/${anoActivo}/ies/${nif}`;
+  const cache = tipo === 'mod22' ? mod22Cache : iesCache;
+  const campo = tipo === 'mod22' ? 'pdfMod22' : 'pdfIES';
+  const dadosAtuais = {...cache[nif]};
+  delete dadosAtuais[campo];
+  delete dadosAtuais[campo+'Nome'];
+  delete dadosAtuais[campo+'Data'];
+  await set(ref(db, path), dadosAtuais);
+  cache[nif] = dadosAtuais;
+  closeModal();
+  toast('PDF removido.', 'success');
+};
 
 // ===================== HELPERS =====================
 function faseLbl(f) {
