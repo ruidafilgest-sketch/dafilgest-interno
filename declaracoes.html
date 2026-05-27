@@ -418,12 +418,15 @@ function carregarDados() {
     if (Object.keys(empresasCache).length === 0 && userRole === 'admin') {
       importarEmpresas();
     }
-    // Carregar mod22 e ies do ano activo
+    // Carregar mod22, ies e irc2025 do ano activo
     onValue(ref(db, `anos/${anoActivo}/mod22`), s2 => {
       mod22Cache = s2.val() || {};
       onValue(ref(db, `anos/${anoActivo}/ies`), s3 => {
         iesCache = s3.val() || {};
-        renderTab(tabActiva());
+        onValue(ref(db, `anos/${anoActivo}/irc2025`), s4 => {
+          irc2025Cache = s4.val() || {};
+          renderTab(tabActiva());
+        }, { onlyOnce: true });
       }, { onlyOnce: true });
     }, { onlyOnce: true });
   }, { onlyOnce: true });
@@ -431,7 +434,7 @@ function carregarDados() {
 
 function tabActiva() {
   const tabs = document.querySelectorAll('.tab');
-  const labels = ['dashboard','mod22','ies','empresas'];
+  const labels = ['dashboard','mod22','ies','irc2025','empresas'];
   for (let i=0; i<tabs.length; i++) {
     if (tabs[i].classList.contains('active')) return labels[i];
   }
@@ -995,11 +998,6 @@ window.guardarIES = async function(nif) {
 // ===================== IRC 2025 =====================
 let irc2025Cache = {};
 
-async function carregarIRC2025() {
-  const snap = await get(ref(db, `anos/${anoActivo}/irc2025`));
-  irc2025Cache = snap.exists() ? snap.val() : {};
-}
-
 function renderIRC2025() {
   const empresas = Object.values(empresasCache)
     .filter(e => !e.arquivado)
@@ -1049,40 +1047,30 @@ function renderIRC2025() {
 window.editarIRC2025 = function(nif) {
   const e = empresasCache[nif];
   const d = irc2025Cache[nif] || {};
-  const modal = document.getElementById('modal');
-  // Tabela de valores arquivados se existir
   const valoresHtml = d.xlsValores ? renderValoresPrevisa(d.xlsValores) : '';
-  modal.innerHTML = `
-    <div class="modal-box" style="max-width:600px">
-      <div class="modal-header">
-        <span>🧮 IRC 2025 — ${e.nome}</span>
-        <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
-      </div>
-      <div class="modal-body">
-        ${valoresHtml}
-        <div class="form-group span2">
-          <div class="form-section">Arquivo XLS — Simulação Previsa IRC 2025</div>
-        </div>
-        <div class="form-group span2">
-          ${d.xlsPrevisa
-            ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-                <span style="color:var(--verde);font-size:13px">✅ ${d.xlsPrevisaNome||'XLS arquivado'}</span>
-                <button type="button" class="btn btn-ghost btn-sm" onclick="verXLS('${nif}')">⬇️ Download</button>
-                <button type="button" class="btn btn-sm btn-warn" onclick="apagarXLS('${nif}')">🗑 Remover</button>
-               </div>`
-            : ''}
-          <label>Novo ficheiro XLS do Previsa</label>
-          <input type="file" id="irc-xls" accept=".xls,.xlsx" style="margin-top:6px" onchange="previewXLS(this,'${nif}')">
-          <small style="color:var(--cinza);font-size:11px">Máx. 2MB · XLS/XLSX · Lê automaticamente os valores chave do Previsa</small>
-        </div>
-        <div id="irc-preview" style="margin-top:4px"></div>
-        <div class="form-group span2" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
-          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-          <button class="btn" onclick="guardarIRC2025('${nif}')">💾 Guardar</button>
-        </div>
-      </div>
-    </div>`;
-  modal.style.display = 'flex';
+  document.getElementById('modal-title').textContent = `IRC 2025 · ${e.nome}`;
+  document.getElementById('modal-body').innerHTML = `
+    ${valoresHtml}
+    <div class="form-group span2">
+      <div class="form-section">Arquivo XLS — Simulação Previsa IRC 2025</div>
+    </div>
+    <div class="form-group span2">
+      ${d.xlsPrevisa
+        ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <span style="color:var(--verde);font-size:13px">✅ ${d.xlsPrevisaNome||'XLS arquivado'}</span>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="verXLS('${nif}')">⬇️ Download</button>
+            <button type="button" class="btn btn-sm btn-warn" onclick="apagarXLS('${nif}')">🗑 Remover</button>
+           </div>`
+        : ''}
+      <label>Novo ficheiro XLS do Previsa</label>
+      <input type="file" id="irc-xls" accept=".xls,.xlsx" style="margin-top:6px" onchange="previewXLS(this,'${nif}')">
+      <small style="color:var(--cinza);font-size:11px">Máx. 2MB · XLS/XLSX · Lê automaticamente os valores chave do Previsa</small>
+    </div>
+    <div id="irc-preview" style="margin-top:4px"></div>`;
+  document.getElementById('modal-footer').innerHTML = `
+    <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+    <button class="btn" onclick="guardarIRC2025('${nif}')">💾 Guardar</button>`;
+  document.getElementById('modal-overlay').style.display = 'flex';
 };
 
 function renderValoresPrevisa(v) {
@@ -1541,4 +1529,3 @@ const EMPRESAS_SEED = [
 
 </script>
 </body>
-</html>
