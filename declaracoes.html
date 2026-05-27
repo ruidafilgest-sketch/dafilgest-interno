@@ -289,6 +289,7 @@ tfoot td { background: var(--fundo); padding: 10px 14px; font-weight: 700; font-
 .progress-label { width: 90px; font-size: 12px; color: var(--cinza); }
 .progress-count { font-size: 12px; font-weight: 700; color: var(--azul); min-width: 40px; text-align: right; }
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -317,6 +318,7 @@ tfoot td { background: var(--fundo); padding: 10px 14px; font-weight: 700; font-
     <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
     <div class="tab" onclick="showTab('mod22')">📋 Mod. 22 IRC</div>
     <div class="tab" onclick="showTab('ies')">📑 IES</div>
+    <div class="tab" onclick="showTab('irc2025')">🧮 IRC 2025</div>
     <div class="tab" onclick="showTab('empresas')" id="tab-empresas">🏢 Empresas</div>
   </div>
   <main id="main-content"></main>
@@ -453,7 +455,7 @@ async function importarEmpresas() {
 // ===================== TABS =====================
 window.showTab = function(tab) {
   document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['dashboard','mod22','ies','empresas'][i] === tab);
+    t.classList.toggle('active', ['dashboard','mod22','ies','irc2025','empresas'][i] === tab);
   });
   renderTab(tab);
 };
@@ -463,6 +465,7 @@ function renderTab(tab) {
   if (tab === 'dashboard') main.innerHTML = renderDashboard();
   else if (tab === 'mod22') main.innerHTML = renderMod22();
   else if (tab === 'ies') main.innerHTML = renderIES();
+  else if (tab === 'irc2025') main.innerHTML = renderIRC2025();
   else if (tab === 'empresas') main.innerHTML = renderEmpresas();
   afterRender(tab);
 }
@@ -520,6 +523,7 @@ function renderDashboard() {
   const pctIES = total ? Math.round(iesTotal/total*100) : 0;
   const pdfMod22Count = empresas.filter(e => mod22Cache[e.nif]?.pdfMod22).length;
   const pdfIESCount = empresas.filter(e => iesCache[e.nif]?.pdfIES).length;
+  const xlsIRCCount = empresas.filter(e => irc2025Cache[e.nif]?.xlsPrevisa).length;
 
   return `
 <div class="dash-prazo">
@@ -612,6 +616,7 @@ ${alertas.length > 0 ? `
   <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--borda);display:flex;gap:24px;font-size:12px;color:var(--cinza)">
     <span>📄 PDFs Mod.22 arquivados: <strong style="color:${pdfMod22Count>0?'var(--verde)':'var(--cinza)'}">${pdfMod22Count}/${total}</strong></span>
     <span>📄 PDFs IES arquivados: <strong style="color:${pdfIESCount>0?'var(--verde)':'var(--cinza)'}">${pdfIESCount}/${total}</strong></span>
+    <span>🧮 XLS Previsa IRC 2025: <strong style="color:${xlsIRCCount>0?'var(--verde)':'var(--cinza)'}">${xlsIRCCount}/${total}</strong></span>
   </div>
 </div>
 `;
@@ -985,6 +990,265 @@ window.guardarIES = async function(nif) {
   closeModal();
   showTab('ies');
   toast('IES guardada!' + (fileInput?.files.length > 0 ? ' PDF arquivado ✅' : ''), 'success');
+};
+
+// ===================== IRC 2025 =====================
+let irc2025Cache = {};
+
+async function carregarIRC2025() {
+  const snap = await get(ref(db, `anos/${anoActivo}/irc2025`));
+  irc2025Cache = snap.exists() ? snap.val() : {};
+}
+
+function renderIRC2025() {
+  const empresas = Object.values(empresasCache)
+    .filter(e => !e.arquivado)
+    .sort((a,b) => a.nome.localeCompare(b.nome));
+  const xlsCount = empresas.filter(e => irc2025Cache[e.nif]?.xlsPrevisa).length;
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div>
+        <h2 style="font-size:1.1rem;color:var(--azul);margin:0">🧮 IRC 2025 — Arquivo Previsa</h2>
+        <p style="font-size:0.78rem;color:var(--cinza);margin:4px 0 0">Arquivo do ficheiro XLS do Previsa por empresa · ${xlsCount} de ${empresas.length} arquivados</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Empresa</th><th>NIF</th>
+          <th>Previsa XLS</th>
+          <th>Data arquivo</th>
+          <th>Total IRC</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody>
+          ${empresas.map(e => {
+            const d = irc2025Cache[e.nif] || {};
+            return `<tr>
+              <td><strong>${e.nome}</strong></td>
+              <td style="font-family:monospace">${e.nif}</td>
+              <td style="text-align:center">${d.xlsPrevisa
+                ? `<button class="btn btn-ghost btn-sm" onclick="verXLS('${e.nif}')" title="${d.xlsPrevisaNome||'XLS'}">📊</button>`
+                : '—'}</td>
+              <td style="font-size:0.78rem;color:var(--cinza)">${d.xlsPrevisaData||'—'}</td>
+              <td style="font-size:0.82rem;font-weight:700;${d.xlsValores?.total_pagar > 0 ? 'color:#c0392b' : d.xlsValores?.total_pagar < 0 ? 'color:var(--verde)' : ''}">
+                ${d.xlsValores != null
+                  ? (d.xlsValores.total_pagar >= 0
+                    ? '▲ '+parseFloat(d.xlsValores.total_pagar).toLocaleString('pt-PT',{minimumFractionDigits:2})+'€'
+                    : '▼ '+parseFloat(Math.abs(d.xlsValores.total_pagar)).toLocaleString('pt-PT',{minimumFractionDigits:2})+'€')
+                  : '—'}
+              </td>
+              <td><button class="btn btn-sm" onclick="editarIRC2025('${e.nif}')">✏️ Consultar</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+window.editarIRC2025 = function(nif) {
+  const e = empresasCache[nif];
+  const d = irc2025Cache[nif] || {};
+  const modal = document.getElementById('modal');
+  // Tabela de valores arquivados se existir
+  const valoresHtml = d.xlsValores ? renderValoresPrevisa(d.xlsValores) : '';
+  modal.innerHTML = `
+    <div class="modal-box" style="max-width:600px">
+      <div class="modal-header">
+        <span>🧮 IRC 2025 — ${e.nome}</span>
+        <button onclick="closeModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+      </div>
+      <div class="modal-body">
+        ${valoresHtml}
+        <div class="form-group span2">
+          <div class="form-section">Arquivo XLS — Simulação Previsa IRC 2025</div>
+        </div>
+        <div class="form-group span2">
+          ${d.xlsPrevisa
+            ? `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+                <span style="color:var(--verde);font-size:13px">✅ ${d.xlsPrevisaNome||'XLS arquivado'}</span>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="verXLS('${nif}')">⬇️ Download</button>
+                <button type="button" class="btn btn-sm btn-warn" onclick="apagarXLS('${nif}')">🗑 Remover</button>
+               </div>`
+            : ''}
+          <label>Novo ficheiro XLS do Previsa</label>
+          <input type="file" id="irc-xls" accept=".xls,.xlsx" style="margin-top:6px" onchange="previewXLS(this,'${nif}')">
+          <small style="color:var(--cinza);font-size:11px">Máx. 2MB · XLS/XLSX · Lê automaticamente os valores chave do Previsa</small>
+        </div>
+        <div id="irc-preview" style="margin-top:4px"></div>
+        <div class="form-group span2" style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px">
+          <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+          <button class="btn" onclick="guardarIRC2025('${nif}')">💾 Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+};
+
+function renderValoresPrevisa(v) {
+  if (!v) return '';
+  const fmt = n => n != null ? parseFloat(n).toLocaleString('pt-PT',{minimumFractionDigits:2,maximumFractionDigits:2})+' €' : '—';
+  const cls = n => n > 0 ? 'color:var(--azul);font-weight:700' : n < 0 ? 'color:var(--vermelho,#c0392b);font-weight:700' : '';
+  return `
+    <div style="background:#f0f7ff;border-radius:8px;padding:12px;margin-bottom:12px;border:1px solid #c8dff7">
+      <div style="font-size:0.72rem;font-weight:800;color:var(--azul);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">
+        📊 Valores Previsa arquivados
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+        <tr style="border-bottom:1px solid #c8dff7">
+          <td style="padding:4px 6px;color:#555">Resultado Antes de Impostos (RAI)</td>
+          <td style="padding:4px 6px;text-align:right;${cls(v.rai)}">${fmt(v.rai)}</td>
+          <td style="padding:4px 6px;color:#555">Matéria Coletável (C311)</td>
+          <td style="padding:4px 6px;text-align:right;${cls(v.mc)}">${fmt(v.mc)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #c8dff7">
+          <td style="padding:4px 6px;color:#555">Lucro Tributável (C778)</td>
+          <td style="padding:4px 6px;text-align:right;${cls(v.lt)}">${fmt(v.lt)}</td>
+          <td style="padding:4px 6px;color:#555">Coleta IRC (C351)</td>
+          <td style="padding:4px 6px;text-align:right;${cls(v.coleta)}">${fmt(v.coleta)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #c8dff7">
+          <td style="padding:4px 6px;color:#555">Prejuízos deduzidos (C309)</td>
+          <td style="padding:4px 6px;text-align:right">${fmt(v.pj_ded)}</td>
+          <td style="padding:4px 6px;color:#555">Derrama municipal (C364)</td>
+          <td style="padding:4px 6px;text-align:right">${fmt(v.derrama)}</td>
+        </tr>
+        <tr style="border-bottom:1px solid #c8dff7">
+          <td style="padding:4px 6px;color:#555">Pagamentos por conta (C360)</td>
+          <td style="padding:4px 6px;text-align:right">${fmt(v.pc)}</td>
+          <td style="padding:4px 6px;color:#555">Retenções na fonte (C359)</td>
+          <td style="padding:4px 6px;text-align:right">${fmt(v.ret)}</td>
+        </tr>
+        <tr style="background:#e8f4fd">
+          <td style="padding:6px;font-weight:700;color:var(--azul)" colspan="2">
+            ${v.total_pagar >= 0 ? '▲ IRC A PAGAR (C367)' : '▼ IRC A RECUPERAR (C368)'}
+          </td>
+          <td style="padding:6px;text-align:right;font-size:1.05rem;font-weight:800;${v.total_pagar >= 0 ? 'color:#c0392b' : 'color:var(--verde)'}" colspan="2">
+            ${fmt(Math.abs(v.total_pagar))}
+          </td>
+        </tr>
+      </table>
+    </div>`;
+}
+
+window.previewXLS = async function(input, nif) {
+  const file = input.files[0];
+  if (!file) return;
+  const prev = document.getElementById('irc-preview');
+  prev.innerHTML = '<div style="color:var(--cinza);font-size:0.8rem;padding:6px">A ler ficheiro...</div>';
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, {type:'array'});
+    const vals = lerValoresPrevisa(wb);
+    if (vals) {
+      prev.innerHTML = renderValoresPrevisa(vals);
+      // Guardar valores lidos para usar no guardar
+      window._xlsValoresLidos = vals;
+    } else {
+      prev.innerHTML = '<div style="color:orange;font-size:0.8rem;padding:6px">⚠️ Não foi possível ler os valores — o ficheiro será arquivado na mesma.</div>';
+      window._xlsValoresLidos = null;
+    }
+  } catch(err) {
+    prev.innerHTML = '<div style="color:red;font-size:0.8rem;padding:6px">Erro ao ler o ficheiro: '+err.message+'</div>';
+    window._xlsValoresLidos = null;
+  }
+};
+
+function lerValoresPrevisa(wb) {
+  try {
+    // Folha "Q7 e Q9" — RAI, LT, Prejuízos, MC
+    const q7 = wb.Sheets['Q7 e Q9'];
+    // Folha " Res Q10" — Coleta, Derrama, PC, Retenções, Total
+    const q10 = wb.Sheets[' Res Q10'] || wb.Sheets['Res Q10'];
+    if (!q7 || !q10) return null;
+
+    // Converter para array de arrays
+    const q7d = XLSX.utils.sheet_to_json(q7, {header:1, defval:null});
+    const q10d = XLSX.utils.sheet_to_json(q10, {header:1, defval:null});
+
+    // RAI — linha 3, coluna D (índice 3) na Q7 e Q9
+    const rai = q7d[2]?.[3] || null;
+    // LT — linha 108, coluna D
+    const lt = q7d[107]?.[3] || null;
+    // Prejuízos deduzidos — linha 125, coluna D
+    const pj_ded = q7d[124]?.[3] || null;
+    // MC — linha 128, coluna D
+    const mc = q7d[127]?.[3] || null;
+
+    // Coleta IRC — linha 71, coluna C (índice 2) na Res Q10
+    const coleta = q10d[70]?.[2] || null;
+    // Derrama — linha 102, coluna C
+    const derrama = q10d[101]?.[2] || null;
+    // PC — linha 94, coluna C
+    const pc = q10d[93]?.[2] || null;
+    // Retenções — linha 93, coluna C
+    const ret = q10d[92]?.[2] || null;
+    // Total a pagar — linha 123, coluna C (positivo=pagar, negativo=recuperar)
+    const total_r = q10d[122]?.[2] || null;
+    const total_rc = q10d[123]?.[2] || null;
+    // Total: se recuperar é negativo no Previsa
+    const total_pagar = total_r != null && total_r !== 0 ? total_r :
+                        total_rc != null ? -Math.abs(total_rc) : 0;
+
+    return { rai, lt, pj_ded, mc, coleta, derrama, pc, ret, total_pagar };
+  } catch(e) {
+    console.error('lerValoresPrevisa:', e);
+    return null;
+  }
+}
+
+window.guardarIRC2025 = async function(nif) {
+  const dados = { actualizadoEm: Date.now() };
+  // Manter dados existentes
+  if (irc2025Cache[nif]?.xlsPrevisa) dados.xlsPrevisa = irc2025Cache[nif].xlsPrevisa;
+  if (irc2025Cache[nif]?.xlsPrevisaNome) dados.xlsPrevisaNome = irc2025Cache[nif].xlsPrevisaNome;
+  if (irc2025Cache[nif]?.xlsPrevisaData) dados.xlsPrevisaData = irc2025Cache[nif].xlsPrevisaData;
+  if (irc2025Cache[nif]?.xlsValores) dados.xlsValores = irc2025Cache[nif].xlsValores;
+  // Novo XLS
+  const fileInput = document.getElementById('irc-xls');
+  if (fileInput && fileInput.files.length > 0) {
+    const file = fileInput.files[0];
+    if (file.size > 2.5 * 1024 * 1024) { toast('Ficheiro demasiado grande (máx. 2.5MB)!', 'error'); return; }
+    dados.xlsPrevisa = await lerFicheiroBase64(file);
+    dados.xlsPrevisaNome = file.name;
+    dados.xlsPrevisaData = new Date().toLocaleDateString('pt-PT');
+    // Guardar valores lidos automaticamente
+    if (window._xlsValoresLidos) {
+      dados.xlsValores = window._xlsValoresLidos;
+      window._xlsValoresLidos = null;
+    }
+  }
+  await set(ref(db, `anos/${anoActivo}/irc2025/${nif}`), dados);
+  irc2025Cache[nif] = dados;
+  closeModal();
+  showTab('irc2025');
+  toast('IRC 2025 guardado!' + (fileInput?.files.length > 0 ? ' XLS arquivado ✅' : ''), 'success');
+};
+
+window.verXLS = function(nif) {
+  const d = irc2025Cache[nif];
+  if (!d?.xlsPrevisa) return;
+  // Converter base64 para blob e abrir
+  const base64 = d.xlsPrevisa.split(',')[1] || d.xlsPrevisa;
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++) arr[i]=bytes.charCodeAt(i);
+  const blob = new Blob([arr], {type:'application/vnd.ms-excel'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = d.xlsPrevisaNome||'previsa_irc2025.xls';
+  a.click(); URL.revokeObjectURL(url);
+};
+
+window.apagarXLS = async function(nif) {
+  if (!confirm('Remover o XLS arquivado desta empresa?')) return;
+  const dados = {...irc2025Cache[nif]};
+  delete dados.xlsPrevisa; delete dados.xlsPrevisaNome; delete dados.xlsPrevisaData;
+  await set(ref(db, `anos/${anoActivo}/irc2025/${nif}`), dados);
+  irc2025Cache[nif] = dados;
+  closeModal();
+  showTab('irc2025');
+  toast('XLS removido.', 'success');
 };
 
 // ===================== EMPRESAS =====================
