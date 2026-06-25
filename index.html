@@ -463,6 +463,7 @@ td.center{text-align:center;}
       <div class="sb-item" id="sb-iva" onclick="showTab('iva')"><span class="sb-icon">🟡</span>Mapa IVA<span class="sb-count">78</span></div>
       <div class="sb-item" id="sb-saft" onclick="showTab('saft')"><span class="sb-icon">📁</span>SAFT<span class="sb-count">90</span></div>
       <div class="sb-item" id="sb-rec" onclick="showTab('rec')"><span class="sb-icon">💶</span>Recebimentos<span class="sb-count">85</span></div>
+      <div class="sb-item" id="sb-planosAT" onclick="showTab('planosAT')"><span class="sb-icon">📅</span>Planos Pag. AT<span class="sb-badge-at" id="badge-planosAT" style="display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
       <div class="sb-group-label">Seg. Social</div>
       <div class="sb-item" id="sb-ssdecl" onclick="showTab('ssdecl')"><span class="sb-icon">📋</span>Independentes Decl.<span class="sb-count">37</span></div>
       <div class="sb-item" id="sb-ss" onclick="showTab('ss')"><span class="sb-icon">💳</span>Independentes Pag.<span class="sb-count">29</span></div>
@@ -478,6 +479,7 @@ td.center{text-align:center;}
       <div class="section" id="sec-iva"></div>
       <div class="section" id="sec-saft"></div>
       <div class="section" id="sec-rec"></div>
+      <div class="section" id="sec-planosAT"></div>
       <div class="section" id="sec-ssdecl"></div>
       <div class="section" id="sec-ss"></div>
       <div class="section" id="sec-ssprint"></div>
@@ -679,6 +681,7 @@ let state={
   iva:  JSON.parse(JSON.stringify(DADOS_IVA_INIT)),
   saft: JSON.parse(JSON.stringify(DADOS_SAFT_INIT)),
   rec:  JSON.parse(JSON.stringify(ANOS_REC_INIT)),
+  planosAT: [],
 };
 
 // ── CHAVES SEGURAS FIREBASE ──
@@ -804,6 +807,7 @@ function loadFirebase(cb){
     if(saft)state.saft=saft;
     if(rec)state.rec=rec;
     cb();
+    renderPlanosBadge();
   }).catch(()=>{setFB(false);cb();});
 }
 function saveMeta(){
@@ -871,6 +875,19 @@ function buildAlertas(){
 }
 function renderAlertas(){
   const alertas=buildAlertas();
+  // Adicionar alertas de planos AT
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const em7=new Date(hoje); em7.setDate(em7.getDate()+7);
+  state.planosAT.forEach(p=>{
+    p.prestacoes.forEach((pr,i)=>{
+      if(pr.paga) return;
+      const d=new Date(pr.data); d.setHours(0,0,0,0);
+      const diff=Math.round((d-hoje)/(1000*60*60*24));
+      if(diff<0) alertas.push({tipo:'red',titulo:`Plano AT — Prestação VENCIDA`,msg:`${p.cliente} · ${p.decl} · ${pr.data} · €${pr.valor.toFixed(2)} (${Math.abs(diff)} dias em atraso)`});
+      else if(diff<=3) alertas.push({tipo:'red',titulo:`Plano AT — Prestação em ${diff===0?'HOJE':diff+' dia(s)'}`,msg:`${p.cliente} · ${p.decl} · ${pr.data} · €${pr.valor.toFixed(2)}`});
+      else if(diff<=7) alertas.push({tipo:'amber',titulo:`Plano AT — Prestação em ${diff} dias`,msg:`${p.cliente} · ${p.decl} · ${pr.data} · €${pr.valor.toFixed(2)}`});
+    });
+  });
   if(!alertas.length) return '';
   return alertas.map(a=>`<div class="alert-bar ${a.tipo}"><span class="alert-icon">${a.tipo==='red'?'🔴':'⚠️'}</span><div><div class="alert-title">${a.titulo}</div><div class="alert-body">${a.msg}</div></div></div>`).join('');
 }
@@ -1673,11 +1690,12 @@ function startApp(){
   loadFirebase(()=>{
     // Carregar TODOS os dados antes de renderizar
     Promise.all([
-      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/meta')
-    ]).then(([ss,ssdecl,dmr,meta])=>{
+      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/meta'), fbGet('/planosAT')
+    ]).then(([ss,ssdecl,dmr,meta,planosAT])=>{
       if(ss) state.ss=ss;
       if(ssdecl) state.ssdecl=ssdecl;
       if(dmr) state.dmr=dmr;
+      if(planosAT) state.planosAT=Array.isArray(planosAT)?planosAT:Object.values(planosAT);
       if(meta){
         if(meta.clientes) state.clientes=Array.isArray(meta.clientes)?meta.clientes:Object.values(meta.clientes);
         if(meta.empresasIVA) state.empresasIVA=Array.isArray(meta.empresasIVA)?meta.empresasIVA:Object.values(meta.empresasIVA);
@@ -1748,11 +1766,11 @@ function renderSSDecl(){
     <div class="toolbar"><div class="toolbar-title">Declarantes <span class="toolbar-count">(${state.declarantes.length} entidades)</span></div></div>
     <div class="tbl-scroll"><table><thead>
       <tr>
-        <th>#</th><th>Nome / Empresa</th>
+        <th>#</th><th>Nome / Empresa</th><th style="font-size:9px;color:var(--blue)">Trabalhador SS</th>
         ${TRIMS.map(t=>`<th colspan="2" class="center" style="border-left:2px solid var(--border)">${TRIM_LABEL[t]}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">${TRIM_MESES[t]}</span></th>`).join('')}
       </tr>
       <tr>
-        <th></th><th></th>
+        <th></th><th></th><th></th>
         ${TRIMS.map(()=>'<th class="center" style="border-left:2px solid var(--border);font-size:9px">Valor €</th><th class="center" style="font-size:9px">Enviada</th>').join('')}
       </tr>
     </thead><tbody>`;
@@ -1762,8 +1780,15 @@ function renderSSDecl(){
     const dd=dadosAno[idx]||{};
     const naList=NA_MAP[d.mesInicio]||[];
     const nomeE=d.nome.replace(/'/g,"\\'");
+    const trabSel=state.trabalhadores.find(t=>t.declIdx===idx);
     h+=`<tr><td class="td-num">${idx+1}</td>
-      <td class="td-nome">${d.nome}${d.mesInicio?` <span style="font-size:10px;color:var(--amber);font-weight:600">(início ${d.mesInicio})</span>`:''}</td>`;
+      <td class="td-nome">${d.nome}${d.mesInicio?` <span style="font-size:10px;color:var(--amber);font-weight:600">(início ${d.mesInicio})</span>`:''}</td>
+      <td>
+        <select class="inline-sel" style="font-size:10px;max-width:140px" onchange="linkDeclaranteDecl(${idx},this.value)">
+          <option value="">— nenhum —</option>
+          ${state.trabalhadores.map(t=>`<option value="${t.num.replace(/'/g,"\'")}"${trabSel&&trabSel.num===t.num?' selected':''}>${t.nome.substring(0,20)}</option>`).join('')}
+        </select>
+      </td>`;
     TRIMS.forEach(t=>{
       if(naList.includes(t)){
         h+=`<td class="center" style="border-left:2px solid var(--border)"><span class="badge b-na" style="cursor:default;font-size:10px">N/A</span></td><td></td>`;
@@ -1940,6 +1965,16 @@ function linkDeclarante(num,idxStr,ano){
   t.declIdx=idxStr===''?null:parseInt(idxStr);
   saveMeta();renderSS();
 }
+function linkDeclaranteDecl(declIdx,numTrab){
+  // Remover ligação anterior deste declIdx em qualquer trabalhador
+  state.trabalhadores.forEach(t=>{if(t.declIdx===declIdx)t.declIdx=null;});
+  // Atribuir nova ligação
+  if(numTrab){
+    const t=state.trabalhadores.find(x=>x.num===numTrab);
+    if(t) t.declIdx=declIdx;
+  }
+  saveMeta();renderSSDecl();renderSS();
+}
 
 function saveSSValor(num,trimKey,val,ano){
   if(!state.ss[ano])state.ss[ano]={};
@@ -2071,6 +2106,221 @@ function renderSSPrint(){
   }
 
   el.innerHTML=h;
+}
+
+// ═══════════════════════════════════════
+// PLANOS PAGAMENTO AT
+// ═══════════════════════════════════════
+function renderPlanosBadge(){
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+  const em7=new Date(hoje); em7.setDate(em7.getDate()+7);
+  let count=0;
+  state.planosAT.forEach(p=>{
+    p.prestacoes.forEach(pr=>{
+      if(pr.paga) return;
+      const d=new Date(pr.data); d.setHours(0,0,0,0);
+      if(d<=em7) count++;
+    });
+  });
+  const badge=document.getElementById('badge-planosAT');
+  if(badge){badge.style.display=count>0?'inline':'none';badge.textContent=count>0?count:'';}
+}
+
+function renderPlanosAT(){
+  const el=document.getElementById('sec-planosAT');
+  if(!el) return;
+  const hoje=new Date(); hoje.setHours(0,0,0,0);
+
+  // Ordenar prestações por data
+  const todasPrest=[];
+  state.planosAT.forEach((p,pi)=>{
+    p.prestacoes.forEach((pr,pri)=>{
+      const d=new Date(pr.data); d.setHours(0,0,0,0);
+      const diff=Math.round((d-hoje)/(1000*60*60*24));
+      todasPrest.push({...pr, cliente:p.cliente, decl:p.decl, pi, pri, diff, d});
+    });
+  });
+  todasPrest.sort((a,b)=>a.d-b.d);
+
+  const pendentes=todasPrest.filter(p=>!p.paga);
+  const pagas=todasPrest.filter(p=>p.paga);
+
+  let h=`<div class="ph">
+    <div class="ph-left"><h1>Planos de Pagamento AT</h1><p>${pendentes.length} prestação(ões) pendente(s)</p></div>
+    <div class="ph-right">
+      ${userRole==='admin'?`<button class="btn-primary" onclick="abrirModalPlanoAT()">+ Novo Plano</button>`:''}
+    </div>
+  </div>`;
+
+  if(pendentes.length){
+    h+=`<div class="table-wrap">
+      <div class="toolbar"><div class="toolbar-title">⏳ Prestações Pendentes</div></div>
+      <div class="tbl-scroll"><table><thead>
+        <tr><th>Data</th><th>Cliente</th><th>Declaração</th><th class="center">Valor €</th><th class="center">Estado</th><th class="center">Ação</th></tr>
+      </thead><tbody>`;
+    pendentes.forEach(pr=>{
+      const venc=pr.diff<0;
+      const hoje0=pr.diff===0;
+      const prox=pr.diff>0&&pr.diff<=3;
+      const cor=venc?'color:var(--red);font-weight:700':hoje0?'color:var(--red);font-weight:700':prox?'color:var(--amber);font-weight:600':'';
+      const est=venc?`<span class="badge b-nao">Vencida ${Math.abs(pr.diff)}d</span>`:hoje0?`<span class="badge b-nao">HOJE</span>`:pr.diff<=3?`<span class="badge" style="background:var(--amber-light);color:var(--amber)">Em ${pr.diff}d</span>`:`<span class="badge b-empty">${pr.diff} dias</span>`;
+      h+=`<tr>
+        <td style="${cor}">${pr.data}</td>
+        <td style="font-weight:600">${pr.cliente}</td>
+        <td>${pr.decl}</td>
+        <td class="center" style="font-weight:700;color:var(--green)">€ ${pr.valor.toFixed(2)}</td>
+        <td class="center">${est}</td>
+        <td class="center">
+          ${userRole==='admin'?`<button class="btn-primary" style="font-size:11px;padding:3px 10px" onclick="marcarPrestacaoPaga(${pr.pi},${pr.pri})">✓ Paga</button>`:'—'}
+        </td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div></div>`;
+  } else {
+    h+=`<div class="table-wrap"><div style="padding:30px;text-align:center;color:var(--text3);font-size:13px">✅ Sem prestações pendentes.</div></div>`;
+  }
+
+  // Lista de planos
+  if(state.planosAT.length){
+    h+=`<div class="table-wrap" style="margin-top:16px">
+      <div class="toolbar"><div class="toolbar-title">📋 Todos os Planos</div></div>
+      <div class="tbl-scroll"><table><thead>
+        <tr><th>Cliente</th><th>Declaração</th><th>Total €</th><th class="center">Prestações</th><th class="center">Estado</th><th class="center">Ação</th></tr>
+      </thead><tbody>`;
+    state.planosAT.forEach((p,pi)=>{
+      const total=p.prestacoes.reduce((s,pr)=>s+pr.valor,0);
+      const pagas=p.prestacoes.filter(pr=>pr.paga).length;
+      const concluido=pagas===p.prestacoes.length;
+      h+=`<tr>
+        <td style="font-weight:600">${p.cliente}</td>
+        <td>${p.decl}</td>
+        <td style="font-weight:700;color:var(--blue)">€ ${total.toFixed(2)}</td>
+        <td class="center">${pagas}/${p.prestacoes.length}</td>
+        <td class="center">${concluido?`<span class="badge b-sim">Concluído</span>`:`<span class="badge b-empty">Em curso</span>`}</td>
+        <td class="center">
+          ${userRole==='admin'?`<button class="btn-danger" style="font-size:11px;padding:3px 8px" onclick="removerPlanoAT(${pi})">✕</button>`:'—'}
+        </td>
+      </tr>`;
+    });
+    h+=`</tbody></table></div></div>`;
+  }
+
+  // Modal novo plano
+  h+=`<div class="modal-overlay" id="modalPlanoAT">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-header"><div class="modal-title">📅 Novo Plano de Pagamento AT</div>
+        <button class="modal-close" onclick="closeModal('modalPlanoAT')">✕</button></div>
+      <div class="modal-body" style="display:flex;flex-direction:column;gap:12px">
+        <div class="form-group"><label>Cliente</label>
+          <select id="planoCliente" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none">
+            <option value="">— Seleccionar —</option>
+            ${state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}">${c.nome}</option>`).join('')}
+          </select></div>
+        <div class="form-group"><label>Declaração (ex: IVA T1 2026)</label>
+          <input type="text" id="planoDecl" placeholder="IVA T1 2026" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none"></div>
+        <div class="form-group"><label>Valor Total (€)</label>
+          <input type="number" id="planoValor" step="0.01" min="0" placeholder="0.00" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none"></div>
+        <div class="form-group"><label>Nº de Prestações</label>
+          <select id="planoNPrest" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none">
+            <option value="2">2 prestações</option>
+            <option value="3" selected>3 prestações</option>
+          </select></div>
+        <div class="form-group"><label>Data da 1ª Prestação</label>
+          <input type="date" id="planoData1" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none"></div>
+        <div id="planoPreview" style="background:var(--bg2);border-radius:var(--r);padding:10px;font-size:12px;color:var(--text2);display:none"></div>
+        <div id="planoErr" class="form-err"></div>
+        <button class="btn-primary" onclick="criarPlanoAT()">Criar Plano</button>
+      </div>
+    </div>
+  </div>`;
+
+  el.innerHTML=h;
+
+  // Preview automático
+  ['planoValor','planoNPrest','planoData1'].forEach(id=>{
+    const el2=document.getElementById(id);
+    if(el2) el2.addEventListener('input',previewPlanoAT);
+    if(el2) el2.addEventListener('change',previewPlanoAT);
+  });
+}
+
+function previewPlanoAT(){
+  const valor=parseFloat(document.getElementById('planoValor')?.value||0);
+  const n=parseInt(document.getElementById('planoNPrest')?.value||3);
+  const data1=document.getElementById('planoData1')?.value;
+  const prev=document.getElementById('planoPreview');
+  if(!prev) return;
+  if(!valor||!data1){prev.style.display='none';return;}
+  const prest=valor/n;
+  let html='<strong>Prestações calculadas:</strong><br>';
+  let d=new Date(data1+'T12:00:00');
+  for(let i=0;i<n;i++){
+    const ds=d.toLocaleDateString('pt-PT');
+    html+=`${i+1}ª — ${ds} — <strong>€ ${prest.toFixed(2)}</strong><br>`;
+    d=new Date(d.getFullYear(), d.getMonth()+1, 25);
+  }
+  prev.style.display='block';
+  prev.innerHTML=html;
+}
+
+function abrirModalPlanoAT(){
+  // Definir data padrão = dia 25 do mês actual
+  const hoje=new Date();
+  const d25=new Date(hoje.getFullYear(),hoje.getMonth(),25);
+  if(d25<hoje) d25.setMonth(d25.getMonth()+1);
+  const ds=d25.toISOString().split('T')[0];
+  const inp=document.getElementById('planoData1');
+  if(inp) inp.value=ds;
+  document.getElementById('modalPlanoAT').classList.add('open');
+}
+
+function criarPlanoAT(){
+  const cliente=document.getElementById('planoCliente').value;
+  const decl=document.getElementById('planoDecl').value.trim();
+  const valor=parseFloat(document.getElementById('planoValor').value||0);
+  const n=parseInt(document.getElementById('planoNPrest').value||3);
+  const data1=document.getElementById('planoData1').value;
+  const err=document.getElementById('planoErr');
+  if(!cliente){err.textContent='Selecciona um cliente.';return;}
+  if(!decl){err.textContent='Indica a declaração origem.';return;}
+  if(!valor||valor<=0){err.textContent='Indica o valor total.';return;}
+  if(!data1){err.textContent='Indica a data da 1ª prestação.';return;}
+  err.textContent='';
+  const prest=valor/n;
+  const prestacoes=[];
+  let d=new Date(data1+'T12:00:00');
+  for(let i=0;i<n;i++){
+    prestacoes.push({data:d.toISOString().split('T')[0], valor:prest, paga:false});
+    d=new Date(d.getFullYear(), d.getMonth()+1, 25);
+  }
+  state.planosAT.push({cliente, decl, prestacoes, criado:new Date().toISOString()});
+  fbSet('/planosAT', state.planosAT);
+  closeModal('modalPlanoAT');
+  renderPlanosAT();
+  renderPlanosBadge();
+  renderDash();
+  toast('Plano criado com sucesso!','success');
+}
+
+function marcarPrestacaoPaga(pi,pri){
+  if(!state.planosAT[pi]) return;
+  state.planosAT[pi].prestacoes[pri].paga=true;
+  state.planosAT[pi].prestacoes[pri].dataPagamento=new Date().toISOString().split('T')[0];
+  fbSet('/planosAT', state.planosAT);
+  renderPlanosAT();
+  renderPlanosBadge();
+  renderDash();
+  toast('Prestação marcada como paga!','success');
+}
+
+function removerPlanoAT(pi){
+  confirmAction('Remover Plano',`Confirma a remoção do plano de "${state.planosAT[pi]?.cliente}"?`,()=>{
+    state.planosAT.splice(pi,1);
+    fbSet('/planosAT', state.planosAT);
+    renderPlanosAT();
+    renderPlanosBadge();
+    renderDash();
+  });
 }
 
 // ═══════════════════════════════════════
@@ -2283,9 +2533,11 @@ async function pollFirebase(){
         else if(id==='sec-ssdecl') renderSSDecl();
         else if(id==='sec-ss') renderSS();
         else if(id==='sec-ssprint') renderSSPrint();
+        else if(id==='sec-planosAT') renderPlanosAT();
         else if(id==='sec-dmr') renderDMR();
       }
       renderDash();
+      renderPlanosBadge();
       setFB(true);
       if(typeof afInit==='function') afInit(EMP_IVA_INIT.map(e=>({nome:e.nome,nif:''})),userRole);
     }
