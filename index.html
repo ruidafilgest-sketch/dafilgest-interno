@@ -827,6 +827,9 @@ function showTab(n){
   document.querySelectorAll('.sb-item').forEach(s=>s.classList.remove('active'));
   document.getElementById('sec-'+n).classList.add('active');
   document.getElementById('sb-'+n).classList.add('active');
+  // Só renderizar separadores que não são actualizados pelo polling
+  if(n==='planosAT') renderPlanosAT();
+  else if(n==='ssprint') renderSSPrint();
 }
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
@@ -2010,19 +2013,22 @@ function renderSSPrint(){
   const dadosDecl=state.ssdecl[ssPrintAno]||{};
   const trimKey=MES_TRIM[ssPrintMes];
 
-  // Construir lista directamente dos declarantes com valor para o trimestre
-  // Sem necessidade de ligação manual — lê todos os declarantes do ssdecl pelo índice
+  // Construir lista dos declarantes com valor para o trimestre
+  // Cruzamento pelo declIdx (ligação feita no separador Independentes Decl.)
+  // ou por nome exacto como fallback
   const lista=state.declarantes.map((d,idx)=>{
     const dDecl=(dadosDecl[idx]||{});
     const valor=dDecl[trimKey+'_val']||0;
-    // Tentar encontrar o NISS/num cruzando pelo nome com os trabalhadores
-    const trab=state.trabalhadores.find(t=>
+    // 1º tentar pelo declIdx — trabalhador que tem este declarante ligado
+    let trab=state.trabalhadores.find(t=>t.declIdx===idx);
+    // 2º fallback: nome exacto
+    if(!trab) trab=state.trabalhadores.find(t=>
       t.nome&&d.nome&&t.nome.toLowerCase().trim()===d.nome.toLowerCase().trim()
     );
     const num=trab?trab.num:'—';
     const tpa=trab?trab.tpa:false;
     return {num, nome:d.nome, valor, trimKey, tpa};
-  }).filter(d=>d.valor>0 && num!=='—' && /^\d{9,}$/.test(num));
+  }).filter(d=>d.valor>0 && d.num!=='—' && /^\d{9,}$/.test(d.num));
 
   const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
