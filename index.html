@@ -772,7 +772,7 @@ function startApp(){
     '<span class="badge-equipa">👤 Equipa</span>';
   loadFirebase(()=>{
     renderDash();renderIVA();renderSAFT();renderREC();
-    lastHash = JSON.stringify({meta:null,iva:state.iva,saft:state.saft,rec:state.rec});
+    lastHash = JSON.stringify({meta:null,iva:state.iva,saft:state.saft,rec:state.rec,ss:null,ssdecl:null,dmr:null});
     startPolling();
   });
 }
@@ -1021,9 +1021,9 @@ function renderIVA(){
       <div class="tbl-scroll"><table><thead>
         <tr><th>#</th><th>Empresa</th>${MESES.map((m,i)=>{
           const p=prazoMensal(ivaAno,i);
-          return `<th colspan="2" class="center" style="border-left:2px solid var(--border)">${m}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env ${fmtDateShort(p.env)}</span></th>`;
+          return `<th colspan="4" class="center" style="border-left:2px solid var(--border)">${m}<br><span style="font-size:9px;font-weight:400;color:var(--text4)">Env ${fmtDateShort(p.env)}</span></th>`;
         }).join('')}</tr>
-        <tr><th></th><th></th>${MESES.map(()=>`<th class="center" style="border-left:2px solid var(--border);font-size:9px">Trat.</th><th class="center" style="font-size:9px">Data Env.</th>`).join('')}</tr>
+        <tr><th></th><th></th>${MESES.map(()=>`<th class="center" style="border-left:2px solid var(--border);font-size:9px">Trat.</th><th class="center" style="font-size:9px">Data Env.</th><th class="center" style="font-size:9px;color:var(--blue)">R €</th><th class="center" style="font-size:9px;color:var(--red)">P €</th>`).join('')}</tr>
       </thead><tbody>`;
     lista.forEach(emp=>{
       const d=dadosAno[safeKey(emp.nome)]||{};
@@ -1031,9 +1031,12 @@ function renderIVA(){
       MESES.forEach((_,i)=>{
         const key='M'+(i+1);
         const td=d[key]||{};
+        const nomeEsc=emp.nome.replace(/'/g,"\\'");
         const p=prazoMensal(ivaAno,i);
         h+=`<td class="center" style="border-left:2px solid var(--border)">${ivaBadge(td.tratada,emp.nome,key,'tratada',ivaAno)}</td>`;
         h+=`<td class="center"><input type="date" class="date-inp${td.dataEnvio?' filled':''}" value="${td.dataEnvio||''}" onchange="saveIVADate('${emp.nome.replace(/'/g,"\\'")}','${key}',this.value,'${ivaAno}')"></td>`;
+        h+=`<td><input class="obs-inp rp-inp" style="color:var(--blue)" value="${td.rIVA||''}" placeholder="R €" onchange="saveIVARp('${nomeEsc}','${key}','rIVA',this.value,'${ivaAno}')"></td>`;
+        h+=`<td><input class="obs-inp rp-inp" style="color:var(--amber)" value="${td.pIVA||''}" placeholder="P €" onchange="saveIVARp('${nomeEsc}','${key}','pIVA',this.value,'${ivaAno}')"></td>`;
       });
       h+=`</tr>`;
     });
@@ -1069,7 +1072,8 @@ function toggleIVA(nome,trim,campo,ano){
   if(!state.iva[ano][safeKey(nome)][trim])state.iva[ano][safeKey(nome)][trim]={};
   const cur=state.iva[ano][safeKey(nome)][trim][campo]??null;
   state.iva[ano][safeKey(nome)][trim][campo]=est[(est.indexOf(cur)+1)%est.length];
-  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}/${campo}`,state.iva[ano][safeKey(nome)][trim][campo]);
+  // Gravar o trimestre inteiro para garantir persistência
+  fbSet(`/iva/${ano}/${safeKey(nome)}/${trim}`,state.iva[ano][safeKey(nome)][trim]);
   renderIVA();renderDash();
 }
 function saveIVADate(nome,trim,val,ano){
@@ -1097,7 +1101,7 @@ function toggleIVAMes(nome,trim,mk,ano){
   const cur=state.iva[ano][sk][trim][mk]??null;
   const novo=estados[(estados.indexOf(cur)+1)%estados.length];
   state.iva[ano][sk][trim][mk]=novo;
-  fbSet(`/iva/${ano}/${sk}/${trim}/${mk}`,novo);
+  fbSet(`/iva/${ano}/${sk}/${trim}`,state.iva[ano][sk][trim]);
   renderIVA();
 }
 function saveIVARp(nome,trim,campo,val,ano){
@@ -1107,7 +1111,7 @@ function saveIVARp(nome,trim,campo,val,ano){
   if(!state.iva[ano][sk])state.iva[ano][sk]={};
   if(!state.iva[ano][sk][trim])state.iva[ano][sk][trim]={};
   state.iva[ano][sk][trim][campo]=val||null;
-  fbSet(`/iva/${ano}/${sk}/${trim}/${campo}`,val||null);
+  fbSet(`/iva/${ano}/${sk}/${trim}`,state.iva[ano][sk][trim]);
 }
 function openImprimirIVA(){
   // Popular anos dinamicamente (ANOS ainda não existe quando o HTML é renderizado)
