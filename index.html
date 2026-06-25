@@ -1983,19 +1983,28 @@ function renderSSPrint(){
   const trimKey=MES_TRIM[ssPrintMes];
 
   // Construir lista para o mês seleccionado
-  // Fonte de valor: 1º tenta state.ss (valor inserido manualmente no separador Pagamentos)
-  //                 2º tenta state.ssdecl via declIdx (valor vindo da Declaração)
-  const lista=state.trabalhadores.map(t=>{
-    // Tentar valor manual no separador Pagamentos
+  // Fonte 1: trabalhadores com valor manual no separador Pagamentos (via declIdx ou state.ss)
+  // Fonte 2: declarantes do ssdecl com valor para o trimestre (leitura directa por índice)
+  const listaManual=state.trabalhadores.map(t=>{
     const dSS=(dadosSS[t.num]||{})[trimKey]||{};
     let valor=dSS.valor||0;
-    // Se não tem valor manual, tentar via ligação à Declaração
     if(!valor && t.declIdx!==null && t.declIdx!==undefined){
       const dDecl=(dadosDecl[t.declIdx]||{});
       valor=dDecl[trimKey+'_val']||0;
     }
     return {...t, valor, trimKey};
   }).filter(t=>t.valor>0);
+
+  // Leitura directa de todos os declarantes do ssdecl que têm valor para este trimestre
+  const listaDecl=state.declarantes.map((d,idx)=>{
+    const dDecl=(dadosDecl[idx]||{});
+    const valor=dDecl[trimKey+'_val']||0;
+    // Só incluir se não está já na listaManual via declIdx
+    const jaIncluido=listaManual.some(t=>t.declIdx===idx);
+    return {num:String(idx), nome:d.nome, valor, trimKey, _isDecl:true, _skip:jaIncluido};
+  }).filter(d=>d.valor>0 && !d._skip);
+
+  const lista=[...listaManual, ...listaDecl];
 
   const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
