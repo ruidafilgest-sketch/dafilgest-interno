@@ -1879,7 +1879,6 @@ function renderSS(){
       </tr>
       <tr>
         <th></th><th></th><th></th><th></th>
-        <th></th>
         ${TRIM_KEYS.map(t=>`
           <th style="border-left:2px solid var(--border);font-size:9px;text-align:center">Valor €</th>
           ${TRIM_MESES[t].map(m=>`<th style="font-size:9px;text-align:center">${m}</th>`).join('')}
@@ -1894,13 +1893,7 @@ function renderSS(){
       <td style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text3)">${t.num}</td>
       <td class="td-nome">${t.nome}</td>
       <td class="center"><span class="badge ${t.tpa?'b-v':'b-empty'}" style="font-size:10px;cursor:default">${t.tpa?'TPA':'—'}</span></td>
-      <td class="center">
-        <select class="inline-sel" style="font-size:10px;max-width:130px"
-          onchange="linkDeclarante('${t.num.replace(/'/g,"\'")}',this.value,'${ssAno}')">
-          <option value="">— sem ligação —</option>
-          ${state.declarantes.map((d,di)=>`<option value="${di}"${t.declIdx===di?' selected':''}>${d.nome.substring(0,22)}</option>`).join('')}
-        </select>
-      </td>`;
+`;
 
     TRIM_KEYS.forEach(tk=>{
       const td=d[tk]||{};
@@ -1982,29 +1975,19 @@ function renderSSPrint(){
   const dadosDecl=state.ssdecl[ssPrintAno]||{};
   const trimKey=MES_TRIM[ssPrintMes];
 
-  // Construir lista para o mês seleccionado
-  // Fonte 1: trabalhadores com valor manual no separador Pagamentos (via declIdx ou state.ss)
-  // Fonte 2: declarantes do ssdecl com valor para o trimestre (leitura directa por índice)
-  const listaManual=state.trabalhadores.map(t=>{
-    const dSS=(dadosSS[t.num]||{})[trimKey]||{};
-    let valor=dSS.valor||0;
-    if(!valor && t.declIdx!==null && t.declIdx!==undefined){
-      const dDecl=(dadosDecl[t.declIdx]||{});
-      valor=dDecl[trimKey+'_val']||0;
-    }
-    return {...t, valor, trimKey};
-  }).filter(t=>t.valor>0);
-
-  // Leitura directa de todos os declarantes do ssdecl que têm valor para este trimestre
-  const listaDecl=state.declarantes.map((d,idx)=>{
+  // Construir lista directamente dos declarantes com valor para o trimestre
+  // Sem necessidade de ligação manual — lê todos os declarantes do ssdecl pelo índice
+  const lista=state.declarantes.map((d,idx)=>{
     const dDecl=(dadosDecl[idx]||{});
     const valor=dDecl[trimKey+'_val']||0;
-    // Só incluir se não está já na listaManual via declIdx
-    const jaIncluido=listaManual.some(t=>t.declIdx===idx);
-    return {num:String(idx), nome:d.nome, valor, trimKey, _isDecl:true, _skip:jaIncluido};
-  }).filter(d=>d.valor>0 && !d._skip);
-
-  const lista=[...listaManual, ...listaDecl];
+    // Tentar encontrar o NISS/num cruzando pelo nome com os trabalhadores
+    const trab=state.trabalhadores.find(t=>
+      t.nome&&d.nome&&t.nome.toLowerCase().trim()===d.nome.toLowerCase().trim()
+    );
+    const num=trab?trab.num:'—';
+    const tpa=trab?trab.tpa:false;
+    return {num, nome:d.nome, valor, trimKey, tpa};
+  }).filter(d=>d.valor>0 && num!=='—' && /^\d{9,}$/.test(num));
 
   const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
