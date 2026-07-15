@@ -462,6 +462,7 @@ td.center{text-align:center;}
       <div class="sb-group-label">Ferramentas</div>
       <div class="sb-item" id="sb-iva" onclick="showTab('iva')"><span class="sb-icon">🟡</span>Mapa IVA<span class="sb-count">78</span></div>
       <div class="sb-item" id="sb-saft" onclick="showTab('saft')"><span class="sb-icon">📁</span>SAFT<span class="sb-count">90</span></div>
+      <div class="sb-item" id="sb-honextrato" onclick="showTab('honextrato')"><span class="sb-icon">📥</span>Importar Extrato</div>
       <div class="sb-item" id="sb-rec" onclick="showTab('rec')"><span class="sb-icon">💶</span>Recebimentos<span class="sb-count">85</span></div>
       <div class="sb-item" id="sb-planosAT" onclick="showTab('planosAT')"><span class="sb-icon">📅</span>Planos Pag. AT<span class="sb-badge-at" id="badge-planosAT" style="display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
       <div class="sb-group-label">Seg. Social</div>
@@ -479,6 +480,12 @@ td.center{text-align:center;}
       <div class="section" id="sec-iva"></div>
       <div class="section" id="sec-saft"></div>
       <div class="section" id="sec-rec"></div>
+<div id="sec-honextrato" class="section">
+  <iframe src="honorarios_extrato.html" id="iframe-honextrato"
+    style="width:100%;height:calc(100vh - 44px);border:none;display:block;"
+    title="Importar Extrato">
+  </iframe>
+</div>
       <div class="section" id="sec-planosAT"></div>
       <div class="section" id="sec-ssdecl"></div>
       <div class="section" id="sec-ss"></div>
