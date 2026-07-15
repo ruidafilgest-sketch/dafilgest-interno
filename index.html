@@ -172,6 +172,29 @@ tbody td.center{text-align:center;}
 .rec-t.sel.c{background:var(--slate);border-color:var(--slate);}
 .rec-t.sel.d{background:var(--green);border-color:var(--green);}
 
+/* REC — GRELHA COMPACTA (nova) */
+.rec-cel2{cursor:pointer;text-align:center;padding:4px 2px;border-left:1px solid var(--border2);transition:background .1s;}
+.rec-cel2:hover{background:var(--blue-light);}
+.rec-pill{display:inline-block;min-width:20px;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;color:#fff;line-height:1.3;}
+.rec-pill.empty{background:transparent;color:var(--text4);font-weight:400;}
+.rec-date{display:block;font-size:9px;color:var(--text4);margin-top:2px;}
+.sticky-col{position:sticky;left:0;background:var(--bg3);z-index:2;}
+.sticky-col2{position:sticky;left:32px;background:var(--bg3);z-index:2;box-shadow:2px 0 4px -2px rgba(0,0,0,.1);}
+tr:hover .sticky-col,tr:hover .sticky-col2{background:var(--bg2);}
+.row-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;}
+.row-dot.ok{background:var(--green);}
+.row-dot.atraso{background:var(--red);}
+.row-dot.neutral{background:var(--border);}
+#recPop{position:fixed;z-index:1500;background:#fff;border:1px solid var(--border2);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:10px;display:none;width:190px;}
+#recPop.show{display:block;}
+#recPop .rp-title{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;}
+#recPop .rp-opts{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+#recPop .rp-opt{padding:4px 8px;border-radius:5px;font-size:10.5px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);}
+#recPop .rp-opt:hover{border-color:var(--blue);}
+#recPop input[type=date]{width:100%;margin-bottom:8px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;}
+#recPop .rp-clear{width:100%;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);border-radius:5px;padding:6px;font-size:11px;cursor:pointer;font-weight:600;}
+#recPop .rp-clear:hover{background:var(--red);color:#fff;}
+
 /* OBS */
 .obs-inp{background:transparent;border:none;color:var(--text3);font-size:11px;width:100%;min-width:55px;outline:none;font-family:'Inter',sans-serif;}
 .obs-inp:focus{background:var(--bg2);padding:2px 4px;border-radius:3px;}
@@ -1381,7 +1404,7 @@ function renderREC(){
   });
 
   let h=`<div class="ph">
-    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Avenças mensais · ${recAno}</p></div>
+    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Avenças mensais · ${recAno} · <span class="row-dot ok" style="margin-left:2px"></span>em dia &nbsp; <span class="row-dot atraso"></span>com mês em falta</p></div>
     <div class="ph-right">
       <select class="ctrl-sel" onchange="recAno=this.value;recPag=1;renderREC()">${ANOS.map(a=>`<option value="${a}"${a===recAno?' selected':''} >${a}</option>`).join('')}</select>
       <input class="ctrl-inp" placeholder="🔍 Pesquisar cliente…" oninput="recBusca=this.value.toLowerCase();recPag=1;renderREC()">
@@ -1395,13 +1418,14 @@ function renderREC(){
     <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">${lista.length}</div><div class="stat-sub">de ${state.clientes.length} total</div></div>
   </div>
   <div class="table-wrap">
-    <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes)</span></div></div>
+    <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes · clique num mês para marcar)</span></div></div>
     <div class="tbl-scroll"><table><thead>
-      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:5px 3px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
+      <tr><th class="sticky-col" style="width:32px">#</th><th class="sticky-col2">Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:5px 3px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
     </thead><tbody>`;
 
   pag.forEach((c,i)=>{
-    const dCliente=dadosAno[safeKey(c.nome)]||{};
+    const nomeKey=safeKey(c.nome);
+    const dCliente=dadosAno[nomeKey]||{};
     const msRaw=dCliente.meses||Array(12).fill(null);
     const ms=Array.isArray(msRaw)
       ? Array.from({length:12},(_,i)=>msRaw[i]||null)
@@ -1411,9 +1435,10 @@ function renderREC(){
     const msArr2=Array.from({length:12},(_,i)=>Array.isArray(ms)?(ms[i]||null):(ms[i]||ms[String(i)]||null));
     const rec=msArr2.filter(Boolean).length*av;
     const falta=msArr2.filter(v=>!v).length*av;
-    h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
+    const status=computeRowStatus(nomeKey,recAno);
+    h+=`<tr><td class="td-num sticky-col">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome sticky-col2"><span class="row-dot ${status}"></span>${c.nome}</td>`;
     ms.forEach((val,mi)=>{
-      h+='<td class="center rec-cel" style="border-left:1px solid var(--border2);padding:2px" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'"></td>';
+      h+='<td class="rec-cel2" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'" onclick="abrirPopoverRec(this)"></td>';
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
@@ -1429,76 +1454,110 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
-  preencherCelulasRec(el);
+  pintarTodasCelulas(el);
+}
+
+function computeRowStatus(nomeKey, ano){
+  const hoje=new Date();
+  const anoAtual=String(hoje.getFullYear());
+  const mesAtualIdx=hoje.getMonth();
+  if(ano!==anoAtual) return 'neutral';
+  const upTo=mesAtualIdx-1;
+  if(upTo<0) return 'neutral';
+  const entry=state.rec[ano]?.[nomeKey];
+  const arr=entry?.meses||[];
+  for(let mi=0; mi<=upTo; mi++){ const v=Array.isArray(arr)?arr[mi]:arr[String(mi)]; if(!v) return 'atraso'; }
+  return 'ok';
 }
 
 
 
-function createDateInput(nome,mi,dataRec,ano){
-  const inp=document.createElement('input');
-  inp.type='date';
-  if(dataRec) inp.value=dataRec;
-  inp.style.cssText='font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer;display:block;margin:0 auto';
-  inp.addEventListener('change',function(){
-    _saveRecDataImpl(nome,mi,this.value,ano);
-  });
-  return inp;
+function pintarTodasCelulas(el){
+  el.querySelectorAll('.rec-cel2').forEach(function(td){ pintarCelula(td); });
 }
 
-
-function preencherCelulasRec(el){
-  const TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
-  const ABREV={null:'—','Transferência':'Transf.','MBWay':'MBWay','Numerário':'Num.','Cheque':'Cheque','Débito Direto':'Déb.Dir.','Outro':'Outro'};
-  const EXTRA={null:'','Transferência':'','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':''};
-  el.querySelectorAll('.rec-cel').forEach(function(td){
-    const nomeCod=td.dataset.nome;
-    const mi=parseInt(td.dataset.mi);
-    const ano=td.dataset.ano;
-    const nome=decodeURIComponent(nomeCod);
-    if(!state.rec[ano]) state.rec[ano]={};
-    if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
-    const mesesRaw=state.rec[ano][safeKey(nome)].meses||[];
-    const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
-    const datas=state.rec[ano][safeKey(nome)].datas||{};
-    const dataRec=datas[mi]||datas[String(mi)]||'';
-    // Criar spans para cada tipo
-    TIPOS.forEach(function(t){
-      const span=document.createElement('span');
-      const isSel=cur===t;
-      span.className='rec-t'+(isSel?' sel'+(EXTRA[t]?' '+EXTRA[t]:''):'');
-      span.textContent=ABREV[t]||'—';
-      span.addEventListener('click',function(){
-        if(!state.rec[ano]) state.rec[ano]={};
-        if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
-        const mArr=state.rec[ano][safeKey(nome)].meses;
-        if(Array.isArray(mArr)) mArr[mi]=t;
-        else state.rec[ano][safeKey(nome)].meses=Object.assign(Array(12).fill(null),mArr,{[mi]:t});
-        saveRec(nome,mi,t,ano);
-        // Actualizar spans desta célula
-        td.querySelectorAll('.rec-t').forEach(function(s,si){
-          const tt=TIPOS[si];
-          s.className='rec-t'+(tt===t?' sel'+(EXTRA[tt]?' '+EXTRA[tt]:''):'');
-        });
-      });
-      td.appendChild(span);
-    });
-    // Input de data — sempre visível quando tem tipo seleccionado
-    const br2=document.createElement('br');
-    const inp=document.createElement('input');
-    inp.type='date';
-    inp.style.cssText='font-size:9px;width:88px;border:1px solid var(--border);border-radius:3px;padding:1px 3px;margin-top:2px';
-    if(dataRec) inp.value=dataRec;
-    inp.addEventListener('change',function(){
-      if(!state.rec[ano]) state.rec[ano]={};
-      if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
-      if(!state.rec[ano][safeKey(nome)].datas) state.rec[ano][safeKey(nome)].datas={};
-      state.rec[ano][safeKey(nome)].datas[mi]=this.value||null;
-      fbSet('/rec/'+ano+'/'+encodeURIComponent(safeKey(nome))+'/datas/'+mi, this.value||null);
-    });
-    td.appendChild(br2);
-    td.appendChild(inp);
-  });
+function pintarCelula(td){
+  const nome=decodeURIComponent(td.dataset.nome);
+  const mi=parseInt(td.dataset.mi);
+  const ano=td.dataset.ano;
+  const nomeKey=safeKey(nome);
+  const entry=state.rec[ano]?.[nomeKey];
+  const mesesRaw=entry?.meses||[];
+  const val=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
+  const datas=entry?.datas||{};
+  const dataVal=datas[mi]||datas[String(mi)]||'';
+  if(!val){ td.innerHTML='<span class="rec-pill empty">—</span>'; return; }
+  const INICIAIS={'Transferência':'T','MBWay':'M','Numerário':'N','Cheque':'C','Débito Direto':'D','Outro':'O'};
+  const bg=recColor(val);
+  const dl=dataVal ? new Date(dataVal+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'}) : '';
+  td.innerHTML='<span class="rec-pill" style="background:'+bg+'">'+(INICIAIS[val]||'?')+'</span>'+(dl?'<span class="rec-date">'+dl+'</span>':'');
 }
+
+function abrirPopoverRec(td){
+  const nome=decodeURIComponent(td.dataset.nome);
+  const mi=parseInt(td.dataset.mi);
+  const ano=td.dataset.ano;
+  const nomeKey=safeKey(nome);
+  const entry=state.rec[ano]?.[nomeKey];
+  const mesesRaw=entry?.meses||[];
+  const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
+  const datas=entry?.datas||{};
+  const dataVal=datas[mi]||datas[String(mi)]||'';
+
+  let pop=document.getElementById('recPop');
+  if(!pop){ pop=document.createElement('div'); pop.id='recPop'; document.body.appendChild(pop); }
+  pop.dataset.nome=td.dataset.nome; pop.dataset.mi=mi; pop.dataset.ano=ano;
+  window._recPopTd=td;
+
+  const tipos=[['Transferência','var(--blue)'],['MBWay','var(--purple)'],['Numerário','var(--amber)'],['Cheque','var(--text3)'],['Débito Direto','var(--green)'],['Outro','var(--text3)']];
+  pop.innerHTML='<div class="rp-title">'+nome+' — '+MESES[mi]+'/'+ano+'</div>'
+    +'<div class="rp-opts">'+tipos.map(function(t){
+        const isSel=cur===t[0];
+        return '<div class="rp-opt'+(isSel?' active':'')+'" style="'+(isSel?'background:'+t[1]+';border-color:'+t[1]+';color:#fff':'')+'" onclick="selecionarTipoRec(\''+t[0]+'\')">'+t[0]+'</div>';
+      }).join('')+'</div>'
+    +'<input type="date" id="recPopData" value="'+(dataVal||'')+'" onchange="alterarDataRec(this.value)">'
+    +'<button class="rp-clear" onclick="limparCelulaRec()">Limpar</button>';
+
+  const rect=td.getBoundingClientRect();
+  pop.style.left=Math.max(6, Math.min(rect.left, window.innerWidth-210))+'px';
+  pop.style.top=(rect.bottom+6)+'px';
+  pop.classList.add('show');
+}
+function selecionarTipoRec(t){
+  const pop=document.getElementById('recPop');
+  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
+  let dataVal=document.getElementById('recPopData').value;
+  if(!dataVal){ dataVal=new Date().toISOString().slice(0,10); document.getElementById('recPopData').value=dataVal; }
+  saveRec(nome,mi,t,ano);
+  _saveRecDataImpl(nome,mi,dataVal,ano);
+  if(window._recPopTd) pintarCelula(window._recPopTd);
+  fecharPopoverRec();
+}
+function alterarDataRec(val){
+  const pop=document.getElementById('recPop');
+  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
+  _saveRecDataImpl(nome,mi,val,ano);
+  if(window._recPopTd) pintarCelula(window._recPopTd);
+}
+function limparCelulaRec(){
+  const pop=document.getElementById('recPop');
+  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
+  saveRec(nome,mi,null,ano);
+  _saveRecDataImpl(nome,mi,null,ano);
+  if(window._recPopTd) pintarCelula(window._recPopTd);
+  fecharPopoverRec();
+}
+function fecharPopoverRec(){
+  const pop=document.getElementById('recPop');
+  if(pop) pop.classList.remove('show');
+}
+document.addEventListener('click', function(e){
+  const pop=document.getElementById('recPop');
+  if(!pop || !pop.classList.contains('show')) return;
+  if(pop.contains(e.target)) return;
+  if(window._recPopTd && window._recPopTd.contains(e.target)) return;
+  fecharPopoverRec();
+});
 
 const REC_TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
 const REC_CLS={null:'','Transferência':'t','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':'o'};
