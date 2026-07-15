@@ -1722,18 +1722,48 @@ function extTxId(d,desc,m){
 }
 function extParseDateBR(d){ if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [dd,mm,yy]=d.split('-');return new Date(+yy,+mm-1,+dd);} return new Date(d); }
 
+function computeIntervaloTxt(){
+  const todasDatas=Object.values(honExtProcessed).map(t=>extParseDateBR(t.data)).filter(d=>!isNaN(d));
+  if(!todasDatas.length) return '';
+  const min=new Date(Math.min(...todasDatas)), max=new Date(Math.max(...todasDatas));
+  return `Período coberto (todas as importações): ${min.toLocaleDateString('pt-PT')} a ${max.toLocaleDateString('pt-PT')}.`;
+}
+
+// Reconstrói a lista agrupada por cliente diretamente do registo persistente (honExtProcessed).
+// recentIds (opcional): Set de ids importados agora mesmo, só para destacar "novo" no visual.
+function buildResultadoFromProcessed(recentIds){
+  const porCliente={}, semIdentificar=[];
+  Object.keys(honExtProcessed).forEach(id=>{
+    const t=honExtProcessed[id];
+    const item={id, data:t.data, desc:t.desc, montante:t.montante, novo: !!(recentIds && recentIds.has(id))};
+    if(t.cliente){ if(!porCliente[t.cliente]) porCliente[t.cliente]=[]; porCliente[t.cliente].push(item); }
+    else semIdentificar.push(item);
+  });
+  return {porCliente, semIdentificar};
+}
+
 async function openImportExtrato(){
   document.getElementById('impExtFile').value='';
-  document.getElementById('impExtStatus').textContent='';
-  document.getElementById('impExtFiltroWrap').style.display='none';
-  extResultado=null; extFiltro='TODOS';
+  document.getElementById('impExtStatus').textContent='A carregar registos guardados…';
   openModal('modalImportExtrato');
-  if(honExtProcessed===null || honExtAliases===null){
-    document.getElementById('impExtStatus').textContent='A verificar importações anteriores…';
-    if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
-    if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
-    document.getElementById('impExtStatus').textContent='';
+  if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
+  if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
+
+  const total=Object.keys(honExtProcessed).length;
+  if(total===0){
+    document.getElementById('impExtStatus').textContent='Ainda não há nenhum registo — importe um extrato para começar.';
+    document.getElementById('impExtFiltroWrap').style.display='none';
+    extResultado=null;
+    return;
   }
+  const built=buildResultadoFromProcessed(null);
+  extResultado={...built, novas:0, jaRegistadas:total, intervaloTxt:computeIntervaloTxt()};
+  extFiltro='TODOS';
+  document.getElementById('impExtStatus').textContent=
+    `${total} transferência(s) no registo, de importações anteriores. ${extResultado.intervaloTxt} Pode consultar, filtrar, imprimir ou atribuir cliente sem precisar de importar de novo.`;
+  document.getElementById('impExtFiltroWrap').style.display='block';
+  renderFiltroExtrato();
+  renderRevisaoExtrato();
 }
 
 async function gerarRelatorioExtrato(){
@@ -1749,8 +1779,6 @@ async function gerarRelatorioExtrato(){
       const sheet=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
 
-      const porCliente={}; // nome -> [{id,data,desc,montante,novo}]
-      const semIdentificar=[];
       const novosProcessados={};
       let novas=0, jaRegistadas=0, ignoradas=0;
 
@@ -1761,27 +1789,13 @@ async function gerarRelatorioExtrato(){
         const montante=parseFloat(String(r[2]||'0').replace(',','.'));
         if(!dataStr||!desc||isNaN(montante)||montante<=0){ ignoradas++; continue; }
         const id=extTxId(dataStr,desc,montante);
-        const jaVisto=honExtProcessed[id];
+        if(honExtProcessed[id]){ jaRegistadas++; continue; } // já está no registo — nada a fazer
 
-        let clienteNome, novo;
-        if(jaVisto){
-          novo=false; jaRegistadas++;
-          clienteNome=jaVisto.cliente||null; // preserva atribuição/correção anterior, se houve
-        } else {
-          novo=true; novas++;
-          const clean=extLimparDesc(desc);
-          const match=extBestMatch(clean);
-          clienteNome=(match.client && match.score>=0.5) ? match.client.nome : null;
-          novosProcessados[id]={data:dataStr, desc, montante, cliente:clienteNome};
-        }
-
-        const item={id, data:dataStr, desc, montante, novo};
-        if(clienteNome){
-          if(!porCliente[clienteNome]) porCliente[clienteNome]=[];
-          porCliente[clienteNome].push(item);
-        } else {
-          semIdentificar.push(item);
-        }
+        novas++;
+        const clean=extLimparDesc(desc);
+        const match=extBestMatch(clean);
+        const clienteNome=(match.client && match.score>=0.5) ? match.client.nome : null;
+        novosProcessados[id]={data:dataStr, desc, montante, cliente:clienteNome};
       }
 
       if(Object.keys(novosProcessados).length){
@@ -1789,16 +1803,13 @@ async function gerarRelatorioExtrato(){
         fbSet('/honExtProcessed', honExtProcessed);
       }
 
-      const todasDatas=Object.values(honExtProcessed).map(t=>extParseDateBR(t.data)).filter(d=>!isNaN(d));
-      let intervaloTxt='';
-      if(todasDatas.length){
-        const min=new Date(Math.min(...todasDatas)), max=new Date(Math.max(...todasDatas));
-        intervaloTxt=`Período coberto (todas as importações): ${min.toLocaleDateString('pt-PT')} a ${max.toLocaleDateString('pt-PT')}.`;
-      }
+      const intervaloTxt=computeIntervaloTxt();
       document.getElementById('impExtStatus').textContent=
-        `${novas} nova(s) · ${jaRegistadas} já vista(s) em importações anteriores (ambas visíveis abaixo). ${intervaloTxt}`;
+        `${novas} nova(s) · ${jaRegistadas} já constavam do registo. ${intervaloTxt}`;
 
-      extResultado={porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt};
+      const recentIds=new Set(Object.keys(novosProcessados));
+      const built=buildResultadoFromProcessed(recentIds);
+      extResultado={...built, novas, jaRegistadas, intervaloTxt};
       extFiltro='TODOS';
       document.getElementById('impExtFiltroWrap').style.display='block';
       renderFiltroExtrato();
