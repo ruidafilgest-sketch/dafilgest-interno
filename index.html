@@ -428,6 +428,7 @@ td.center{text-align:center;}
 }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -462,7 +463,6 @@ td.center{text-align:center;}
       <div class="sb-group-label">Ferramentas</div>
       <div class="sb-item" id="sb-iva" onclick="showTab('iva')"><span class="sb-icon">🟡</span>Mapa IVA<span class="sb-count">78</span></div>
       <div class="sb-item" id="sb-saft" onclick="showTab('saft')"><span class="sb-icon">📁</span>SAFT<span class="sb-count">90</span></div>
-      <div class="sb-item" id="sb-honextrato" onclick="showTab('honextrato')"><span class="sb-icon">📥</span>Importar Extrato</div>
       <div class="sb-item" id="sb-rec" onclick="showTab('rec')"><span class="sb-icon">💶</span>Recebimentos<span class="sb-count">85</span></div>
       <div class="sb-item" id="sb-planosAT" onclick="showTab('planosAT')"><span class="sb-icon">📅</span>Planos Pag. AT<span class="sb-badge-at" id="badge-planosAT" style="display:none;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:auto"></span></div>
       <div class="sb-group-label">Seg. Social</div>
@@ -480,12 +480,6 @@ td.center{text-align:center;}
       <div class="section" id="sec-iva"></div>
       <div class="section" id="sec-saft"></div>
       <div class="section" id="sec-rec"></div>
-<div id="sec-honextrato" class="section">
-  <iframe src="honorarios_extrato.html" id="iframe-honextrato"
-    style="width:100%;height:calc(100vh - 44px);border:none;display:block;"
-    title="Importar Extrato">
-  </iframe>
-</div>
       <div class="section" id="sec-planosAT"></div>
       <div class="section" id="sec-ssdecl"></div>
       <div class="section" id="sec-ss"></div>
@@ -564,6 +558,23 @@ td.center{text-align:center;}
   <div class="form-err" id="recAddErr"></div>
   <input class="mgmt-search" id="recMgmtSearch" placeholder="🔍 Filtrar..." oninput="renderRECMgmt()">
   <div class="mgmt-list" id="recMgmtList"></div>
+</div></div>
+
+<!-- MODAL IMPORTAR EXTRATO -->
+<div class="modal-overlay" id="modalImportExtrato"><div class="modal" style="width:920px;max-width:96vw">
+  <div class="modal-header"><div class="modal-title">📥 Importar Extrato — Dar Baixa de Recebimentos</div><button class="modal-close" onclick="closeModal('modalImportExtrato')">✕</button></div>
+  <div style="font-size:12px;color:var(--text4);margin-bottom:10px">
+    Carregue o extrato do banco (.xls/.xlsx com Data valor, Descrição da Conta, Montante). Movimentos já importados antes não se repetem, e um mês já preenchido nunca é sobrescrito.
+  </div>
+  <div class="form-row">
+    <div class="form-group" style="flex:2"><label>Ficheiro do extrato</label><input type="file" id="impExtFile" accept=".xls,.xlsx"></div>
+    <div><button class="btn-primary" onclick="carregarExtrato()" style="margin-top:18px">Carregar</button></div>
+  </div>
+  <div class="form-err" id="impExtStatus"></div>
+  <div id="impExtRevisao" style="max-height:420px;overflow:auto;margin-top:10px"></div>
+  <div id="impExtFooter" style="margin-top:12px;display:none">
+    <button class="btn-primary" id="btnGravarExtrato" onclick="gravarExtrato()">✓ Confirmar e dar baixa</button>
+  </div>
 </div></div>
 
 <!-- MODAL SENHAS DMR -->
@@ -1374,6 +1385,7 @@ function renderREC(){
     <div class="ph-right">
       <select class="ctrl-sel" onchange="recAno=this.value;recPag=1;renderREC()">${ANOS.map(a=>`<option value="${a}"${a===recAno?' selected':''} >${a}</option>`).join('')}</select>
       <input class="ctrl-inp" placeholder="🔍 Pesquisar cliente…" oninput="recBusca=this.value.toLowerCase();recPag=1;renderREC()">
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openImportExtrato()">📥 Importar Extrato</button>`:''}
       ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoREC()">⚙️ Gerir</button>`:''}
     </div>
   </div>
@@ -1657,6 +1669,203 @@ function addClienteREC(){
   saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();
 }
 function removeClienteREC(nome){confirmAction('Remover Cliente',`Confirma a remoção de "${nome}"?`,()=>{state.clientes=state.clientes.filter(c=>c.nome!==nome);ANOS.forEach(a=>{if(state.rec[a])delete state.rec[a][nome];});saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();});}
+
+// ── IMPORTAR EXTRATO (dar baixa automática em Recebimentos) ──
+let honExtProcessed=null; // carregado sob pedido
+let honExtAliases=null;
+let extStaged=[];
+
+function stripAccentsExt(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function normalizeExt(s){return stripAccentsExt((s||'').toUpperCase()).replace(/[.,\-\/]/g,' ').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+const EXT_PREFIXES=[
+  /^TRF\s*CRED\s*INTRABANC\s*DE\s*/i,
+  /^TRF\s*CRED\s*SEPA\+?\s*DE\s*/i,
+  /^TRF\.?\s*IMED\.?\s*DE\s*/i,
+  /^TRF\.?\s*A\s*CRED\.?\s*SEPA\+?\s*DE?\s*/i,
+  /^TRF\s*DE\s*/i,
+  /^PAGAMENTO\s*FATURA\s*/i,
+  /^PAG\s*FT\s*/i,
+  /^PAG\s+/i,
+];
+const EXT_MESES=['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
+const EXT_MES_RE=new RegExp('('+EXT_MESES.join('|')+')\\s*-?\\s*(\\d{4})','i');
+
+function extParseDesc(raw){
+  let desc=(raw||'').trim(); let explicito=null;
+  const nd=stripAccentsExt(desc.toUpperCase());
+  const mm=nd.match(EXT_MES_RE);
+  if(mm){ const idx=EXT_MESES.indexOf(mm[1].toUpperCase()); if(idx>=0) explicito={ano:mm[2], mi:idx}; }
+  let stripped=desc;
+  for(const p of EXT_PREFIXES){ if(p.test(stripped)){ stripped=stripped.replace(p,''); break; } }
+  stripped=stripped.replace(/-\s*R?\d{5,}\s*$/i,'').replace(/\s{2,}/g,' ').trim();
+  return {clean:stripped, explicito};
+}
+function extWordSet(s){return new Set(normalizeExt(s).split(' ').filter(w=>w.length>1));}
+function extDice(a,b){const A=extWordSet(a),B=extWordSet(b);if(!A.size||!B.size)return 0;let i=0;for(const w of A)if(B.has(w))i++;return (2*i)/(A.size+B.size);}
+function extSub(a,b){const na=normalizeExt(a),nb=normalizeExt(b);if(!na||!nb)return 0;return (na.includes(nb)||nb.includes(na))?0.25:0;}
+function extBestMatch(cleanDesc){
+  let best=null,bestScore=0;
+  for(const c of state.clientes){
+    const names=[c.nome, ...((honExtAliases&&honExtAliases[safeKey(c.nome)])||[])];
+    for(const n of names){
+      const s=extDice(cleanDesc,n)+extSub(cleanDesc,n);
+      if(s>bestScore){bestScore=s;best=c;}
+    }
+  }
+  return {client:best, score:bestScore};
+}
+function extParseDateBR(d){ if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [dd,mm,yy]=d.split('-');return new Date(+yy,+mm-1,+dd);} return new Date(d); }
+function extAnoMi(d){return {ano:String(d.getFullYear()), mi:d.getMonth()};}
+function extMonthBefore({ano,mi}){return mi===0?{ano:String(+ano-1),mi:11}:{ano,mi:mi-1};}
+function extNextAnoMi({ano,mi}){return mi===11?{ano:String(+ano+1),mi:0}:{ano,mi:mi+1};}
+function extCmp(a,b){if(a.ano!==b.ano)return a.ano<b.ano?-1:1;return a.mi-b.mi;}
+function extRefAnoMi(){const n=new Date();return extMonthBefore({ano:String(n.getFullYear()),mi:n.getMonth()});}
+function extLabel(a){return MESES[a.mi]+'/'+a.ano.slice(2);}
+function extISODate(d){const dt=extParseDateBR(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
+function extCellVal(nomeKey,a){const arr=state.rec[a.ano]?.[nomeKey]?.meses; return arr?(arr[a.mi]||null):null;}
+function extFindStart(nomeKey){
+  for(const ano of ANOS){ const arr=state.rec[ano]?.[nomeKey]?.meses; if(!arr)continue; for(let mi=0;mi<12;mi++){ if(arr[mi]) return {ano,mi}; } }
+  return null;
+}
+function extPending(nomeKey,upTo){
+  const start=extFindStart(nomeKey); if(!start) return [];
+  const list=[]; let cur={...start};
+  while(extCmp(cur,upTo)<=0){ if(!extCellVal(nomeKey,cur)) list.push({...cur}); cur=extNextAnoMi(cur); if(+cur.ano>2031)break; }
+  return list;
+}
+function extAllocate(tx, client){
+  const nomeKey=safeKey(client.nome);
+  const parsed=extParseDesc(tx.desc);
+  let alvos=[];
+  if(parsed.explicito){ alvos=[parsed.explicito]; }
+  else{
+    const defaultCompet=extMonthBefore(extAnoMi(extParseDateBR(tx.data)));
+    const avenca=Number(client.avenca)||0;
+    if(avenca>0){
+      const n=Math.round(tx.montante/avenca);
+      const diff=Math.abs(tx.montante-n*avenca)/avenca;
+      if(n>=1 && diff<0.12){
+        const pend=extPending(nomeKey,defaultCompet);
+        let startM=pend.length?pend[0]:defaultCompet;
+        alvos=[]; let cur={...startM};
+        for(let i=0;i<n;i++){ alvos.push({...cur}); cur=extNextAnoMi(cur); }
+      }
+    }
+    if(alvos.length===0){ const pend=extPending(nomeKey,defaultCompet); alvos=[pend.length?pend[0]:defaultCompet]; }
+  }
+  return alvos.map(a=>({...a, conflito:!!extCellVal(nomeKey,a)}));
+}
+function extTxId(d,desc,m){ return 'tx_'+btoa(unescape(encodeURIComponent(d+'|'+desc+'|'+m))).replace(/[^A-Za-z0-9]/g,'').slice(0,24); }
+
+async function openImportExtrato(){
+  document.getElementById('impExtFile').value='';
+  document.getElementById('impExtStatus').textContent='A carregar dados…';
+  document.getElementById('impExtRevisao').innerHTML='';
+  document.getElementById('impExtFooter').style.display='none';
+  extStaged=[];
+  openModal('modalImportExtrato');
+  if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
+  if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
+  document.getElementById('impExtStatus').textContent='';
+}
+
+function carregarExtrato(){
+  const f=document.getElementById('impExtFile').files[0];
+  if(!f){ document.getElementById('impExtStatus').textContent='Escolha um ficheiro.'; return; }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const sheet=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
+      extStaged=[];
+      let jaImportadas=0, ignoradas=0;
+      for(let i=1;i<rows.length;i++){
+        const r=rows[i]; if(!r||r.length<3) continue;
+        const dataStr=String(r[0]||'').trim();
+        const desc=String(r[1]||'').trim();
+        const montante=parseFloat(String(r[2]||'0').replace(',','.'));
+        if(!dataStr||!desc||isNaN(montante)||montante<=0){ ignoradas++; continue; }
+        const id=extTxId(dataStr,desc,montante);
+        if(honExtProcessed[id]){ jaImportadas++; continue; }
+        const parsed=extParseDesc(desc);
+        const match=extBestMatch(parsed.clean);
+        const tx={id,data:dataStr,desc,descLimpa:parsed.clean,montante,
+          clienteEscolhido:(match.client&&match.score>=0.5)?match.client.nome:'',
+          score:match.score, incluir:!!(match.client&&match.score>=0.5), alvos:[]};
+        if(tx.clienteEscolhido) tx.alvos=extAllocate(tx, state.clientes.find(c=>c.nome===tx.clienteEscolhido));
+        extStaged.push(tx);
+      }
+      document.getElementById('impExtStatus').textContent=`${extStaged.length} novo(s) · ${jaImportadas} já importado(s) antes · ${ignoradas} linha(s) ignorada(s)`;
+      renderRevisaoExtrato();
+    }catch(err){ document.getElementById('impExtStatus').textContent='Erro: '+err.message; }
+  };
+  reader.readAsBinaryString(f);
+}
+
+function extOnClienteChange(id,nome){
+  const tx=extStaged.find(t=>t.id===id);
+  tx.clienteEscolhido=nome; tx.incluir=!!nome;
+  tx.alvos= nome? extAllocate(tx, state.clientes.find(c=>c.nome===nome)) : [];
+  renderRevisaoExtrato();
+}
+function extOnToggle(id,val){ const tx=extStaged.find(t=>t.id===id); tx.incluir=val; }
+
+function renderRevisaoExtrato(){
+  const el=document.getElementById('impExtRevisao');
+  if(extStaged.length===0){ el.innerHTML=''; document.getElementById('impExtFooter').style.display='none'; return; }
+  let h='<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Cliente</th><th>Competência</th><th>Incl.</th></tr></thead><tbody>';
+  extStaged.forEach(tx=>{
+    const opts=state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}" ${tx.clienteEscolhido===c.nome?'selected':''}>${c.nome}</option>`).join('');
+    const mesesHtml=tx.alvos.map(a=>`<span style="display:inline-block;background:${a.conflito?'#fbe9e9':'#eef1f6'};color:${a.conflito?'#c23b3b':'#333'};border-radius:5px;padding:2px 6px;font-size:10.5px;margin:1px">${extLabel(a)}${a.conflito?' ⚠':''}</span>`).join('')||'<span style="color:#999">—</span>';
+    h+=`<tr>
+      <td>${tx.data}</td>
+      <td style="max-width:220px">${tx.desc}</td>
+      <td>€ ${tx.montante.toFixed(2)}</td>
+      <td><select onchange="extOnClienteChange('${tx.id}', this.value)" style="min-width:200px">
+            <option value="">— sem cliente —</option>${opts}
+          </select></td>
+      <td>${mesesHtml}</td>
+      <td style="text-align:center"><input type="checkbox" ${tx.incluir?'checked':''} onchange="extOnToggle('${tx.id}', this.checked)"></td>
+    </tr>`;
+  });
+  h+='</tbody></table></div>';
+  el.innerHTML=h;
+  document.getElementById('impExtFooter').style.display='block';
+}
+
+async function gravarExtrato(){
+  const aIncluir=extStaged.filter(t=>t.incluir && t.clienteEscolhido && t.alvos.some(a=>!a.conflito));
+  if(aIncluir.length===0){ document.getElementById('impExtStatus').textContent='Nada para gravar.'; return; }
+  const btn=document.getElementById('btnGravarExtrato');
+  btn.disabled=true; btn.textContent='A gravar…';
+  let totalCelulas=0;
+  for(const tx of aIncluir){
+    const client=state.clientes.find(c=>c.nome===tx.clienteEscolhido);
+    const dataISO=extISODate(tx.data);
+    for(const alvo of tx.alvos){
+      if(alvo.conflito) continue;
+      saveRec(client.nome, alvo.mi, 'Transferência', alvo.ano);
+      _saveRecDataImpl(client.nome, alvo.mi, dataISO, alvo.ano);
+      totalCelulas++;
+    }
+    const key=safeKey(client.nome);
+    if(!honExtAliases[key]) honExtAliases[key]=[];
+    if(tx.descLimpa && normalizeExt(tx.descLimpa)!==normalizeExt(client.nome) && !honExtAliases[key].includes(tx.descLimpa)){
+      honExtAliases[key].push(tx.descLimpa);
+      fbSet('/honExtAliases/'+key, honExtAliases[key]);
+    }
+    honExtProcessed[tx.id]={data:tx.data, desc:tx.desc, montante:tx.montante, cliente:client.nome};
+    fbSet('/honExtProcessed/'+tx.id, honExtProcessed[tx.id]);
+  }
+  extStaged=extStaged.filter(t=>!aIncluir.includes(t));
+  document.getElementById('impExtStatus').textContent=`Gravado: ${aIncluir.length} movimento(s), ${totalCelulas} mês(es) marcado(s) como recebido.`;
+  btn.disabled=false; btn.textContent='✓ Confirmar e dar baixa';
+  renderRevisaoExtrato();
+  renderREC();
+}
+
+
 
 // ═══════════════════════════════════════
 // DADOS NOVOS MÓDULOS
