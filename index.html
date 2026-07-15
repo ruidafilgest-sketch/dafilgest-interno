@@ -1835,19 +1835,26 @@ function renderRevisaoExtrato(){
   const el=document.getElementById('impExtRevisao');
   if(!extResultado){ el.innerHTML=''; return; }
 
+  function opcoesClientes(atual){
+    return state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}"${c.nome===atual?' selected':''}>${c.nome}</option>`).join('');
+  }
+  function linhaControlos(it, atual){
+    return `<select id="mv_${it.id}" style="min-width:180px"><option value="">— sem cliente —</option>${opcoesClientes(atual)}</select>
+      <button class="btn-primary" style="font-size:11px;padding:4px 8px;margin-left:4px" onclick="extMoverCliente('${it.id}', document.getElementById('mv_${it.id}').value)">${atual?'Corrigir':'Gravar'}</button>
+      <button class="btn-danger" style="font-size:11px;padding:4px 8px;margin-left:4px" onclick="extRemoverItem('${it.id}')" title="Remover do registo (ex: não é honorário)">🗑️</button>`;
+  }
+
   if(extFiltro==='SEMIDENT'){
     const itens=extResultado.semIdentificar;
     if(itens.length===0){ el.innerHTML='<div style="padding:14px;color:var(--text4)">Sem transferências por identificar.</div>'; return; }
-    let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th><th>Atribuir a</th><th></th></tr></thead><tbody>';
-    itens.forEach((it,idx)=>{
-      const opts=state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}">${c.nome}</option>`).join('');
+    let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th><th colspan="2">Atribuir / remover</th></tr></thead><tbody>';
+    itens.forEach(it=>{
       h+=`<tr>
         <td>${it.data}</td>
         <td style="max-width:220px">${it.desc}</td>
         <td style="text-align:right">€ ${it.montante.toFixed(2)}</td>
         <td>${it.novo?'<span class="tag-novo">novo</span>':'<span class="tag-visto">já visto</span>'}</td>
-        <td><select id="extAtr_${idx}" style="min-width:190px"><option value="">— escolher —</option>${opts}</select></td>
-        <td><button class="btn-primary" style="font-size:11px;padding:4px 9px" onclick="extAtribuirCliente(${idx})">Gravar</button></td>
+        <td colspan="2">${linhaControlos(it,'')}</td>
       </tr>`;
     });
     h+='</tbody></table>';
@@ -1861,45 +1868,86 @@ function renderRevisaoExtrato(){
     nomes.forEach(n=>{
       const itens=extResultado.porCliente[n];
       const total=itens.reduce((s,i)=>s+i.montante,0);
-      h+=`<tr><td>${n}</td><td style="text-align:center">${itens.length}</td><td style="text-align:right">€ ${total.toFixed(2)}</td></tr>`;
+      h+=`<tr><td style="cursor:pointer;color:var(--blue)" onclick="onExtFiltroChange('${n.replace(/'/g,"\\'")}');document.getElementById('impExtFiltro').value='${n.replace(/'/g,"\\'")}'">${n}</td><td style="text-align:center">${itens.length}</td><td style="text-align:right">€ ${total.toFixed(2)}</td></tr>`;
     });
-    h+='</tbody></table>';
+    h+='</tbody></table><div style="font-size:11px;color:var(--text4);margin-top:6px">Clique no nome de um cliente para ver, corrigir ou imprimir só as transferências dele.</div>';
     el.innerHTML=h;
     return;
   }
 
-  // cliente específico
+  // cliente específico — permite corrigir se estiver mal atribuído, ou remover
   const itens=extResultado.porCliente[extFiltro]||[];
-  let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>';
+  if(itens.length===0){ el.innerHTML='<div style="padding:14px;color:var(--text4)">Sem transferências para este cliente.</div>'; return; }
+  let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th><th colspan="2">Corrigir cliente / remover</th></tr></thead><tbody>';
   itens.slice().sort((a,b)=>extParseDateBR(a.data)-extParseDateBR(b.data)).forEach(it=>{
-    h+=`<tr><td>${it.data}</td><td style="max-width:260px">${it.desc}</td><td style="text-align:right">€ ${it.montante.toFixed(2)}</td><td>${it.novo?'<span class="tag-novo">novo</span>':'<span class="tag-visto">já visto</span>'}</td></tr>`;
+    h+=`<tr>
+      <td>${it.data}</td>
+      <td style="max-width:220px">${it.desc}</td>
+      <td style="text-align:right">€ ${it.montante.toFixed(2)}</td>
+      <td>${it.novo?'<span class="tag-novo">novo</span>':'<span class="tag-visto">já visto</span>'}</td>
+      <td colspan="2">${linhaControlos(it, extFiltro)}</td>
+    </tr>`;
   });
   h+='</tbody></table>';
   el.innerHTML=h;
 }
 
-function extAtribuirCliente(idx){
-  const sel=document.getElementById('extAtr_'+idx);
-  const nome=sel.value;
-  if(!nome){ return; }
-  const item=extResultado.semIdentificar[idx];
-  extResultado.semIdentificar.splice(idx,1);
-  if(!extResultado.porCliente[nome]) extResultado.porCliente[nome]=[];
-  extResultado.porCliente[nome].push(item);
-
-  if(honExtProcessed[item.id]){
-    honExtProcessed[item.id].cliente=nome;
-    fbSet('/honExtProcessed/'+item.id, honExtProcessed[item.id]);
+// Move uma transferência (id) para outro cliente (ou para "sem identificar" se novoCliente for vazio),
+// onde quer que ela esteja neste momento — corrige atribuições erradas em qualquer vista.
+function extMoverCliente(itemId, novoCliente){
+  let item=null;
+  for(const nome of Object.keys(extResultado.porCliente)){
+    const arr=extResultado.porCliente[nome];
+    const idx=arr.findIndex(i=>i.id===itemId);
+    if(idx>=0){ item=arr.splice(idx,1)[0]; if(arr.length===0) delete extResultado.porCliente[nome]; break; }
   }
-  const key=safeKey(nome);
-  if(!honExtAliases[key]) honExtAliases[key]=[];
-  const clean=extLimparDesc(item.desc);
-  if(clean && extNormalize(clean)!==extNormalize(nome) && !honExtAliases[key].includes(clean)){
-    honExtAliases[key].push(clean);
-    fbSet('/honExtAliases/'+key, honExtAliases[key]);
+  if(!item){
+    const idx=extResultado.semIdentificar.findIndex(i=>i.id===itemId);
+    if(idx>=0) item=extResultado.semIdentificar.splice(idx,1)[0];
+  }
+  if(!item) return;
+
+  if(novoCliente){
+    if(!extResultado.porCliente[novoCliente]) extResultado.porCliente[novoCliente]=[];
+    extResultado.porCliente[novoCliente].push(item);
+  } else {
+    extResultado.semIdentificar.push(item);
   }
 
-  extFiltro='SEMIDENT';
+  if(honExtProcessed[itemId]){
+    honExtProcessed[itemId].cliente=novoCliente||null;
+    fbSet('/honExtProcessed/'+itemId, honExtProcessed[itemId]);
+  }
+  if(novoCliente){
+    const key=safeKey(novoCliente);
+    if(!honExtAliases[key]) honExtAliases[key]=[];
+    const clean=extLimparDesc(item.desc);
+    if(clean && extNormalize(clean)!==extNormalize(novoCliente) && !honExtAliases[key].includes(clean)){
+      honExtAliases[key].push(clean);
+      fbSet('/honExtAliases/'+key, honExtAliases[key]);
+    }
+  }
+
+  document.getElementById('impExtStatus').textContent=novoCliente?`Corrigido: agora atribuído a ${novoCliente}.`:'Transferência voltou para "sem identificar".';
+  renderFiltroExtrato();
+  renderRevisaoExtrato();
+}
+
+// Remove definitivamente uma transferência do registo (ex: não é um recebimento de honorários)
+function extRemoverItem(itemId){
+  if(!confirm('Remover esta transferência do registo? Deixa de aparecer em qualquer relatório.')) return;
+  for(const nome of Object.keys(extResultado.porCliente)){
+    const arr=extResultado.porCliente[nome];
+    const idx=arr.findIndex(i=>i.id===itemId);
+    if(idx>=0){ arr.splice(idx,1); if(arr.length===0) delete extResultado.porCliente[nome]; break; }
+  }
+  const idx2=extResultado.semIdentificar.findIndex(i=>i.id===itemId);
+  if(idx2>=0) extResultado.semIdentificar.splice(idx2,1);
+
+  delete honExtProcessed[itemId];
+  fbSet('/honExtProcessed/'+itemId, null);
+
+  document.getElementById('impExtStatus').textContent='Transferência removida do registo.';
   renderFiltroExtrato();
   renderRevisaoExtrato();
 }
