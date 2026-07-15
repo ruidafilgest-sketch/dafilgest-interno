@@ -470,8 +470,6 @@ td.center{text-align:center;}
       <div class="sb-item" id="sb-ss" onclick="showTab('ss')"><span class="sb-icon">💳</span>Independentes Pag.<span class="sb-count">29</span></div>
       <div class="sb-item" id="sb-ssprint" onclick="showTab('ssprint')"><span class="sb-icon">🖨️</span>Relação SS</div>
       <div class="sb-item" id="sb-dmr" onclick="showTab('dmr')"><span class="sb-icon">📤</span>DMR / DRI<span class="sb-count">51</span></div>
-      <div class="sb-group-label">Fiscal</div>
-      <div class="sb-item" id="sb-irc2025" onclick="showTab('irc2025')"><span class="sb-icon">🧮</span>Simulador IRC 2025</div>
       <div class="sb-group-label">Ativos</div>
       <div class="sb-item" id="sb-ativos" onclick="showTab('ativos')"><span class="sb-icon">🏭</span>Ativos Fixos</div>
     </div>
@@ -489,12 +487,6 @@ td.center{text-align:center;}
   <iframe src="ativos.html" id="iframe-ativos"
     style="width:100%;height:calc(100vh - 44px);border:none;display:block;"
     title="Ativos Fixos">
-  </iframe>
-</div>
-<div id="sec-irc2025" class="section">
-  <iframe src="irc2025.html" id="iframe-irc2025"
-    style="width:100%;height:calc(100vh - 50px);border:none;display:block;"
-    title="Simulador IRC 2025">
   </iframe>
 </div>
     </div>
@@ -561,18 +553,26 @@ td.center{text-align:center;}
 </div></div>
 
 <!-- MODAL IMPORTAR EXTRATO -->
-<div class="modal-overlay" id="modalImportExtrato"><div class="modal" style="width:520px">
+<div class="modal-overlay" id="modalImportExtrato"><div class="modal" style="width:760px;max-width:96vw">
   <div class="modal-header"><div class="modal-title">📥 Importar Extrato</div><button class="modal-close" onclick="closeModal('modalImportExtrato')">✕</button></div>
   <div style="font-size:12px;color:var(--text4);margin-bottom:12px">
-    Carregue o extrato do banco (.xls/.xlsx com Data valor, Descrição da Conta, Montante). Gera um relatório por cliente, pronto a imprimir ou guardar em PDF, com todas as transferências detetadas (data e valor) para você registar com calma no mapa de avenças.
-    Transferências já incluídas num relatório anterior não voltam a aparecer.
+    Carregue o extrato do banco (.xls/.xlsx com Data valor, Descrição da Conta, Montante). Transferências já incluídas num relatório anterior não voltam a aparecer.
   </div>
   <div class="form-row">
     <div class="form-group" style="flex:2"><label>Ficheiro do extrato</label><input type="file" id="impExtFile" accept=".xls,.xlsx"></div>
+    <div><button class="btn-primary" onclick="gerarRelatorioExtrato()" style="margin-top:18px">Carregar</button></div>
   </div>
   <div class="form-err" id="impExtStatus"></div>
-  <div class="row" style="margin-top:14px">
-    <button class="btn-primary" onclick="gerarRelatorioExtrato()">📄 Gerar relatório</button>
+
+  <div id="impExtFiltroWrap" style="display:none;margin-top:12px">
+    <div class="form-row" style="align-items:center">
+      <div class="form-group" style="flex:1">
+        <label>Ver / imprimir</label>
+        <select id="impExtFiltro" onchange="onExtFiltroChange(this.value)" style="width:100%"></select>
+      </div>
+      <div><button class="btn-primary" onclick="extImprimir()" style="margin-top:18px">🖨️ Imprimir / PDF</button></div>
+    </div>
+    <div id="impExtRevisao" style="max-height:380px;overflow:auto;margin-top:10px"></div>
   </div>
 </div></div>
 
@@ -1671,6 +1671,9 @@ function removeClienteREC(nome){confirmAction('Remover Cliente',`Confirma a remo
 
 // ── IMPORTAR EXTRATO (relatório por cliente para registo manual) ──
 let honExtProcessed=null; // {txId: {data,desc,montante,cliente}} — carregado sob pedido
+let honExtAliases=null;   // {clienteKey: [texto,...]} — aprendido ao atribuir manualmente
+let extResultado=null;    // {porCliente:{nome:[{id,data,desc,montante}]}, semIdentificar:[...], novas, jaRegistadas, intervaloTxt}
+let extFiltro='TODOS';
 
 function extStripAccents(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
 function extNormalize(s){return extStripAccents((s||'').toUpperCase()).replace(/[.,\-\/]/g,' ').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
@@ -1696,8 +1699,11 @@ function extSub(a,b){const na=extNormalize(a),nb=extNormalize(b);if(!na||!nb)ret
 function extBestMatch(cleanDesc){
   let best=null,bestScore=0;
   for(const c of state.clientes){
-    const s=extDice(cleanDesc,c.nome)+extSub(cleanDesc,c.nome);
-    if(s>bestScore){bestScore=s;best=c;}
+    const nomes=[c.nome, ...((honExtAliases&&honExtAliases[safeKey(c.nome)])||[])];
+    for(const n of nomes){
+      const s=extDice(cleanDesc,n)+extSub(cleanDesc,n);
+      if(s>bestScore){bestScore=s;best=c;}
+    }
   }
   return {client:best, score:bestScore};
 }
@@ -1717,10 +1723,13 @@ function extParseDateBR(d){ if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [dd,mm,yy]=d
 async function openImportExtrato(){
   document.getElementById('impExtFile').value='';
   document.getElementById('impExtStatus').textContent='';
+  document.getElementById('impExtFiltroWrap').style.display='none';
+  extResultado=null; extFiltro='TODOS';
   openModal('modalImportExtrato');
-  if(honExtProcessed===null){
+  if(honExtProcessed===null || honExtAliases===null){
     document.getElementById('impExtStatus').textContent='A verificar importações anteriores…';
-    honExtProcessed = await fbGet('/honExtProcessed') || {};
+    if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
+    if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
     document.getElementById('impExtStatus').textContent='';
   }
 }
@@ -1729,6 +1738,7 @@ async function gerarRelatorioExtrato(){
   const f=document.getElementById('impExtFile').files[0];
   if(!f){ document.getElementById('impExtStatus').textContent='Escolha um ficheiro primeiro.'; return; }
   if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
+  if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
 
   const reader=new FileReader();
   reader.onload=function(e){
@@ -1737,7 +1747,7 @@ async function gerarRelatorioExtrato(){
       const sheet=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
 
-      const porCliente={}; // nome -> [{data,desc,montante}]
+      const porCliente={}; // nome -> [{id,data,desc,montante}]
       const semIdentificar=[];
       const novosProcessados={};
       let novas=0, jaRegistadas=0, ignoradas=0;
@@ -1754,7 +1764,7 @@ async function gerarRelatorioExtrato(){
         novas++;
         const clean=extLimparDesc(desc);
         const match=extBestMatch(clean);
-        const item={data:dataStr, desc, montante};
+        const item={id, data:dataStr, desc, montante};
         if(match.client && match.score>=0.5){
           if(!porCliente[match.client.nome]) porCliente[match.client.nome]=[];
           porCliente[match.client.nome].push(item);
@@ -1766,6 +1776,7 @@ async function gerarRelatorioExtrato(){
 
       if(novas===0){
         document.getElementById('impExtStatus').textContent=`Sem novidades: as ${jaRegistadas} transferência(s) deste ficheiro já constavam de um relatório anterior.`;
+        document.getElementById('impExtFiltroWrap').style.display='none';
         return;
       }
 
@@ -1773,7 +1784,6 @@ async function gerarRelatorioExtrato(){
       Object.assign(honExtProcessed, novosProcessados);
       fbSet('/honExtProcessed', honExtProcessed);
 
-      // intervalo coberto (todas as processadas, cumulativo)
       const todasDatas=Object.values(honExtProcessed).map(t=>extParseDateBR(t.data)).filter(d=>!isNaN(d));
       let intervaloTxt='';
       if(todasDatas.length){
@@ -1781,12 +1791,111 @@ async function gerarRelatorioExtrato(){
         intervaloTxt=`Período já coberto (todas as importações): ${min.toLocaleDateString('pt-PT')} a ${max.toLocaleDateString('pt-PT')}.`;
       }
       document.getElementById('impExtStatus').textContent=
-        `Relatório gerado: ${novas} nova(s) transferência(s)${jaRegistadas?`, ${jaRegistadas} já tinham sido importadas antes (ignoradas)`:''}. ${intervaloTxt}`;
+        `${novas} nova(s) transferência(s)${jaRegistadas?`, ${jaRegistadas} já tinham sido importadas antes (ignoradas)`:''}. ${intervaloTxt}`;
 
-      abrirJanelaRelatorioExtrato(porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt);
+      extResultado={porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt};
+      extFiltro='TODOS';
+      document.getElementById('impExtFiltroWrap').style.display='block';
+      renderFiltroExtrato();
+      renderRevisaoExtrato();
     }catch(err){ document.getElementById('impExtStatus').textContent='Erro ao ler ficheiro: '+err.message; }
   };
   reader.readAsBinaryString(f);
+}
+
+function renderFiltroExtrato(){
+  const sel=document.getElementById('impExtFiltro');
+  const nomes=Object.keys(extResultado.porCliente).sort((a,b)=>a.localeCompare(b));
+  let h=`<option value="TODOS">— Relatório completo (${nomes.length} clientes) —</option>`;
+  nomes.forEach(n=>{ h+=`<option value="${n.replace(/"/g,'&quot;')}"${extFiltro===n?' selected':''}>${n} (${extResultado.porCliente[n].length})</option>`; });
+  if(extResultado.semIdentificar.length) h+=`<option value="SEMIDENT"${extFiltro==='SEMIDENT'?' selected':''}>⚠️ Sem cliente identificado (${extResultado.semIdentificar.length})</option>`;
+  sel.innerHTML=h;
+  sel.value=extFiltro;
+}
+
+function onExtFiltroChange(val){ extFiltro=val; renderRevisaoExtrato(); }
+
+function renderRevisaoExtrato(){
+  const el=document.getElementById('impExtRevisao');
+  if(!extResultado){ el.innerHTML=''; return; }
+
+  if(extFiltro==='SEMIDENT'){
+    const itens=extResultado.semIdentificar;
+    if(itens.length===0){ el.innerHTML='<div style="padding:14px;color:var(--text4)">Sem transferências por identificar.</div>'; return; }
+    let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th><th>Atribuir a</th><th></th></tr></thead><tbody>';
+    itens.forEach((it,idx)=>{
+      const opts=state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}">${c.nome}</option>`).join('');
+      h+=`<tr>
+        <td>${it.data}</td>
+        <td style="max-width:220px">${it.desc}</td>
+        <td style="text-align:right">€ ${it.montante.toFixed(2)}</td>
+        <td><select id="extAtr_${idx}" style="min-width:190px"><option value="">— escolher —</option>${opts}</select></td>
+        <td><button class="btn-primary" style="font-size:11px;padding:4px 9px" onclick="extAtribuirCliente(${idx})">Gravar</button></td>
+      </tr>`;
+    });
+    h+='</tbody></table>';
+    el.innerHTML=h;
+    return;
+  }
+
+  if(extFiltro==='TODOS'){
+    const nomes=Object.keys(extResultado.porCliente).sort((a,b)=>a.localeCompare(b));
+    let h='<table><thead><tr><th>Cliente</th><th style="text-align:center">Transferências</th><th style="text-align:right">Total</th></tr></thead><tbody>';
+    nomes.forEach(n=>{
+      const itens=extResultado.porCliente[n];
+      const total=itens.reduce((s,i)=>s+i.montante,0);
+      h+=`<tr><td>${n}</td><td style="text-align:center">${itens.length}</td><td style="text-align:right">€ ${total.toFixed(2)}</td></tr>`;
+    });
+    h+='</tbody></table>';
+    el.innerHTML=h;
+    return;
+  }
+
+  // cliente específico
+  const itens=extResultado.porCliente[extFiltro]||[];
+  let h='<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>';
+  itens.slice().sort((a,b)=>extParseDateBR(a.data)-extParseDateBR(b.data)).forEach(it=>{
+    h+=`<tr><td>${it.data}</td><td style="max-width:260px">${it.desc}</td><td style="text-align:right">€ ${it.montante.toFixed(2)}</td></tr>`;
+  });
+  h+='</tbody></table>';
+  el.innerHTML=h;
+}
+
+function extAtribuirCliente(idx){
+  const sel=document.getElementById('extAtr_'+idx);
+  const nome=sel.value;
+  if(!nome){ return; }
+  const item=extResultado.semIdentificar[idx];
+  extResultado.semIdentificar.splice(idx,1);
+  if(!extResultado.porCliente[nome]) extResultado.porCliente[nome]=[];
+  extResultado.porCliente[nome].push(item);
+
+  if(honExtProcessed[item.id]){
+    honExtProcessed[item.id].cliente=nome;
+    fbSet('/honExtProcessed/'+item.id, honExtProcessed[item.id]);
+  }
+  const key=safeKey(nome);
+  if(!honExtAliases[key]) honExtAliases[key]=[];
+  const clean=extLimparDesc(item.desc);
+  if(clean && extNormalize(clean)!==extNormalize(nome) && !honExtAliases[key].includes(clean)){
+    honExtAliases[key].push(clean);
+    fbSet('/honExtAliases/'+key, honExtAliases[key]);
+  }
+
+  extFiltro='SEMIDENT';
+  renderFiltroExtrato();
+  renderRevisaoExtrato();
+}
+
+function extImprimir(){
+  if(!extResultado) return;
+  if(extFiltro==='TODOS'){
+    abrirJanelaRelatorioExtrato(extResultado.porCliente, extResultado.semIdentificar, extResultado.novas, extResultado.jaRegistadas, extResultado.intervaloTxt);
+  } else if(extFiltro==='SEMIDENT'){
+    abrirJanelaRelatorioExtrato({}, extResultado.semIdentificar, extResultado.novas, extResultado.jaRegistadas, extResultado.intervaloTxt);
+  } else {
+    abrirJanelaRelatorioExtrato({[extFiltro]: extResultado.porCliente[extFiltro]||[]}, [], extResultado.novas, extResultado.jaRegistadas, extResultado.intervaloTxt);
+  }
 }
 
 function abrirJanelaRelatorioExtrato(porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt){
