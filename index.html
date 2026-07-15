@@ -172,29 +172,6 @@ tbody td.center{text-align:center;}
 .rec-t.sel.c{background:var(--slate);border-color:var(--slate);}
 .rec-t.sel.d{background:var(--green);border-color:var(--green);}
 
-/* REC — GRELHA COMPACTA (nova) */
-.rec-cel2{cursor:pointer;text-align:center;padding:4px 2px;border-left:1px solid var(--border2);transition:background .1s;}
-.rec-cel2:hover{background:var(--blue-light);}
-.rec-pill{display:inline-block;min-width:20px;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;color:#fff;line-height:1.3;}
-.rec-pill.empty{background:transparent;color:var(--text4);font-weight:400;}
-.rec-date{display:block;font-size:9px;color:var(--text4);margin-top:2px;}
-.sticky-col{position:sticky;left:0;background:var(--bg3);z-index:2;}
-.sticky-col2{position:sticky;left:32px;background:var(--bg3);z-index:2;box-shadow:2px 0 4px -2px rgba(0,0,0,.1);}
-tr:hover .sticky-col,tr:hover .sticky-col2{background:var(--bg2);}
-.row-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:middle;}
-.row-dot.ok{background:var(--green);}
-.row-dot.atraso{background:var(--red);}
-.row-dot.neutral{background:var(--border);}
-#recPop{position:fixed;z-index:1500;background:#fff;border:1px solid var(--border2);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:10px;display:none;width:190px;}
-#recPop.show{display:block;}
-#recPop .rp-title{font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px;}
-#recPop .rp-opts{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
-#recPop .rp-opt{padding:4px 8px;border-radius:5px;font-size:10.5px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);}
-#recPop .rp-opt:hover{border-color:var(--blue);}
-#recPop input[type=date]{width:100%;margin-bottom:8px;padding:5px 6px;border:1px solid var(--border);border-radius:5px;font-size:11px;}
-#recPop .rp-clear{width:100%;background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd);border-radius:5px;padding:6px;font-size:11px;cursor:pointer;font-weight:600;}
-#recPop .rp-clear:hover{background:var(--red);color:#fff;}
-
 /* OBS */
 .obs-inp{background:transparent;border:none;color:var(--text3);font-size:11px;width:100%;min-width:55px;outline:none;font-family:'Inter',sans-serif;}
 .obs-inp:focus{background:var(--bg2);padding:2px 4px;border-radius:3px;}
@@ -584,19 +561,18 @@ td.center{text-align:center;}
 </div></div>
 
 <!-- MODAL IMPORTAR EXTRATO -->
-<div class="modal-overlay" id="modalImportExtrato"><div class="modal" style="width:920px;max-width:96vw">
-  <div class="modal-header"><div class="modal-title">📥 Importar Extrato — Dar Baixa de Recebimentos</div><button class="modal-close" onclick="closeModal('modalImportExtrato')">✕</button></div>
-  <div style="font-size:12px;color:var(--text4);margin-bottom:10px">
-    Carregue o extrato do banco (.xls/.xlsx com Data valor, Descrição da Conta, Montante). Movimentos já importados antes não se repetem, e um mês já preenchido nunca é sobrescrito.
+<div class="modal-overlay" id="modalImportExtrato"><div class="modal" style="width:520px">
+  <div class="modal-header"><div class="modal-title">📥 Importar Extrato</div><button class="modal-close" onclick="closeModal('modalImportExtrato')">✕</button></div>
+  <div style="font-size:12px;color:var(--text4);margin-bottom:12px">
+    Carregue o extrato do banco (.xls/.xlsx com Data valor, Descrição da Conta, Montante). Gera um relatório por cliente, pronto a imprimir ou guardar em PDF, com todas as transferências detetadas (data e valor) para você registar com calma no mapa de avenças.
+    Transferências já incluídas num relatório anterior não voltam a aparecer.
   </div>
   <div class="form-row">
     <div class="form-group" style="flex:2"><label>Ficheiro do extrato</label><input type="file" id="impExtFile" accept=".xls,.xlsx"></div>
-    <div><button class="btn-primary" onclick="carregarExtrato()" style="margin-top:18px">Carregar</button></div>
   </div>
   <div class="form-err" id="impExtStatus"></div>
-  <div id="impExtRevisao" style="max-height:420px;overflow:auto;margin-top:10px"></div>
-  <div id="impExtFooter" style="margin-top:12px;display:none">
-    <button class="btn-primary" id="btnGravarExtrato" onclick="gravarExtrato()">✓ Confirmar e dar baixa</button>
+  <div class="row" style="margin-top:14px">
+    <button class="btn-primary" onclick="gerarRelatorioExtrato()">📄 Gerar relatório</button>
   </div>
 </div></div>
 
@@ -1404,7 +1380,7 @@ function renderREC(){
   });
 
   let h=`<div class="ph">
-    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Avenças mensais · ${recAno} · <span class="row-dot ok" style="margin-left:2px"></span>em dia &nbsp; <span class="row-dot atraso"></span>com mês em falta</p></div>
+    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Avenças mensais · ${recAno}</p></div>
     <div class="ph-right">
       <select class="ctrl-sel" onchange="recAno=this.value;recPag=1;renderREC()">${ANOS.map(a=>`<option value="${a}"${a===recAno?' selected':''} >${a}</option>`).join('')}</select>
       <input class="ctrl-inp" placeholder="🔍 Pesquisar cliente…" oninput="recBusca=this.value.toLowerCase();recPag=1;renderREC()">
@@ -1418,14 +1394,13 @@ function renderREC(){
     <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">${lista.length}</div><div class="stat-sub">de ${state.clientes.length} total</div></div>
   </div>
   <div class="table-wrap">
-    <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes · clique num mês para marcar)</span></div></div>
+    <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes)</span></div></div>
     <div class="tbl-scroll"><table><thead>
-      <tr><th class="sticky-col" style="width:32px">#</th><th class="sticky-col2">Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:5px 3px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
+      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:5px 3px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
     </thead><tbody>`;
 
   pag.forEach((c,i)=>{
-    const nomeKey=safeKey(c.nome);
-    const dCliente=dadosAno[nomeKey]||{};
+    const dCliente=dadosAno[safeKey(c.nome)]||{};
     const msRaw=dCliente.meses||Array(12).fill(null);
     const ms=Array.isArray(msRaw)
       ? Array.from({length:12},(_,i)=>msRaw[i]||null)
@@ -1435,10 +1410,9 @@ function renderREC(){
     const msArr2=Array.from({length:12},(_,i)=>Array.isArray(ms)?(ms[i]||null):(ms[i]||ms[String(i)]||null));
     const rec=msArr2.filter(Boolean).length*av;
     const falta=msArr2.filter(v=>!v).length*av;
-    const status=computeRowStatus(nomeKey,recAno);
-    h+=`<tr><td class="td-num sticky-col">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome sticky-col2"><span class="row-dot ${status}"></span>${c.nome}</td>`;
+    h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
     ms.forEach((val,mi)=>{
-      h+='<td class="rec-cel2" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'" onclick="abrirPopoverRec(this)"></td>';
+      h+='<td class="center rec-cel" style="border-left:1px solid var(--border2);padding:2px" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'"></td>';
     });
     h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
         <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
@@ -1454,110 +1428,76 @@ function renderREC(){
   if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
   h+=`</div>`;
   el.innerHTML=h;
-  pintarTodasCelulas(el);
-}
-
-function computeRowStatus(nomeKey, ano){
-  const hoje=new Date();
-  const anoAtual=String(hoje.getFullYear());
-  const mesAtualIdx=hoje.getMonth();
-  if(ano!==anoAtual) return 'neutral';
-  const upTo=mesAtualIdx-1;
-  if(upTo<0) return 'neutral';
-  const entry=state.rec[ano]?.[nomeKey];
-  const arr=entry?.meses||[];
-  for(let mi=0; mi<=upTo; mi++){ const v=Array.isArray(arr)?arr[mi]:arr[String(mi)]; if(!v) return 'atraso'; }
-  return 'ok';
+  preencherCelulasRec(el);
 }
 
 
 
-function pintarTodasCelulas(el){
-  el.querySelectorAll('.rec-cel2').forEach(function(td){ pintarCelula(td); });
+function createDateInput(nome,mi,dataRec,ano){
+  const inp=document.createElement('input');
+  inp.type='date';
+  if(dataRec) inp.value=dataRec;
+  inp.style.cssText='font-size:9px;width:90px;border:none;background:transparent;color:var(--text4);cursor:pointer;display:block;margin:0 auto';
+  inp.addEventListener('change',function(){
+    _saveRecDataImpl(nome,mi,this.value,ano);
+  });
+  return inp;
 }
 
-function pintarCelula(td){
-  const nome=decodeURIComponent(td.dataset.nome);
-  const mi=parseInt(td.dataset.mi);
-  const ano=td.dataset.ano;
-  const nomeKey=safeKey(nome);
-  const entry=state.rec[ano]?.[nomeKey];
-  const mesesRaw=entry?.meses||[];
-  const val=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
-  const datas=entry?.datas||{};
-  const dataVal=datas[mi]||datas[String(mi)]||'';
-  if(!val){ td.innerHTML='<span class="rec-pill empty">—</span>'; return; }
-  const INICIAIS={'Transferência':'T','MBWay':'M','Numerário':'N','Cheque':'C','Débito Direto':'D','Outro':'O'};
-  const bg=recColor(val);
-  const dl=dataVal ? new Date(dataVal+'T00:00:00').toLocaleDateString('pt-PT',{day:'2-digit',month:'2-digit'}) : '';
-  td.innerHTML='<span class="rec-pill" style="background:'+bg+'">'+(INICIAIS[val]||'?')+'</span>'+(dl?'<span class="rec-date">'+dl+'</span>':'');
-}
 
-function abrirPopoverRec(td){
-  const nome=decodeURIComponent(td.dataset.nome);
-  const mi=parseInt(td.dataset.mi);
-  const ano=td.dataset.ano;
-  const nomeKey=safeKey(nome);
-  const entry=state.rec[ano]?.[nomeKey];
-  const mesesRaw=entry?.meses||[];
-  const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
-  const datas=entry?.datas||{};
-  const dataVal=datas[mi]||datas[String(mi)]||'';
-
-  let pop=document.getElementById('recPop');
-  if(!pop){ pop=document.createElement('div'); pop.id='recPop'; document.body.appendChild(pop); }
-  pop.dataset.nome=td.dataset.nome; pop.dataset.mi=mi; pop.dataset.ano=ano;
-  window._recPopTd=td;
-
-  const tipos=[['Transferência','var(--blue)'],['MBWay','var(--purple)'],['Numerário','var(--amber)'],['Cheque','var(--text3)'],['Débito Direto','var(--green)'],['Outro','var(--text3)']];
-  pop.innerHTML='<div class="rp-title">'+nome+' — '+MESES[mi]+'/'+ano+'</div>'
-    +'<div class="rp-opts">'+tipos.map(function(t){
-        const isSel=cur===t[0];
-        return '<div class="rp-opt'+(isSel?' active':'')+'" style="'+(isSel?'background:'+t[1]+';border-color:'+t[1]+';color:#fff':'')+'" onclick="selecionarTipoRec(\''+t[0]+'\')">'+t[0]+'</div>';
-      }).join('')+'</div>'
-    +'<input type="date" id="recPopData" value="'+(dataVal||'')+'" onchange="alterarDataRec(this.value)">'
-    +'<button class="rp-clear" onclick="limparCelulaRec()">Limpar</button>';
-
-  const rect=td.getBoundingClientRect();
-  pop.style.left=Math.max(6, Math.min(rect.left, window.innerWidth-210))+'px';
-  pop.style.top=(rect.bottom+6)+'px';
-  pop.classList.add('show');
+function preencherCelulasRec(el){
+  const TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
+  const ABREV={null:'—','Transferência':'Transf.','MBWay':'MBWay','Numerário':'Num.','Cheque':'Cheque','Débito Direto':'Déb.Dir.','Outro':'Outro'};
+  const EXTRA={null:'','Transferência':'','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':''};
+  el.querySelectorAll('.rec-cel').forEach(function(td){
+    const nomeCod=td.dataset.nome;
+    const mi=parseInt(td.dataset.mi);
+    const ano=td.dataset.ano;
+    const nome=decodeURIComponent(nomeCod);
+    if(!state.rec[ano]) state.rec[ano]={};
+    if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+    const mesesRaw=state.rec[ano][safeKey(nome)].meses||[];
+    const cur=Array.isArray(mesesRaw)?(mesesRaw[mi]||null):(mesesRaw[String(mi)]||null);
+    const datas=state.rec[ano][safeKey(nome)].datas||{};
+    const dataRec=datas[mi]||datas[String(mi)]||'';
+    // Criar spans para cada tipo
+    TIPOS.forEach(function(t){
+      const span=document.createElement('span');
+      const isSel=cur===t;
+      span.className='rec-t'+(isSel?' sel'+(EXTRA[t]?' '+EXTRA[t]:''):'');
+      span.textContent=ABREV[t]||'—';
+      span.addEventListener('click',function(){
+        if(!state.rec[ano]) state.rec[ano]={};
+        if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+        const mArr=state.rec[ano][safeKey(nome)].meses;
+        if(Array.isArray(mArr)) mArr[mi]=t;
+        else state.rec[ano][safeKey(nome)].meses=Object.assign(Array(12).fill(null),mArr,{[mi]:t});
+        saveRec(nome,mi,t,ano);
+        // Actualizar spans desta célula
+        td.querySelectorAll('.rec-t').forEach(function(s,si){
+          const tt=TIPOS[si];
+          s.className='rec-t'+(tt===t?' sel'+(EXTRA[tt]?' '+EXTRA[tt]:''):'');
+        });
+      });
+      td.appendChild(span);
+    });
+    // Input de data — sempre visível quando tem tipo seleccionado
+    const br2=document.createElement('br');
+    const inp=document.createElement('input');
+    inp.type='date';
+    inp.style.cssText='font-size:9px;width:88px;border:1px solid var(--border);border-radius:3px;padding:1px 3px;margin-top:2px';
+    if(dataRec) inp.value=dataRec;
+    inp.addEventListener('change',function(){
+      if(!state.rec[ano]) state.rec[ano]={};
+      if(!state.rec[ano][safeKey(nome)]) state.rec[ano][safeKey(nome)]={avenca:state.clientes.find(c=>c.nome===nome)?.avenca||0,meses:Array(12).fill(null),datas:{}};
+      if(!state.rec[ano][safeKey(nome)].datas) state.rec[ano][safeKey(nome)].datas={};
+      state.rec[ano][safeKey(nome)].datas[mi]=this.value||null;
+      fbSet('/rec/'+ano+'/'+encodeURIComponent(safeKey(nome))+'/datas/'+mi, this.value||null);
+    });
+    td.appendChild(br2);
+    td.appendChild(inp);
+  });
 }
-function selecionarTipoRec(t){
-  const pop=document.getElementById('recPop');
-  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
-  let dataVal=document.getElementById('recPopData').value;
-  if(!dataVal){ dataVal=new Date().toISOString().slice(0,10); document.getElementById('recPopData').value=dataVal; }
-  saveRec(nome,mi,t,ano);
-  _saveRecDataImpl(nome,mi,dataVal,ano);
-  if(window._recPopTd) pintarCelula(window._recPopTd);
-  fecharPopoverRec();
-}
-function alterarDataRec(val){
-  const pop=document.getElementById('recPop');
-  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
-  _saveRecDataImpl(nome,mi,val,ano);
-  if(window._recPopTd) pintarCelula(window._recPopTd);
-}
-function limparCelulaRec(){
-  const pop=document.getElementById('recPop');
-  const nome=decodeURIComponent(pop.dataset.nome), mi=parseInt(pop.dataset.mi), ano=pop.dataset.ano;
-  saveRec(nome,mi,null,ano);
-  _saveRecDataImpl(nome,mi,null,ano);
-  if(window._recPopTd) pintarCelula(window._recPopTd);
-  fecharPopoverRec();
-}
-function fecharPopoverRec(){
-  const pop=document.getElementById('recPop');
-  if(pop) pop.classList.remove('show');
-}
-document.addEventListener('click', function(e){
-  const pop=document.getElementById('recPop');
-  if(!pop || !pop.classList.contains('show')) return;
-  if(pop.contains(e.target)) return;
-  if(window._recPopTd && window._recPopTd.contains(e.target)) return;
-  fecharPopoverRec();
-});
 
 const REC_TIPOS=[null,'Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
 const REC_CLS={null:'','Transferência':'t','MBWay':'m','Numerário':'n','Cheque':'c','Débito Direto':'d','Outro':'o'};
@@ -1729,13 +1669,11 @@ function addClienteREC(){
 }
 function removeClienteREC(nome){confirmAction('Remover Cliente',`Confirma a remoção de "${nome}"?`,()=>{state.clientes=state.clientes.filter(c=>c.nome!==nome);ANOS.forEach(a=>{if(state.rec[a])delete state.rec[a][nome];});saveMeta();fbSet('/rec',state.rec);renderRECMgmt();renderREC();renderDash();});}
 
-// ── IMPORTAR EXTRATO (dar baixa automática em Recebimentos) ──
-let honExtProcessed=null; // carregado sob pedido
-let honExtAliases=null;
-let extStaged=[];
+// ── IMPORTAR EXTRATO (relatório por cliente para registo manual) ──
+let honExtProcessed=null; // {txId: {data,desc,montante,cliente}} — carregado sob pedido
 
-function stripAccentsExt(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
-function normalizeExt(s){return stripAccentsExt((s||'').toUpperCase()).replace(/[.,\-\/]/g,' ').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
+function extStripAccents(s){return s.normalize('NFD').replace(/[\u0300-\u036f]/g,'');}
+function extNormalize(s){return extStripAccents((s||'').toUpperCase()).replace(/[.,\-\/]/g,' ').replace(/[^A-Z0-9 ]/g,' ').replace(/\s+/g,' ').trim();}
 const EXT_PREFIXES=[
   /^TRF\s*CRED\s*INTRABANC\s*DE\s*/i,
   /^TRF\s*CRED\s*SEPA\+?\s*DE\s*/i,
@@ -1746,99 +1684,64 @@ const EXT_PREFIXES=[
   /^PAG\s*FT\s*/i,
   /^PAG\s+/i,
 ];
-const EXT_MESES=['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
-const EXT_MES_RE=new RegExp('('+EXT_MESES.join('|')+')\\s*-?\\s*(\\d{4})','i');
-
-function extParseDesc(raw){
-  let desc=(raw||'').trim(); let explicito=null;
-  const nd=stripAccentsExt(desc.toUpperCase());
-  const mm=nd.match(EXT_MES_RE);
-  if(mm){ const idx=EXT_MESES.indexOf(mm[1].toUpperCase()); if(idx>=0) explicito={ano:mm[2], mi:idx}; }
-  let stripped=desc;
+function extLimparDesc(desc){
+  let stripped=(desc||'').trim();
   for(const p of EXT_PREFIXES){ if(p.test(stripped)){ stripped=stripped.replace(p,''); break; } }
   stripped=stripped.replace(/-\s*R?\d{5,}\s*$/i,'').replace(/\s{2,}/g,' ').trim();
-  return {clean:stripped, explicito};
+  return stripped;
 }
-function extWordSet(s){return new Set(normalizeExt(s).split(' ').filter(w=>w.length>1));}
+function extWordSet(s){return new Set(extNormalize(s).split(' ').filter(w=>w.length>1));}
 function extDice(a,b){const A=extWordSet(a),B=extWordSet(b);if(!A.size||!B.size)return 0;let i=0;for(const w of A)if(B.has(w))i++;return (2*i)/(A.size+B.size);}
-function extSub(a,b){const na=normalizeExt(a),nb=normalizeExt(b);if(!na||!nb)return 0;return (na.includes(nb)||nb.includes(na))?0.25:0;}
+function extSub(a,b){const na=extNormalize(a),nb=extNormalize(b);if(!na||!nb)return 0;return (na.includes(nb)||nb.includes(na))?0.25:0;}
 function extBestMatch(cleanDesc){
   let best=null,bestScore=0;
   for(const c of state.clientes){
-    const names=[c.nome, ...((honExtAliases&&honExtAliases[safeKey(c.nome)])||[])];
-    for(const n of names){
-      const s=extDice(cleanDesc,n)+extSub(cleanDesc,n);
-      if(s>bestScore){bestScore=s;best=c;}
-    }
+    const s=extDice(cleanDesc,c.nome)+extSub(cleanDesc,c.nome);
+    if(s>bestScore){bestScore=s;best=c;}
   }
   return {client:best, score:bestScore};
 }
-function extParseDateBR(d){ if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [dd,mm,yy]=d.split('-');return new Date(+yy,+mm-1,+dd);} return new Date(d); }
-function extAnoMi(d){return {ano:String(d.getFullYear()), mi:d.getMonth()};}
-function extMonthBefore({ano,mi}){return mi===0?{ano:String(+ano-1),mi:11}:{ano,mi:mi-1};}
-function extNextAnoMi({ano,mi}){return mi===11?{ano:String(+ano+1),mi:0}:{ano,mi:mi+1};}
-function extCmp(a,b){if(a.ano!==b.ano)return a.ano<b.ano?-1:1;return a.mi-b.mi;}
-function extRefAnoMi(){const n=new Date();return extMonthBefore({ano:String(n.getFullYear()),mi:n.getMonth()});}
-function extLabel(a){return MESES[a.mi]+'/'+a.ano.slice(2);}
-function extISODate(d){const dt=extParseDateBR(d);return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');}
-function extCellVal(nomeKey,a){const arr=state.rec[a.ano]?.[nomeKey]?.meses; return arr?(arr[a.mi]||null):null;}
-function extFindStart(nomeKey){
-  for(const ano of ANOS){ const arr=state.rec[ano]?.[nomeKey]?.meses; if(!arr)continue; for(let mi=0;mi<12;mi++){ if(arr[mi]) return {ano,mi}; } }
-  return null;
-}
-function extPending(nomeKey,upTo){
-  const start=extFindStart(nomeKey); if(!start) return [];
-  const list=[]; let cur={...start};
-  while(extCmp(cur,upTo)<=0){ if(!extCellVal(nomeKey,cur)) list.push({...cur}); cur=extNextAnoMi(cur); if(+cur.ano>2031)break; }
-  return list;
-}
-function extAllocate(tx, client){
-  const nomeKey=safeKey(client.nome);
-  const parsed=extParseDesc(tx.desc);
-  let alvos=[];
-  if(parsed.explicito){ alvos=[parsed.explicito]; }
-  else{
-    const defaultCompet=extMonthBefore(extAnoMi(extParseDateBR(tx.data)));
-    const avenca=Number(client.avenca)||0;
-    if(avenca>0){
-      const n=Math.round(tx.montante/avenca);
-      const diff=Math.abs(tx.montante-n*avenca)/avenca;
-      if(n>=1 && diff<0.12){
-        const pend=extPending(nomeKey,defaultCompet);
-        let startM=pend.length?pend[0]:defaultCompet;
-        alvos=[]; let cur={...startM};
-        for(let i=0;i<n;i++){ alvos.push({...cur}); cur=extNextAnoMi(cur); }
-      }
-    }
-    if(alvos.length===0){ const pend=extPending(nomeKey,defaultCompet); alvos=[pend.length?pend[0]:defaultCompet]; }
+function extTxId(d,desc,m){
+  const s=d+'|'+desc+'|'+m;
+  let h1=0xdeadbeef^s.length, h2=0x41c6ce57^s.length;
+  for(let i=0;i<s.length;i++){
+    const ch=s.charCodeAt(i);
+    h1=Math.imul(h1^ch,2654435761); h2=Math.imul(h2^ch,1597334677);
   }
-  return alvos.map(a=>({...a, conflito:!!extCellVal(nomeKey,a)}));
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return 'tx_'+(4294967296*(2097151&h2)+(h1>>>0)).toString(36);
 }
-function extTxId(d,desc,m){ return 'tx_'+btoa(unescape(encodeURIComponent(d+'|'+desc+'|'+m))).replace(/[^A-Za-z0-9]/g,'').slice(0,24); }
+function extParseDateBR(d){ if(/^\d{2}-\d{2}-\d{4}$/.test(d)){const [dd,mm,yy]=d.split('-');return new Date(+yy,+mm-1,+dd);} return new Date(d); }
 
 async function openImportExtrato(){
   document.getElementById('impExtFile').value='';
-  document.getElementById('impExtStatus').textContent='A carregar dados…';
-  document.getElementById('impExtRevisao').innerHTML='';
-  document.getElementById('impExtFooter').style.display='none';
-  extStaged=[];
-  openModal('modalImportExtrato');
-  if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
-  if(honExtAliases===null) honExtAliases = await fbGet('/honExtAliases') || {};
   document.getElementById('impExtStatus').textContent='';
+  openModal('modalImportExtrato');
+  if(honExtProcessed===null){
+    document.getElementById('impExtStatus').textContent='A verificar importações anteriores…';
+    honExtProcessed = await fbGet('/honExtProcessed') || {};
+    document.getElementById('impExtStatus').textContent='';
+  }
 }
 
-function carregarExtrato(){
+async function gerarRelatorioExtrato(){
   const f=document.getElementById('impExtFile').files[0];
-  if(!f){ document.getElementById('impExtStatus').textContent='Escolha um ficheiro.'; return; }
+  if(!f){ document.getElementById('impExtStatus').textContent='Escolha um ficheiro primeiro.'; return; }
+  if(honExtProcessed===null) honExtProcessed = await fbGet('/honExtProcessed') || {};
+
   const reader=new FileReader();
   reader.onload=function(e){
     try{
       const wb=XLSX.read(e.target.result,{type:'binary'});
       const sheet=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
-      extStaged=[];
-      let jaImportadas=0, ignoradas=0;
+
+      const porCliente={}; // nome -> [{data,desc,montante}]
+      const semIdentificar=[];
+      const novosProcessados={};
+      let novas=0, jaRegistadas=0, ignoradas=0;
+
       for(let i=1;i<rows.length;i++){
         const r=rows[i]; if(!r||r.length<3) continue;
         const dataStr=String(r[0]||'').trim();
@@ -1846,84 +1749,118 @@ function carregarExtrato(){
         const montante=parseFloat(String(r[2]||'0').replace(',','.'));
         if(!dataStr||!desc||isNaN(montante)||montante<=0){ ignoradas++; continue; }
         const id=extTxId(dataStr,desc,montante);
-        if(honExtProcessed[id]){ jaImportadas++; continue; }
-        const parsed=extParseDesc(desc);
-        const match=extBestMatch(parsed.clean);
-        const tx={id,data:dataStr,desc,descLimpa:parsed.clean,montante,
-          clienteEscolhido:(match.client&&match.score>=0.5)?match.client.nome:'',
-          score:match.score, incluir:!!(match.client&&match.score>=0.5), alvos:[]};
-        if(tx.clienteEscolhido) tx.alvos=extAllocate(tx, state.clientes.find(c=>c.nome===tx.clienteEscolhido));
-        extStaged.push(tx);
+        if(honExtProcessed[id]){ jaRegistadas++; continue; }
+
+        novas++;
+        const clean=extLimparDesc(desc);
+        const match=extBestMatch(clean);
+        const item={data:dataStr, desc, montante};
+        if(match.client && match.score>=0.5){
+          if(!porCliente[match.client.nome]) porCliente[match.client.nome]=[];
+          porCliente[match.client.nome].push(item);
+        } else {
+          semIdentificar.push(item);
+        }
+        novosProcessados[id]={data:dataStr, desc, montante, cliente:(match.client&&match.score>=0.5)?match.client.nome:null};
       }
-      document.getElementById('impExtStatus').textContent=`${extStaged.length} novo(s) · ${jaImportadas} já importado(s) antes · ${ignoradas} linha(s) ignorada(s)`;
-      renderRevisaoExtrato();
-    }catch(err){ document.getElementById('impExtStatus').textContent='Erro: '+err.message; }
+
+      if(novas===0){
+        document.getElementById('impExtStatus').textContent=`Sem novidades: as ${jaRegistadas} transferência(s) deste ficheiro já constavam de um relatório anterior.`;
+        return;
+      }
+
+      // grava as novas como processadas (evita repetição em importações futuras)
+      Object.assign(honExtProcessed, novosProcessados);
+      fbSet('/honExtProcessed', honExtProcessed);
+
+      // intervalo coberto (todas as processadas, cumulativo)
+      const todasDatas=Object.values(honExtProcessed).map(t=>extParseDateBR(t.data)).filter(d=>!isNaN(d));
+      let intervaloTxt='';
+      if(todasDatas.length){
+        const min=new Date(Math.min(...todasDatas)), max=new Date(Math.max(...todasDatas));
+        intervaloTxt=`Período já coberto (todas as importações): ${min.toLocaleDateString('pt-PT')} a ${max.toLocaleDateString('pt-PT')}.`;
+      }
+      document.getElementById('impExtStatus').textContent=
+        `Relatório gerado: ${novas} nova(s) transferência(s)${jaRegistadas?`, ${jaRegistadas} já tinham sido importadas antes (ignoradas)`:''}. ${intervaloTxt}`;
+
+      abrirJanelaRelatorioExtrato(porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt);
+    }catch(err){ document.getElementById('impExtStatus').textContent='Erro ao ler ficheiro: '+err.message; }
   };
   reader.readAsBinaryString(f);
 }
 
-function extOnClienteChange(id,nome){
-  const tx=extStaged.find(t=>t.id===id);
-  tx.clienteEscolhido=nome; tx.incluir=!!nome;
-  tx.alvos= nome? extAllocate(tx, state.clientes.find(c=>c.nome===nome)) : [];
-  renderRevisaoExtrato();
-}
-function extOnToggle(id,val){ const tx=extStaged.find(t=>t.id===id); tx.incluir=val; }
+function abrirJanelaRelatorioExtrato(porCliente, semIdentificar, novas, jaRegistadas, intervaloTxt){
+  const hoje=new Date();
+  const dataHoje=hoje.toLocaleDateString('pt-PT');
+  const nomesClientes=Object.keys(porCliente).sort((a,b)=>a.localeCompare(b));
 
-function renderRevisaoExtrato(){
-  const el=document.getElementById('impExtRevisao');
-  if(extStaged.length===0){ el.innerHTML=''; document.getElementById('impExtFooter').style.display='none'; return; }
-  let h='<div class="table-wrap"><table><thead><tr><th>Data</th><th>Descrição</th><th>Valor</th><th>Cliente</th><th>Competência</th><th>Incl.</th></tr></thead><tbody>';
-  extStaged.forEach(tx=>{
-    const opts=state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}" ${tx.clienteEscolhido===c.nome?'selected':''}>${c.nome}</option>`).join('');
-    const mesesHtml=tx.alvos.map(a=>`<span style="display:inline-block;background:${a.conflito?'#fbe9e9':'#eef1f6'};color:${a.conflito?'#c23b3b':'#333'};border-radius:5px;padding:2px 6px;font-size:10.5px;margin:1px">${extLabel(a)}${a.conflito?' ⚠':''}</span>`).join('')||'<span style="color:#999">—</span>';
-    h+=`<tr>
-      <td>${tx.data}</td>
-      <td style="max-width:220px">${tx.desc}</td>
-      <td>€ ${tx.montante.toFixed(2)}</td>
-      <td><select onchange="extOnClienteChange('${tx.id}', this.value)" style="min-width:200px">
-            <option value="">— sem cliente —</option>${opts}
-          </select></td>
-      <td>${mesesHtml}</td>
-      <td style="text-align:center"><input type="checkbox" ${tx.incluir?'checked':''} onchange="extOnToggle('${tx.id}', this.checked)"></td>
-    </tr>`;
-  });
-  h+='</tbody></table></div>';
-  el.innerHTML=h;
-  document.getElementById('impExtFooter').style.display='block';
-}
-
-async function gravarExtrato(){
-  const aIncluir=extStaged.filter(t=>t.incluir && t.clienteEscolhido && t.alvos.some(a=>!a.conflito));
-  if(aIncluir.length===0){ document.getElementById('impExtStatus').textContent='Nada para gravar.'; return; }
-  const btn=document.getElementById('btnGravarExtrato');
-  btn.disabled=true; btn.textContent='A gravar…';
-  let totalCelulas=0;
-  for(const tx of aIncluir){
-    const client=state.clientes.find(c=>c.nome===tx.clienteEscolhido);
-    const dataISO=extISODate(tx.data);
-    for(const alvo of tx.alvos){
-      if(alvo.conflito) continue;
-      saveRec(client.nome, alvo.mi, 'Transferência', alvo.ano);
-      _saveRecDataImpl(client.nome, alvo.mi, dataISO, alvo.ano);
-      totalCelulas++;
-    }
-    const key=safeKey(client.nome);
-    if(!honExtAliases[key]) honExtAliases[key]=[];
-    if(tx.descLimpa && normalizeExt(tx.descLimpa)!==normalizeExt(client.nome) && !honExtAliases[key].includes(tx.descLimpa)){
-      honExtAliases[key].push(tx.descLimpa);
-      fbSet('/honExtAliases/'+key, honExtAliases[key]);
-    }
-    honExtProcessed[tx.id]={data:tx.data, desc:tx.desc, montante:tx.montante, cliente:client.nome};
-    fbSet('/honExtProcessed/'+tx.id, honExtProcessed[tx.id]);
+  function secaoCliente(nome, itens, semCliente){
+    itens.sort((a,b)=>extParseDateBR(a.data)-extParseDateBR(b.data));
+    const total=itens.reduce((s,i)=>s+i.montante,0);
+    let linhas=itens.map(i=>`<tr><td>${i.data}</td><td>${i.desc}</td><td class="col-v">€ ${i.montante.toFixed(2)}</td><td class="col-ck">☐</td></tr>`).join('');
+    return `<div class="cli-bloco${semCliente?' sem-cliente':''}">
+      <div class="cli-header">${semCliente?'⚠️ Sem cliente identificado':nome} <span class="cli-total">${itens.length} transf. · € ${total.toFixed(2)}</span></div>
+      <table><thead><tr><th>Data</th><th>Descrição (extrato)</th><th class="col-v">Valor</th><th class="col-ck">Registado</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+    </div>`;
   }
-  extStaged=extStaged.filter(t=>!aIncluir.includes(t));
-  document.getElementById('impExtStatus').textContent=`Gravado: ${aIncluir.length} movimento(s), ${totalCelulas} mês(es) marcado(s) como recebido.`;
-  btn.disabled=false; btn.textContent='✓ Confirmar e dar baixa';
-  renderRevisaoExtrato();
-  renderREC();
-}
 
+  let corpo='';
+  nomesClientes.forEach(nome=>{ corpo+=secaoCliente(nome, porCliente[nome], false); });
+  if(semIdentificar.length) corpo+=secaoCliente(null, semIdentificar, true);
+
+  const html=`<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
+<title>Relatório de Transferências por Cliente · ${dataHoje}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Arial',sans-serif;font-size:11px;color:#1a1f2e;background:#fff;padding:16px 20px;}
+  .rel-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:2px solid #1a6fc4;padding-bottom:10px;}
+  .rel-title{font-size:15px;font-weight:700;}
+  .rel-sub{font-size:11px;color:#6b7585;margin-top:3px;}
+  .rel-meta{text-align:right;font-size:10px;color:#6b7585;}
+  .rel-stats{display:flex;gap:16px;margin-bottom:14px;}
+  .stat-box{background:#f7f8fa;border:1px solid #d4d8de;border-radius:4px;padding:6px 12px;font-size:11px;}
+  .stat-box strong{font-size:14px;display:block;color:#1a6fc4;}
+  .cli-bloco{margin-bottom:16px;break-inside:avoid;}
+  .cli-header{background:#1a6fc4;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;display:flex;justify-content:space-between;border-radius:4px 4px 0 0;}
+  .cli-bloco.sem-cliente .cli-header{background:#d97706;}
+  .cli-total{font-weight:400;font-size:10.5px;}
+  table{width:100%;border-collapse:collapse;font-size:10.5px;}
+  th{background:#eef1f6;padding:5px 8px;text-align:left;font-size:10px;font-weight:600;color:#3d4a5c;}
+  td{padding:5px 8px;border-bottom:1px solid #e8eaed;}
+  .col-v{text-align:right;width:90px;}
+  .col-ck{text-align:center;width:70px;font-size:13px;}
+  .rel-footer{margin-top:18px;font-size:9px;color:#a0aab8;border-top:1px solid #e8eaed;padding-top:8px;display:flex;justify-content:space-between;}
+  @media print{body{padding:8px 12px;} .no-print{display:none;} .cli-bloco{page-break-inside:avoid;}}
+</style></head><body>
+<div class="no-print" style="margin-bottom:12px">
+  <button onclick="window.print()" style="padding:7px 16px;background:#1a6fc4;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600">🖨️ Imprimir / Guardar PDF</button>
+  <button onclick="window.close()" style="margin-left:8px;padding:7px 16px;background:#f7f8fa;border:1px solid #d4d8de;border-radius:4px;cursor:pointer;font-size:12px">✕ Fechar</button>
+</div>
+<div class="rel-header">
+  <div>
+    <div class="rel-title">Dafilgest · Transferências por Cliente — extrato bancário</div>
+    <div class="rel-sub">Para registo manual no mapa de avenças</div>
+  </div>
+  <div class="rel-meta">Impresso em ${dataHoje}<br>${intervaloTxt}</div>
+</div>
+<div class="rel-stats">
+  <div class="stat-box"><strong>${nomesClientes.length}</strong>Clientes com transferências</div>
+  <div class="stat-box"><strong style="color:#16a34a">${novas}</strong>Novas neste relatório</div>
+  <div class="stat-box"><strong style="color:#6b7585">${jaRegistadas}</strong>Já incluídas antes (ignoradas)</div>
+  ${semIdentificar.length?`<div class="stat-box"><strong style="color:#d97706">${semIdentificar.length}</strong>Sem cliente identificado</div>`:''}
+</div>
+${corpo}
+<div class="rel-footer">
+  <span>Dafilgest Gab. de Contabilidade Unipessoal Lda · NIF 505403447</span>
+  <span>Contabilista Certificado — Inscrito na OCC 46003</span>
+</div>
+</body></html>`;
+
+  const w=window.open('','_blank','width=900,height=700');
+  w.document.write(html);
+  w.document.close();
+}
 
 
 // ═══════════════════════════════════════
