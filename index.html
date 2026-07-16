@@ -603,6 +603,33 @@ td.center{text-align:center;}
 </div>
 
 <!-- MODAL GESTÃO DECLARANTES -->
+<!-- MODAL GESTÃO TI (lista única, nome+NISS) -->
+<div class="modal-overlay" id="modalTI">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">⚙️ Gerir Trabalhadores Independentes</div>
+      <button class="modal-close" onclick="closeModal('modalTI')">✕</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--text4);margin-bottom:10px">Nome e NISS num único sítio. Se ainda não tiver o NISS, pode adicionar o TI só com o nome e completar o NISS mais tarde.</div>
+    <div class="form-row">
+      <div class="form-group" style="flex:2"><label>Nome</label><input type="text" id="tiNewNome" placeholder="Nome completo..."></div>
+      <div class="form-group"><label>NISS (opcional)</label><input type="text" id="tiNewNiss" placeholder="11 dígitos"></div>
+      <div class="form-group"><label>Mês início</label>
+        <select id="tiNewMes">
+          <option value="">Janeiro (normal)</option>
+          <option value="ABRIL">Abril</option>
+          <option value="JULHO">Julho</option>
+          <option value="OUTUBRO">Outubro</option>
+        </select>
+      </div>
+      <div><button class="btn-primary" onclick="addTI()" style="margin-top:18px">+ Adicionar</button></div>
+    </div>
+    <div class="form-err" id="tiAddErr"></div>
+    <input class="mgmt-search" id="tiMgmtSearch" placeholder="🔍 Filtrar por nome ou NISS..." oninput="renderTIMgmt()">
+    <div class="mgmt-list" id="tiMgmtList"></div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalSSDecl">
   <div class="modal">
     <div class="modal-header">
@@ -2135,27 +2162,29 @@ function renderSSDecl(){
   const TRIM_MESES={jan:'Jan·Fev·Mar',abr:'Abr·Mai·Jun',jul:'Jul·Ago·Set',out:'Out·Nov·Dez'};
   const NA_MAP={ABRIL:['jan'],JULHO:['jan','abr'],OUTUBRO:['jan','abr','jul']};
 
+  const declarantesAtivos=state.declarantes.map((d,idx)=>({d,idx})).filter(x=>tiAtivo(x.d));
+
   let feitas=0,total=0;
-  state.declarantes.forEach((_,idx)=>{
+  declarantesAtivos.forEach(({idx})=>{
     TRIMS.forEach(t=>{total++;if((dadosAno[idx]||{})[t])feitas++;});
   });
 
-  const totPag=Math.ceil(state.declarantes.length/SSDECL_PP)||1;
+  const totPag=Math.ceil(declarantesAtivos.length/SSDECL_PP)||1;
   if(ssDeclPag>totPag)ssDeclPag=1;
-  const pag=state.declarantes.slice((ssDeclPag-1)*SSDECL_PP,ssDeclPag*SSDECL_PP);
+  const pag=declarantesAtivos.slice((ssDeclPag-1)*SSDECL_PP,ssDeclPag*SSDECL_PP);
 
   let h=`<div class="ph">
     <div class="ph-left"><h1>Independentes — Declaração Trimestral</h1><p>Controlo de envio · ${ssDeclAno} · ${feitas}/${total} declarações concluídas</p></div>
     <div class="ph-right">
       <select class="ctrl-sel" onchange="ssDeclAno=this.value;ssDeclPag=1;renderSSDecl()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssDeclAno?' selected':''}>${a}</option>`).join('')}</select>
-      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoSSDecl()">⚙️ Gerir</button>`:''}
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoTI()">⚙️ Gerir TI</button>`:''}
     </div>
   </div>
   <div style="background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
     ℹ️ Insere os valores de enquadramento trimestral. Os valores propagam automaticamente para o separador de Pagamentos em quem estiver ligado.
   </div>
   <div class="table-wrap">
-    <div class="toolbar"><div class="toolbar-title">Declarantes <span class="toolbar-count">(${state.declarantes.length} entidades)</span></div></div>
+    <div class="toolbar"><div class="toolbar-title">Declarantes <span class="toolbar-count">(${declarantesAtivos.length} entidades)</span></div></div>
     <div class="tbl-scroll"><table><thead>
       <tr>
         <th>#</th><th>Nome / Empresa</th><th style="font-size:9px;color:var(--blue)">Trabalhador SS</th>
@@ -2167,14 +2196,13 @@ function renderSSDecl(){
       </tr>
     </thead><tbody>`;
 
-  pag.forEach((d,pi)=>{
-    const idx=(ssDeclPag-1)*SSDECL_PP+pi;
+  pag.forEach(({d,idx})=>{
     const dd=dadosAno[idx]||{};
     const naList=NA_MAP[d.mesInicio]||[];
     const nomeE=d.nome.replace(/'/g,"\\'");
     const trabSel=state.trabalhadores.find(t=>t.declIdx===idx);
     h+=`<tr><td class="td-num">${idx+1}</td>
-      <td class="td-nome">${d.nome}${d.mesInicio?` <span style="font-size:10px;color:var(--amber);font-weight:600">(início ${d.mesInicio})</span>`:''}</td>
+      <td class="td-nome">${d.nome}${trabSel?` <span style="font-size:9.5px;color:var(--text4);font-family:'JetBrains Mono',monospace">NISS ${trabSel.num}</span>`:` <span style="font-size:9.5px;color:var(--amber)">NISS em falta</span>`}${d.mesInicio?` <span style="font-size:10px;color:var(--amber);font-weight:600">(início ${d.mesInicio})</span>`:''}</td>
       <td>
         <select class="inline-sel" style="font-size:10px;max-width:140px" onchange="linkDeclaranteDecl(${idx},this.value)">
           <option value="">— nenhum —</option>
@@ -2251,8 +2279,109 @@ function addDeclarante(){
   err.textContent='';document.getElementById('ssDeclNewNome').value='';
   saveMeta();renderSSDeclMgmt();renderSSDecl();
 }
-function removeDeclarante(idx){
-  confirmAction('Remover Declarante',`Confirma a remoção de "${state.declarantes[idx]?.nome}"?`,()=>{
+// ═══════════════════════════════════════
+// TI — LISTA ÚNICA (nome+NISS), construída por cima dos dados já existentes
+// Não move nem apaga nada: só lê declarantes+trabalhadores e as ligações (declIdx)
+// que o utilizador já tinha feito, e junta tudo numa vista única.
+// ═══════════════════════════════════════
+function tiAtivo(d){ return d && d.ativo!==false; }
+
+function buildListaTI(){
+  const lista=[];
+  const usados=new Set();
+  state.trabalhadores.forEach(t=>{
+    const declIdx=(t.declIdx!==null && t.declIdx!==undefined)?t.declIdx:null;
+    const decl=(declIdx!==null)?state.declarantes[declIdx]:null;
+    if(declIdx!==null) usados.add(declIdx);
+    lista.push({
+      niss:t.num, nome:t.nome, tpa:!!t.tpa, declIdx,
+      mesInicio:decl?decl.mesInicio:null,
+      temNiss:true
+    });
+  });
+  state.declarantes.forEach((d,idx)=>{
+    if(!tiAtivo(d)) return;
+    if(usados.has(idx)) return;
+    lista.push({niss:null, nome:d.nome, tpa:false, declIdx:idx, mesInicio:d.mesInicio, temNiss:false});
+  });
+  return lista.sort((a,b)=>a.nome.localeCompare(b.nome,'pt'));
+}
+
+function addTI(){
+  const nome=(document.getElementById('tiNewNome').value||'').trim();
+  const niss=(document.getElementById('tiNewNiss').value||'').trim();
+  const mesInicio=document.getElementById('tiNewMes').value||null;
+  const err=document.getElementById('tiAddErr');
+  err.textContent='';
+  if(!nome){ err.textContent='Introduza o nome.'; return; }
+  if(niss && !/^\d{11}$/.test(niss)){ err.textContent='O NISS deve ter 11 dígitos (ou deixe em branco para preencher depois).'; return; }
+  if(niss && state.trabalhadores.find(t=>t.num===niss)){ err.textContent='Já existe um TI com este NISS.'; return; }
+  if(state.declarantes.find(d=>tiAtivo(d) && d.nome.toLowerCase().trim()===nome.toLowerCase())){ err.textContent='Já existe um TI ativo com este nome.'; return; }
+
+  const declIdx=state.declarantes.length;
+  state.declarantes.push({nome, mesInicio, ativo:true});
+  if(niss){ state.trabalhadores.push({num:niss, nome, tpa:false, declIdx}); }
+  saveMeta();
+  document.getElementById('tiNewNome').value='';
+  document.getElementById('tiNewNiss').value='';
+  renderTIMgmt(); renderSSDecl(); renderSS();
+}
+
+function completarNissTI(declIdx){
+  const inp=document.getElementById('tiNiss_'+declIdx);
+  const err=document.getElementById('tiNissErr_'+declIdx);
+  const niss=(inp.value||'').trim();
+  if(err) err.textContent='';
+  if(!/^\d{11}$/.test(niss)){ if(err) err.textContent='NISS deve ter 11 dígitos.'; return; }
+  if(state.trabalhadores.find(t=>t.num===niss)){ if(err) err.textContent='Este NISS já pertence a outro TI.'; return; }
+  const decl=state.declarantes[declIdx];
+  if(!decl) return;
+  state.trabalhadores.push({num:niss, nome:decl.nome, tpa:false, declIdx});
+  saveMeta();
+  renderTIMgmt(); renderSSDecl(); renderSS();
+}
+
+function removeTI(declIdx, niss){
+  const decl=(declIdx!==null && declIdx!==undefined)?state.declarantes[declIdx]:null;
+  const trab=niss?state.trabalhadores.find(t=>t.num===niss):null;
+  const nome=(decl&&decl.nome)||(trab&&trab.nome)||'';
+  confirmAction('Remover TI',
+    `Confirma remover "${nome}"${niss?' (NISS '+niss+')':''} da lista de Trabalhadores Independentes?<br><br><b>Os valores já declarados/pagos ficam guardados no histórico</b> — só deixa de aparecer nas listas ativas e não recebe novas declarações.`,
+    ()=>{
+      if(decl) decl.ativo=false; // arquiva, nunca faz splice (protege índices de quem vem a seguir)
+      if(niss) state.trabalhadores=state.trabalhadores.filter(t=>t.num!==niss);
+      saveMeta();
+      renderTIMgmt(); renderSSDecl(); renderSS();
+    });
+}
+
+function openGestaoTI(){
+  document.getElementById('tiNewNome').value='';
+  document.getElementById('tiNewNiss').value='';
+  document.getElementById('tiAddErr').textContent='';
+  openModal('modalTI');
+  renderTIMgmt();
+}
+
+function renderTIMgmt(){
+  const q=(document.getElementById('tiMgmtSearch').value||'').toLowerCase();
+  const lista=buildListaTI().filter(t=>!q||t.nome.toLowerCase().includes(q)||(t.niss||'').includes(q));
+  document.getElementById('tiMgmtList').innerHTML=lista.map(t=>`
+    <div class="mgmt-item">
+      <span class="mgmt-nome">${t.nome}</span>
+      ${t.temNiss
+        ? `<span class="mgmt-meta" style="font-family:'JetBrains Mono',monospace">NISS ${t.niss}</span>`
+        : `<span class="mgmt-meta" style="color:var(--amber)">NISS em falta</span>
+           <input type="text" id="tiNiss_${t.declIdx}" placeholder="11 dígitos" style="width:110px;font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:var(--r)">
+           <button class="btn-secondary" style="font-size:10px;padding:3px 7px" onclick="completarNissTI(${t.declIdx})">Guardar NISS</button>
+           <span class="form-err" id="tiNissErr_${t.declIdx}" style="display:inline;margin:0 0 0 6px"></span>`
+      }
+      ${t.mesInicio?`<span class="mgmt-meta" style="color:var(--amber)">início ${t.mesInicio}</span>`:''}
+      <button class="btn-danger" onclick="removeTI(${t.declIdx===null?'null':t.declIdx}, ${t.niss?`'${t.niss}'`:'null'})" style="font-size:11px;padding:3px 8px">✕</button>
+    </div>`).join('')||'<div style="padding:12px;color:var(--text4);font-size:12px">Sem resultados.</div>';
+}
+
+function removeDeclarante(idx){confirmAction('Remover Declarante',`Confirma a remoção de "${state.declarantes[idx]?.nome}"?`,()=>{
     state.declarantes.splice(idx,1);
     saveMeta();renderSSDeclMgmt();renderSSDecl();
   });
@@ -2276,7 +2405,7 @@ function renderSS(){
     <div class="ph-left"><h1>Trabalhadores Independentes — SS</h1><p>Enquadramento trimestral · ${ssAno}</p></div>
     <div class="ph-right">
       <select class="ctrl-sel" onchange="ssAno=this.value;ssPag=1;renderSS()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssAno?' selected':''}>${a}</option>`).join('')}</select>
-      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoSS()">⚙️ Gerir</button>`:''}
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoTI()">⚙️ Gerir TI</button>`:''}
     </div>
   </div>
   <div style="background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);">
@@ -2390,7 +2519,7 @@ function renderSSPrint(){
   // Jan=enquadramento jan→meses fev,mar,abr
   // Abr=enquadramento abr→meses mai,jun,jul
   // Jul=enquadramento jul→meses ago,set,out
-  // Out=enquadramento out→meses nov,dez,jan
+  // Out=enquadramento out→meses nov,dez,jan(ano seguinte)
   const MES_TRIM = {
     2:'jan',3:'jan',4:'jan',
     5:'abr',6:'abr',7:'abr',
@@ -2399,13 +2528,17 @@ function renderSSPrint(){
   };
 
   const dadosSS=state.ss[ssPrintAno]||{};
-  const dadosDecl=state.ssdecl[ssPrintAno]||{};
   const trimKey=MES_TRIM[ssPrintMes];
+  // O enquadramento de Outubro cobre Nov+Dez do mesmo ano e Janeiro do ano SEGUINTE.
+  // Por isso, ao imprimir a folha de Janeiro, o valor declarado está no ano ANTERIOR.
+  const anoDecl = (ssPrintMes===1) ? String(+ssPrintAno-1) : ssPrintAno;
+  const dadosDecl=state.ssdecl[anoDecl]||{};
 
   // Construir lista dos declarantes com valor para o trimestre
   // Cruzamento pelo declIdx (ligação feita no separador Independentes Decl.)
   // ou por nome exacto como fallback
   const lista=state.declarantes.map((d,idx)=>{
+    if(!tiAtivo(d)) return null; // TI arquivado nunca entra na folha de pagamentos
     const dDecl=(dadosDecl[idx]||{});
     const valor=dDecl[trimKey+'_val']||0;
     // 1º tentar pelo declIdx — trabalhador que tem este declarante ligado
@@ -2417,7 +2550,7 @@ function renderSSPrint(){
     const num=trab?trab.num:'—';
     const tpa=trab?trab.tpa:false;
     return {num, nome:d.nome, valor, trimKey, tpa};
-  }).filter(d=>d.valor>0 && d.num!=='—' && /^\d{9,}$/.test(d.num));
+  }).filter(d=>d && d.valor>0 && d.num!=='—' && /^\d{9,}$/.test(d.num));
 
   const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
