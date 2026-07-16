@@ -2080,6 +2080,7 @@ state.trabalhadores = JSON.parse(JSON.stringify(TRABALHADORES_INIT));
 state.ssdecl = {}; // {ano:{idx:{jan:bool,abr:bool,jul:bool,out:bool}}}
 state.empresasDMR   = JSON.parse(JSON.stringify(EMPRESAS_DMR_INIT));
 state.ss  = {}; // {ano: {numBen: {jan:{valor,tpa}, abr:{...}, jul:{...}, out:{...}}}}
+state.ssIncluir = {}; // {ano:{mes:{numBen:true|false}}} — seleção manual de quem entra na folha de pagamentos
 state.dmr = {}; // {ano: {nif: {1:{ss,at}, 2:{ss,at}, ...}}}
 
 // Carregar do Firebase no loadFirebase
@@ -2109,10 +2110,11 @@ function startApp(){
   loadFirebase(()=>{
     // Carregar TODOS os dados antes de renderizar
     Promise.all([
-      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/meta'), fbGet('/planosAT')
-    ]).then(([ss,ssdecl,dmr,meta,planosAT])=>{
+      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/meta'), fbGet('/planosAT'), fbGet('/ssIncluir')
+    ]).then(([ss,ssdecl,dmr,meta,planosAT,ssIncluir])=>{
       if(ss) state.ss=ss;
       if(ssdecl) state.ssdecl=ssdecl;
+      if(ssIncluir) state.ssIncluir=ssIncluir;
       if(dmr) state.dmr=dmr;
       if(planosAT) state.planosAT=Array.isArray(planosAT)?planosAT:Object.values(planosAT);
       if(meta){
@@ -2155,6 +2157,7 @@ let dmrAno='2026', dmrBusca='', dmrPag=1; const DMR_PP=35;
 let ssDeclAno='2026', ssDeclPag=1; const SSDECL_PP=40;
 
 function renderSSDecl(){
+  repararLigacoesTI();
   const el=document.getElementById('sec-ssdecl');
   const dadosAno=state.ssdecl[ssDeclAno]||{};
   const TRIMS=['jan','abr','jul','out'];
@@ -2285,6 +2288,25 @@ function addDeclarante(){
 // que o utilizador já tinha feito, e junta tudo numa vista única.
 // ═══════════════════════════════════════
 function tiAtivo(d){ return d && d.ativo!==false; }
+
+// Repara ligações partidas: qualquer trabalhador (tem NISS) sem declarante válido ligado
+// passa a ter um criado automaticamente, para aparecer na Declaração Trimestral.
+// Nunca mexe em índices existentes — só acrescenta ao fim da lista.
+function repararLigacoesTI(){
+  let mudou=false;
+  state.trabalhadores.forEach(t=>{
+    const declIdx=(t.declIdx!==null && t.declIdx!==undefined)?t.declIdx:null;
+    const declValido=declIdx!==null && state.declarantes[declIdx] && tiAtivo(state.declarantes[declIdx]);
+    if(!declValido){
+      const novoIdx=state.declarantes.length;
+      state.declarantes.push({nome:t.nome, mesInicio:null, ativo:true});
+      t.declIdx=novoIdx;
+      mudou=true;
+    }
+  });
+  if(mudou) saveMeta();
+  return mudou;
+}
 
 function buildListaTI(){
   const lista=[];
@@ -2534,10 +2556,10 @@ function renderSSPrint(){
   const anoDecl = (ssPrintMes===1) ? String(+ssPrintAno-1) : ssPrintAno;
   const dadosDecl=state.ssdecl[anoDecl]||{};
 
-  // Construir lista dos declarantes com valor para o trimestre
+  // Construir lista de CANDIDATOS (todos os que têm valor>0 declarado para este trimestre)
   // Cruzamento pelo declIdx (ligação feita no separador Independentes Decl.)
   // ou por nome exacto como fallback
-  const lista=state.declarantes.map((d,idx)=>{
+  const candidatos=state.declarantes.map((d,idx)=>{
     if(!tiAtivo(d)) return null; // TI arquivado nunca entra na folha de pagamentos
     const dDecl=(dadosDecl[idx]||{});
     const valor=dDecl[trimKey+'_val']||0;
@@ -2552,6 +2574,13 @@ function renderSSPrint(){
     return {num, nome:d.nome, valor, trimKey, tpa};
   }).filter(d=>d && d.valor>0 && d.num!=='—' && /^\d{9,}$/.test(d.num));
 
+  // Seleção manual: por omissão todos os candidatos entram (como sempre foi), mas agora
+  // pode desmarcar quem não deve ir para a folha deste mês em concreto — fica guardado.
+  const overrideMap=((state.ssIncluir[ssPrintAno]||{})[ssPrintMes])||{};
+  candidatos.forEach(c=>{ c.incluido = overrideMap.hasOwnProperty(c.num) ? !!overrideMap[c.num] : true; });
+
+  const lista=candidatos.filter(c=>c.incluido);
+
   const totalGeral=lista.reduce((s,t)=>s+t.valor,0);
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
 
@@ -2564,8 +2593,23 @@ function renderSSPrint(){
     </div>
   </div>`;
 
-  if(lista.length===0){
+  if(candidatos.length===0){
     h+=`<div class="table-wrap"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Sem valores registados para ${MESES_FULL_PT[ssPrintMes-1]} ${ssPrintAno}.<br>Insere os valores no separador <strong>Independentes</strong> primeiro.</div></div>`;
+  } else {
+    h+=`<div class="table-wrap no-print" style="margin-bottom:14px">
+      <div class="toolbar"><div class="toolbar-title">Selecionar quem entra nesta folha <span class="toolbar-count">(${lista.length} de ${candidatos.length} selecionados)</span></div></div>
+      <div style="padding:8px 14px">
+        ${candidatos.map(c=>`
+          <label style="display:inline-flex;align-items:center;gap:6px;margin:4px 14px 4px 0;font-size:12px;cursor:pointer">
+            <input type="checkbox" ${c.incluido?'checked':''} onchange="toggleSSIncluir('${c.num}')">
+            ${c.nome} <span style="color:var(--text4)">(€ ${c.valor.toFixed(2)})</span>
+          </label>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  if(lista.length===0){
+    if(candidatos.length>0) h+=`<div class="table-wrap"><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Nenhum selecionado para esta folha. Marque acima quem deve entrar.</div></div>`;
   } else {
     h+=`
     <style>
@@ -2634,6 +2678,16 @@ function renderSSPrint(){
   }
 
   el.innerHTML=h;
+}
+
+function toggleSSIncluir(num){
+  if(!state.ssIncluir[ssPrintAno]) state.ssIncluir[ssPrintAno]={};
+  if(!state.ssIncluir[ssPrintAno][ssPrintMes]) state.ssIncluir[ssPrintAno][ssPrintMes]={};
+  const atual=state.ssIncluir[ssPrintAno][ssPrintMes].hasOwnProperty(num) ? state.ssIncluir[ssPrintAno][ssPrintMes][num] : true;
+  const novo=!atual;
+  state.ssIncluir[ssPrintAno][ssPrintMes][num]=novo;
+  fbSet(`/ssIncluir/${ssPrintAno}/${ssPrintMes}/${num}`, novo);
+  renderSSPrint();
 }
 
 // ═══════════════════════════════════════
@@ -3030,11 +3084,11 @@ let lastHash = '';
 
 async function pollFirebase(){
   try{
-    const [meta,iva,saft,rec,ss,ssdecl,dmr] = await Promise.all([
+    const [meta,iva,saft,rec,ss,ssdecl,dmr,ssIncluir] = await Promise.all([
       fbGet('/meta'), fbGet('/iva'), fbGet('/saft'), fbGet('/rec'),
-      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr')
+      fbGet('/ss'), fbGet('/ssdecl'), fbGet('/dmr'), fbGet('/ssIncluir')
     ]);
-    const newHash = JSON.stringify({meta,iva,saft,rec,ss,ssdecl,dmr});
+    const newHash = JSON.stringify({meta,iva,saft,rec,ss,ssdecl,dmr,ssIncluir});
     if(newHash !== lastHash && lastHash !== ''){
       if(meta){
         if(meta.clientes) state.clientes = Array.isArray(meta.clientes)?meta.clientes:Object.values(meta.clientes);
@@ -3049,6 +3103,7 @@ async function pollFirebase(){
       if(rec) state.rec = rec;
       if(ss) state.ss = ss;
       if(ssdecl) state.ssdecl = ssdecl;
+      if(ssIncluir) state.ssIncluir = ssIncluir;
       if(dmr) state.dmr = dmr;
       // Re-renderizar só o separador activo para não interromper o utilizador
       const secAtiva = document.querySelector('.section.active');
