@@ -479,6 +479,22 @@ main{padding:20px 22px;max-width:1400px;margin:0 auto;}
   </main>
 </div>
 
+<div class="modal-overlay" id="modalPagamentoManual"><div class="modal">
+  <div class="modal-header"><div class="modal-title">+ Registar Pagamento Manual</div><button class="modal-close" onclick="closeModal('modalPagamentoManual')">✕</button></div>
+  <div class="form-row">
+    <div class="form-group" style="flex:2"><label>Cliente</label><select id="pmCliente"></select></div>
+    <div class="form-group"><label>Data</label><input type="date" id="pmData"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><label>Valor (€)</label><input type="number" id="pmValor" step="0.01" min="0"></div>
+    <div class="form-group"><label>Tipo</label><select id="pmTipo">
+      <option>Numerário</option><option>Cheque</option><option>Transferência</option><option>MBWay</option><option>Débito Direto</option><option>Outro</option>
+    </select></div>
+  </div>
+  <div class="form-err" id="pmErr"></div>
+  <div class="row" style="margin-top:10px"><button class="btn-primary" onclick="gravarPagamentoManual()">Gravar</button></div>
+</div></div>
+
 <div class="modal-overlay" id="modalREC"><div class="modal">
   <div class="modal-header"><div class="modal-title">⚙️ Gerir Clientes — Recebimentos</div><button class="modal-close" onclick="closeModal('modalREC')">✕</button></div>
   <div class="form-row">
@@ -536,6 +552,7 @@ const userRole = 'admin'; // este ficheiro é sempre admin — não há conta de
 
 let state = { clientes: [], rec: {} };
 let recAno='2026', recBusca='', recPag=1;
+let ledgerCliente='', ledgerDataIni='', ledgerDataFim='';
 const REC_PP=35;
 
 function safeKey(nome){
@@ -585,73 +602,194 @@ function doLogout(){
 }
 
 // ── RECEBIMENTOS ──
+function getTransacoesLedger(){
+  return Object.keys(honExtProcessed).map(id=>({id, ...honExtProcessed[id]}));
+}
+
+function filtrarTransacoesLedger(){
+  let t = getTransacoesLedger();
+  if(ledgerCliente) t = t.filter(x=>x.cliente===ledgerCliente);
+  if(ledgerDataIni){ const di=new Date(ledgerDataIni); t = t.filter(x=>extParseDateBR(x.data) >= di); }
+  if(ledgerDataFim){ const df=new Date(ledgerDataFim); df.setHours(23,59,59,999); t = t.filter(x=>extParseDateBR(x.data) <= df); }
+  return t.sort((a,b)=>extParseDateBR(b.data)-extParseDateBR(a.data));
+}
+
 function renderREC(){
   const el=document.getElementById('sec-rec');
-  const dadosAno=state.rec[recAno]||{};
-  const TIPOS=['Transferência','MBWay','Numerário','Cheque','Débito Direto','Outro'];
-  let lista=state.clientes;
-  if(recBusca)lista=lista.filter(c=>c.nome.toLowerCase().includes(recBusca));
-  const totPag=Math.ceil(lista.length/REC_PP)||1;
-  if(recPag>totPag)recPag=1;
-  const pag=lista.slice((recPag-1)*REC_PP,recPag*REC_PP);
-  let totalRec=0,totalFalta=0;
-  lista.forEach(c=>{
-    const msRaw2=(dadosAno[safeKey(c.nome)]||{}).meses||Array(12).fill(null);
-    const ms=Array.isArray(msRaw2)?msRaw2:Object.values(msRaw2);
-    const av=(dadosAno[safeKey(c.nome)]||{}).avenca||c.avenca||0;
-    ms.forEach(m=>{if(m)totalRec+=av;else totalFalta+=av;});
-  });
+  const transacoes = filtrarTransacoesLedger();
+  const semCliente = transacoes.filter(t=>!t.cliente).length;
+  const total = transacoes.reduce((s,t)=>s+t.montante,0);
 
   let h=`<div class="ph">
-    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Avenças mensais · ${recAno}</p></div>
+    <div class="ph-left"><h1>Recebimentos de Clientes</h1><p>Consulta de transferências — qualquer período, qualquer cliente</p></div>
     <div class="ph-right">
-      <select class="ctrl-sel" onchange="recAno=this.value;recPag=1;renderREC()">${ANOS.map(a=>`<option value="${a}"${a===recAno?' selected':''} >${a}</option>`).join('')}</select>
-      <input class="ctrl-inp" placeholder="🔍 Pesquisar cliente…" oninput="recBusca=this.value.toLowerCase();recPag=1;renderREC()">
       ${userRole==='admin'?`<button class="btn-gestao" onclick="openImportExtrato()">📥 Importar Extrato</button>`:''}
-      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoREC()">⚙️ Gerir</button>`:''}
+      ${userRole==='admin'?`<button class="btn-gestao" onclick="openGestaoREC()">⚙️ Gerir Clientes</button>`:''}
     </div>
   </div>
-  <div class="stats">
-    <div class="stat-card green"><div class="stat-label">Total Recebido ${recAno}</div><div class="stat-value">€${totalRec.toLocaleString('pt-PT')}</div></div>
-    <div class="stat-card red"><div class="stat-label">Em Falta ${recAno}</div><div class="stat-value">€${totalFalta.toLocaleString('pt-PT')}</div></div>
-    <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">${lista.length}</div><div class="stat-sub">de ${state.clientes.length} total</div></div>
-  </div>
-  <div class="table-wrap">
-    <div class="toolbar"><div class="toolbar-title">Mapa de Avenças <span class="toolbar-count">(${lista.length} clientes)</span></div></div>
-    <div class="tbl-scroll"><table><thead>
-      <tr><th style="width:32px">#</th><th>Cliente</th>${MESES.map(m=>`<th class="center" style="border-left:1px solid var(--border2);font-size:10px;padding:5px 3px">${m}</th>`).join('')}<th class="center">Avença</th><th class="center">Recebido</th><th class="center">Em Falta</th></tr>
-    </thead><tbody>`;
+  <div class="table-wrap" style="margin-bottom:14px">
+    <div class="toolbar"><div class="toolbar-title">Filtros</div></div>
+    <div style="padding:12px 14px" class="form-row">
+      <div class="form-group" style="flex:2">
+        <label>Cliente</label>
+        <select id="ledgerClienteSel" onchange="ledgerCliente=this.value;renderREC()">
+          <option value="">— Todos —</option>
+          ${state.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}"${ledgerCliente===c.nome?' selected':''}>${c.nome}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group"><label>De</label><input type="date" id="ledgerIniSel" value="${ledgerDataIni}" onchange="ledgerDataIni=this.value;renderREC()"></div>
+      <div class="form-group"><label>Até</label><input type="date" id="ledgerFimSel" value="${ledgerDataFim}" onchange="ledgerDataFim=this.value;renderREC()"></div>
+      <div><button class="btn-secondary" onclick="ledgerCliente='';ledgerDataIni='';ledgerDataFim='';renderREC()" style="margin-top:18px">Limpar filtros</button></div>
+      <div><button class="btn-gestao" onclick="abrirPagamentoManual()" style="margin-top:18px">+ Pagamento manual</button></div>
+      ${ledgerCliente?`<div><button class="btn-primary" onclick="exportarListagemCliente()" style="margin-top:18px">🖨️ Extrair listagem</button></div>`:''}
+    </div>
+  </div>`;
 
-  pag.forEach((c,i)=>{
-    const dCliente=dadosAno[safeKey(c.nome)]||{};
-    const msRaw=dCliente.meses||Array(12).fill(null);
-    const ms=Array.isArray(msRaw)
-      ? Array.from({length:12},(_,i)=>msRaw[i]||null)
-      : Array.from({length:12},(_,i)=>msRaw[i]||msRaw[String(i)]||null);
-    const datas=dCliente.datas||{};
-    const av=dCliente.avenca||c.avenca||0;
-    const msArr2=Array.from({length:12},(_,i)=>Array.isArray(ms)?(ms[i]||null):(ms[i]||ms[String(i)]||null));
-    const rec=msArr2.filter(Boolean).length*av;
-    const falta=msArr2.filter(v=>!v).length*av;
-    h+=`<tr><td class="td-num">${(recPag-1)*REC_PP+i+1}</td><td class="td-nome">${c.nome}</td>`;
-    ms.forEach((val,mi)=>{
-      h+='<td class="center rec-cel" style="border-left:1px solid var(--border2);padding:2px" data-nome="'+encodeURIComponent(c.nome)+'" data-mi="'+mi+'" data-ano="'+recAno+'"></td>';
-    });
-    h+=`<td class="center" style="font-weight:600;color:var(--blue)">€${av.toLocaleString('pt-PT')}</td>
-        <td class="center" style="color:var(--green)">€${rec.toLocaleString('pt-PT')}</td>
-        <td class="center" style="color:${falta>0?'var(--red)':'var(--green)'}">€${falta.toLocaleString('pt-PT')}</td></tr>`;
-  });
-
-  h+=`</tbody></table></div>
-    <div class="totais-bar">
-      <div class="total-item">Recebido:<strong class="green">€${totalRec.toLocaleString('pt-PT')}</strong></div>
-      <div class="total-item">Em Falta:<strong class="red">€${totalFalta.toLocaleString('pt-PT')}</strong></div>
-      <div class="total-item">Clientes:<strong>${lista.length}</strong></div>
+  if(ledgerCliente){
+    const cliente = state.clientes.find(c=>c.nome===ledgerCliente);
+    const avenca = cliente ? Number(cliente.avenca)||0 : 0;
+    let mesesEsperados=null, estimativa=null;
+    if(avenca>0 && ledgerDataIni && ledgerDataFim){
+      const di=new Date(ledgerDataIni), df=new Date(ledgerDataFim);
+      mesesEsperados=(df.getFullYear()-di.getFullYear())*12+(df.getMonth()-di.getMonth())+1;
+      if(mesesEsperados<0) mesesEsperados=0;
+      estimativa=(mesesEsperados*avenca)-total;
+    }
+    h+=`<div class="stats">
+      <div class="stat-card green"><div class="stat-label">Total no período</div><div class="stat-value">€${total.toLocaleString('pt-PT',{minimumFractionDigits:2})}</div></div>
+      <div class="stat-card"><div class="stat-label">Transferências</div><div class="stat-value">${transacoes.length}</div></div>
+      <div class="stat-card blue"><div class="stat-label">Avença mensal</div><div class="stat-value">€${avenca.toLocaleString('pt-PT')}</div></div>
+      ${estimativa!==null?`<div class="stat-card ${estimativa>0.5?'red':'green'}"><div class="stat-label">${estimativa>0.5?'Estimativa em falta':'Em dia (estimativa)'}</div><div class="stat-value">€${Math.abs(estimativa).toLocaleString('pt-PT',{minimumFractionDigits:2})}</div><div class="stat-sub">${mesesEsperados} mês(es) no período, a €${avenca}/mês</div></div>`:''}
     </div>`;
-  if(totPag>1){h+=`<div class="pagination"><span class="pg-info">Pág ${recPag}/${totPag} (${lista.length})</span>`;for(let p=1;p<=totPag;p++)h+=`<button class="pg-btn${p===recPag?' active':''}" onclick="recPag=${p};renderREC()">${p}</button>`;h+=`</div>`;}
-  h+=`</div>`;
+  } else {
+    const porCliente={};
+    transacoes.forEach(t=>{ if(t.cliente){ if(!porCliente[t.cliente]) porCliente[t.cliente]=[]; porCliente[t.cliente].push(t); } });
+    const nomes=Object.keys(porCliente).sort((a,b)=>a.localeCompare(b));
+    h+=`<div class="stats">
+      <div class="stat-card green"><div class="stat-label">Total no período</div><div class="stat-value">€${total.toLocaleString('pt-PT',{minimumFractionDigits:2})}</div></div>
+      <div class="stat-card"><div class="stat-label">Transferências</div><div class="stat-value">${transacoes.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Clientes com movimento</div><div class="stat-value">${nomes.length}</div></div>
+      ${semCliente?`<div class="stat-card amber"><div class="stat-label">Sem cliente identificado</div><div class="stat-value">${semCliente}</div></div>`:''}
+    </div>
+    <div class="table-wrap">
+      <div class="toolbar"><div class="toolbar-title">Por cliente <span class="toolbar-count">(clique para ver detalhe)</span></div></div>
+      <table><thead><tr><th>Cliente</th><th style="text-align:center">Transferências</th><th style="text-align:right">Total</th></tr></thead><tbody>`;
+    nomes.forEach(n=>{
+      const itens=porCliente[n];
+      const tot=itens.reduce((s,i)=>s+i.montante,0);
+      h+=`<tr style="cursor:pointer" onclick="ledgerCliente='${n.replace(/'/g,"\\'")}';renderREC()"><td style="color:var(--blue)">${n}</td><td style="text-align:center">${itens.length}</td><td style="text-align:right">€${tot.toLocaleString('pt-PT',{minimumFractionDigits:2})}</td></tr>`;
+    });
+    h+=`</tbody></table></div>`;
+  }
+
+  h+=`<div class="table-wrap" style="margin-top:14px">
+    <div class="toolbar"><div class="toolbar-title">Transferências ${ledgerCliente?('de '+ledgerCliente):'(todos os clientes)'} <span class="toolbar-count">(${transacoes.length})</span></div></div>
+    <div class="tbl-scroll"><table><thead><tr><th>Data</th><th>Descrição</th><th>Cliente</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>`;
+  if(transacoes.length===0){
+    h+=`<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text4)">Sem transferências para este filtro.</td></tr>`;
+  }
+  transacoes.forEach(t=>{
+    const selId='cor_'+t.id;
+    h+=`<tr>
+      <td>${t.data}</td>
+      <td style="max-width:240px">${t.desc}${t.manual?' <span class="tag-visto">manual</span>':''}</td>
+      <td>
+        <select id="${selId}" style="min-width:160px;font-size:11px">
+          <option value="">— sem cliente —</option>
+          ${state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}"${t.cliente===c.nome?' selected':''}>${c.nome}</option>`).join('')}
+        </select>
+        <button class="btn-secondary" style="font-size:10px;padding:2px 6px" onclick="corrigirClienteLedger('${t.id}', document.getElementById('${selId}').value)">✓</button>
+      </td>
+      <td style="text-align:right">€${t.montante.toFixed(2)}</td>
+      <td><button class="btn-danger" style="font-size:11px;padding:3px 7px" onclick="removerTransacaoLedger('${t.id}')">🗑️</button></td>
+    </tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
   el.innerHTML=h;
-  preencherCelulasRec(el);
+}
+
+function corrigirClienteLedger(id, novoCliente){
+  if(!honExtProcessed[id]) return;
+  honExtProcessed[id].cliente = novoCliente || null;
+  fbSet('/honExtProcessed/'+id, honExtProcessed[id]);
+  if(novoCliente){
+    const key=safeKey(novoCliente);
+    if(!honExtAliases[key]) honExtAliases[key]=[];
+    const clean=extLimparDesc(honExtProcessed[id].desc);
+    if(clean && extNormalize(clean)!==extNormalize(novoCliente) && !honExtAliases[key].includes(clean)){
+      honExtAliases[key].push(clean);
+      fbSet('/honExtAliases/'+key, honExtAliases[key]);
+    }
+  }
+  renderREC();
+}
+
+function removerTransacaoLedger(id){
+  if(!confirm('Remover esta transferência do registo?')) return;
+  delete honExtProcessed[id];
+  fbSet('/honExtProcessed/'+id, null);
+  renderREC();
+}
+
+function abrirPagamentoManual(){
+  const sel=document.getElementById('pmCliente');
+  sel.innerHTML='<option value="">— escolher —</option>'+state.clientes.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}"${ledgerCliente===c.nome?' selected':''}>${c.nome}</option>`).join('');
+  document.getElementById('pmData').value=new Date().toISOString().slice(0,10);
+  document.getElementById('pmValor').value='';
+  document.getElementById('pmErr').textContent='';
+  openModal('modalPagamentoManual');
+}
+
+function gravarPagamentoManual(){
+  const cliente=document.getElementById('pmCliente').value;
+  const dataIso=document.getElementById('pmData').value;
+  const valor=parseFloat(document.getElementById('pmValor').value);
+  const tipo=document.getElementById('pmTipo').value;
+  const err=document.getElementById('pmErr');
+  err.textContent='';
+  if(!cliente){ err.textContent='Escolha o cliente.'; return; }
+  if(!dataIso){ err.textContent='Indique a data.'; return; }
+  if(!valor || valor<=0){ err.textContent='Indique um valor válido.'; return; }
+  const [y,m,d]=dataIso.split('-');
+  const dataBR=`${d}-${m}-${y}`;
+  const id='man_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  const desc=`Pagamento manual — ${tipo}`;
+  honExtProcessed[id]={data:dataBR, desc, montante:valor, cliente, manual:true, tipo};
+  fbSet('/honExtProcessed/'+id, honExtProcessed[id]);
+  closeModal('modalPagamentoManual');
+  renderREC();
+}
+
+function exportarListagemCliente(){
+  if(!ledgerCliente) return;
+  const transacoes=filtrarTransacoesLedger().slice().sort((a,b)=>extParseDateBR(a.data)-extParseDateBR(b.data));
+  const total=transacoes.reduce((s,t)=>s+t.montante,0);
+  const hoje=new Date().toLocaleDateString('pt-PT');
+  const periodo=(ledgerDataIni?new Date(ledgerDataIni).toLocaleDateString('pt-PT'):'início')+' a '+(ledgerDataFim?new Date(ledgerDataFim).toLocaleDateString('pt-PT'):'hoje');
+  const linhas=transacoes.map(t=>`<tr><td>${t.data}</td><td>${t.desc}</td><td style="text-align:right">€ ${t.montante.toFixed(2)}</td></tr>`).join('');
+  const html=`<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><title>Transferências — ${ledgerCliente}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;font-size:12px;color:#1a1f2e;padding:20px 24px;}
+  h1{font-size:16px;margin-bottom:4px;}
+  .sub{font-size:11px;color:#6b7585;margin-bottom:16px;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#eef1f6;padding:6px 10px;text-align:left;font-size:10px;}
+  td{padding:6px 10px;border-bottom:1px solid #e8eaed;}
+  .total{margin-top:14px;font-size:13px;font-weight:700;text-align:right;}
+  .no-print button{padding:8px 16px;background:#1a6fc4;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;margin-bottom:16px;}
+  @media print{.no-print{display:none;}}
+</style></head><body>
+<div class="no-print"><button onclick="window.print()">🖨️ Imprimir / Guardar PDF</button></div>
+<h1>Dafilgest · Listagem de Transferências</h1>
+<div class="sub">${ledgerCliente} · Período: ${periodo} · Impresso em ${hoje}</div>
+<table><thead><tr><th>Data</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>
+<div class="total">Total: € ${total.toFixed(2)} (${transacoes.length} transferências)</div>
+</body></html>`;
+  const w=window.open('','_blank','width=800,height=700');
+  w.document.write(html);
+  w.document.close();
 }
 
 
