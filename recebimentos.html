@@ -1001,7 +1001,7 @@ function detectarColunasExtrato(headerRow){
   let colData=-1, colDesc=-1, colMontante=-1;
   (headerRow||[]).forEach((h,i)=>{
     const n=extNormalize(String(h||''));
-    if(n.includes('DATA DA OPERACAO')) colData=i;
+    if(/DATA\s*(DA\s*)?OPERACAO/.test(n)) colData=i; // apanha "Data Operação" e "Data da Operação"
     else if(colData===-1 && n.includes('DATA VALOR')) colData=i;
     else if(colData===-1 && n==='DATA') colData=i;
     if(n.includes('DESCRICAO')) colDesc=i;
@@ -1093,20 +1093,25 @@ async function gerarRelatorioExtrato(){
       const sheet=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,defval:''});
 
-      // Deteta as colunas pelo NOME do cabeçalho (1ª linha), não pela posição —
-      // assim, se o extrato do banco vier com colunas a mais ou por ordem diferente
-      // (Tipo, Saldo, Moeda, etc.), continua a apanhar certo Data/Descrição/Montante.
-      const {colData, colDesc, colMontante} = detectarColunasExtrato(rows[0]||[]);
-      if(colData===-1 || colDesc===-1 || colMontante===-1){
+      // Procura o cabeçalho nas primeiras linhas (alguns extratos têm título/linha
+      // em branco antes das colunas — ex: "Listagem de Movimentos" + linha vazia),
+      // em vez de assumir sempre que está na 1ª linha.
+      let cab=null;
+      for(let i=0;i<Math.min(10,rows.length);i++){
+        const c=detectarColunasExtrato(rows[i]||[]);
+        if(c.colData!==-1 && c.colDesc!==-1 && c.colMontante!==-1){ cab={linha:i, ...c}; break; }
+      }
+      if(!cab){
         document.getElementById('impExtStatus').textContent=
-          'Não consegui identificar as colunas Data/Descrição/Montante na 1ª linha deste ficheiro. Confirme que os cabeçalhos têm esses nomes (ex: "Data valor", "Descrição da Conta", "Montante").';
+          'Não consegui identificar as colunas Data/Descrição/Montante nas primeiras linhas deste ficheiro. Confirme que os cabeçalhos têm esses nomes (ex: "Data valor", "Descrição", "Montante").';
         return;
       }
+      const {colData, colDesc, colMontante}=cab;
 
       const novosProcessados={};
       let novas=0, jaRegistadas=0, ignoradas=0;
 
-      for(let i=1;i<rows.length;i++){
+      for(let i=cab.linha+1;i<rows.length;i++){
         const r=rows[i]; if(!r) continue;
         const dataStr=String(r[colData]||'').trim();
         const desc=String(r[colDesc]||'').trim();
