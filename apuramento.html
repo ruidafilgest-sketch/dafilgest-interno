@@ -171,7 +171,7 @@
   .num{text-align:right; font-variant-numeric:tabular-nums;}
   .table-scroll{max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:4px;}
 
-  .col-map{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px;}
+  .col-map{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-top:14px;}
   .col-map label{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;}
   select, input[type=text], input[type=number]{
     width:100%; padding:8px 10px; border:1px solid var(--line-strong); border-radius:4px;
@@ -484,7 +484,8 @@
 
   <div class="card" id="mapping-card" style="display:none;">
     <h3>Confirmar colunas <span class="tag">deteção automática</span></h3>
-    <p class="panel-sub" style="margin-bottom:10px;">Confere se identifiquei as colunas certas — ajusta se necessário.</p>
+    <p class="panel-sub" style="margin-bottom:10px;">Confere se identifiquei as colunas certas — ajusta se necessário. Se o teu balancete tiver colunas "do mês" e "acumulado" lado a lado (comum no CentralGest), uso sempre o acumulado.</p>
+    <div id="aviso-saldo-unico" class="warn-banner" style="display:none;">💰 Detetei uma coluna "Saldo" já calculada — vou usá-la diretamente (mais fiável do que separar Débito/Crédito). Se preferires usar colunas separadas, seleciona-as abaixo e deixa "Saldo" em "— não existe —".</div>
     <div class="col-map">
       <div>
         <label>Código de conta</label>
@@ -493,6 +494,10 @@
       <div>
         <label>Descrição</label>
         <select id="map-desc"></select>
+      </div>
+      <div>
+        <label>Saldo (coluna única)<span class="hint" style="display:block;">positivo=devedor</span></label>
+        <select id="map-saldo"></select>
       </div>
       <div>
         <label>Saldo devedor / Débito</label>
@@ -705,6 +710,15 @@
   <h3 class="section-h">Rácios de análise</h3>
   <div class="ratio-grid" id="ratios-grid"></div>
 
+  <h3 class="section-h">Leitura para a Banca</h3>
+  <p class="panel-sub" style="margin:-6px 0 14px 0;">Os indicadores que mais pesam numa análise de crédito bancário — capacidade de gerar caixa e cobrir encargos financeiros, para além do lucro contabilístico.</p>
+  <div class="ratio-grid" id="ratios-grid-banca"></div>
+
+  <div class="ledger-block" id="financiamentos-block" style="display:none;">
+    <div class="ledger-head"><span>Detalhe de Financiamentos Obtidos</span><span class="stamp-mini">Conta 25</span></div>
+    <div class="ledger-body" id="financiamentos-body"></div>
+  </div>
+
   <div class="parecer-block" id="parecer-block">
     <div class="ledger-head"><span>Parecer Técnico</span><span class="stamp-mini" id="parecer-empresa"></span></div>
     <div class="parecer-body" id="parecer-body"></div>
@@ -816,9 +830,20 @@ function handleFile(file){
 function loadSheet(sheetName){
   const ws = workbook.Sheets[sheetName];
   rawRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
-  // encontrar linha de cabeçalho: a primeira linha com pelo menos 3 células não vazias
-  let headerIdx = rawRows.findIndex(r => r.filter(c=>String(c).trim()!=='').length >= 3);
+
+  // 1ª tentativa: linha que tenha, em simultâneo, uma célula "conta" e uma célula "designação/descrição"
+  // — mais fiável do que "primeira linha com 3+ células", que em exports tipo CentralGest apanha
+  // a linha de metadados ("Período de / Até / Conta de") em vez do cabeçalho real, 2-3 linhas abaixo.
+  let headerIdx = rawRows.findIndex(r=>{
+    const cells = r.map(c=>String(c).trim().toLowerCase());
+    const temConta = cells.some(c=>c==='conta' || c==='código' || c==='codigo');
+    const temDesc = cells.some(c=>c.includes('designa') || c.includes('descri'));
+    return temConta && temDesc;
+  });
+  // 2ª tentativa (fallback): primeira linha com pelo menos 3 células não vazias
+  if(headerIdx < 0) headerIdx = rawRows.findIndex(r => r.filter(c=>String(c).trim()!=='').length >= 3);
   if(headerIdx < 0) headerIdx = 0;
+
   const headers = rawRows[headerIdx].map(h=>String(h).trim());
   buildColumnMapping(headers, headerIdx);
 }
@@ -828,17 +853,25 @@ function buildColumnMapping(headers, headerIdx){
   card.style.display = 'block';
   card.dataset.headerIdx = headerIdx;
 
-  const guess = (patterns)=>{
-    for(let i=0;i<headers.length;i++){
-      const h = headers[i].toLowerCase();
-      if(patterns.some(p=>h.includes(p))) return i;
-    }
-    return -1;
+  // Escolhe a MELHOR correspondência entre várias colunas candidatas: penaliza colunas "do mês"
+  // (movimento mensal) e valoriza "acumulado" — para um balancete à data, queremos o acumulado, não o mês isolado.
+  const guessBest = (patterns, evitar)=>{
+    let melhor = -1, melhorPontos = -1;
+    headers.forEach((h,i)=>{
+      const hl = h.toLowerCase();
+      if(!patterns.some(p=>hl.includes(p))) return;
+      let pontos = 1;
+      if(evitar && evitar.some(p=>hl.includes(p))) pontos -= 2;
+      if(hl.includes('acum')) pontos += 2;
+      if(pontos > melhorPontos){ melhorPontos = pontos; melhor = i; }
+    });
+    return melhor;
   };
-  const gConta = guess(['conta','código','codigo']);
-  const gDesc  = guess(['descri','designa']);
-  const gDeb   = guess(['devedor','débito','debito']);
-  const gCred  = guess(['credor','crédito','credito']);
+  const gConta = guessBest(['conta','código','codigo']);
+  const gDesc  = guessBest(['descri','designa']);
+  const gSaldo = guessBest(['saldo'], ['mês','mes','período','periodo']);
+  const gDeb   = guessBest(['devedor','débito','debito'], ['mês','mes','período','periodo']);
+  const gCred  = guessBest(['credor','crédito','credito'], ['mês','mes','período','periodo']);
 
   const fillSelect = (id, guessIdx)=>{
     const sel = document.getElementById(id);
@@ -852,31 +885,118 @@ function buildColumnMapping(headers, headerIdx){
   };
   fillSelect('map-conta', gConta);
   fillSelect('map-desc', gDesc);
+  fillSelect('map-saldo', gSaldo);
   fillSelect('map-deb', gDeb);
   fillSelect('map-cred', gCred);
+
+  // Se há uma coluna "Saldo" pronta, é a fonte mais fiável (evita ambiguidade Mês vs. Acumulado) —
+  // pré-seleciona-a e limpa Débito/Crédito, mas o utilizador pode sempre trocar nos dropdowns.
+  const avisoSaldo = document.getElementById('aviso-saldo-unico');
+  if(gSaldo >= 0){
+    document.getElementById('map-deb').value = -1;
+    document.getElementById('map-cred').value = -1;
+    avisoSaldo.style.display = 'block';
+  } else {
+    avisoSaldo.style.display = 'none';
+  }
+}
+
+// Determina o DESVIO fixo entre a coluna do cabeçalho e a coluna real dos dados (comum em relatórios
+// com células fundidas, como o CentralGest). Em vez de procurar célula a célula em cada linha — o que
+// arrisca apanhar por engano um valor de outra coluna quando o valor certo é legitimamente zero/vazio —
+// determina-se o desvio UMA VEZ, pela maioria das primeiras linhas de dados, e aplica-se sempre o mesmo.
+function desvioDominante(colBase, tipo, headerIdx){
+  const contagem = {};
+  let amostras = 0;
+  for(let i=headerIdx+1; i<rawRows.length && amostras<15; i++){
+    const row = rawRows[i];
+    if(!row || row.every(c=>String(c).trim()==='')) continue;
+    amostras++;
+    const offsets = [0,1,-1,2,-2,3,-3,4,-4];
+    for(const off of offsets){
+      const idx = colBase+off;
+      if(idx<0 || idx>=row.length) continue;
+      const v = row[idx];
+      const valido = tipo==='numero'
+        ? (typeof v==='number' || (String(v).trim()!=='' && /\d/.test(String(v)) && !isNaN(parseFloat(v))))
+        : String(v).trim()!=='';
+      if(valido){ contagem[off] = (contagem[off]||0)+1; break; }
+    }
+  }
+  let melhorOff = 0, melhorN = -1;
+  Object.keys(contagem).forEach(off=>{ if(contagem[off]>melhorN){ melhorN=contagem[off]; melhorOff=parseInt(off); } });
+  return melhorOff;
+}
+function celulaFixa(row, colBase, offset, tipo){
+  const idx = colBase+offset;
+  if(idx<0 || idx>=row.length) return tipo==='numero' ? 0 : '';
+  const v = row[idx];
+  if(tipo==='numero'){
+    if(typeof v==='number') return v;
+    const s = String(v).trim();
+    return (s!=='' && !isNaN(parseFloat(s))) ? parseFloat(s) : 0;
+  }
+  return String(v||'').trim();
+}
+
+// Remove linhas de SUBTOTAL: quando o balancete mostra tanto o total de uma classe (ex.: "1") como o
+// detalhe das suas subcontas (ex.: "11","12"), o total já está implícito no detalhe — somar os dois
+// duplica os valores. Considera-se subtotal qualquer código que seja prefixo estrito de outro presente.
+function filtrarContasFolha(contas){
+  const codigos = contas.map(a=>a.conta);
+  return contas.filter(a=>{
+    const temFilho = codigos.some(c => c!==a.conta && c.startsWith(a.conta) && c.length>a.conta.length);
+    return !temFilho;
+  });
 }
 
 document.getElementById('btn-parse').addEventListener('click', ()=>{
   const headerIdx = parseInt(document.getElementById('mapping-card').dataset.headerIdx);
   const cConta = parseInt(document.getElementById('map-conta').value);
   const cDesc  = parseInt(document.getElementById('map-desc').value);
+  const cSaldo = parseInt(document.getElementById('map-saldo').value);
   const cDeb   = parseInt(document.getElementById('map-deb').value);
   const cCred  = parseInt(document.getElementById('map-cred').value);
 
-  parsedAccounts = [];
+  let contasBrutas = [];
+  const offConta = cConta>=0 ? desvioDominante(cConta, 'texto', headerIdx) : 0;
+  const offDesc  = cDesc>=0  ? desvioDominante(cDesc, 'texto', headerIdx) : 0;
+  const offSaldo = cSaldo>=0 ? desvioDominante(cSaldo, 'numero', headerIdx) : 0;
+  const offDeb   = cDeb>=0   ? desvioDominante(cDeb, 'numero', headerIdx) : 0;
+  const offCred  = cCred>=0  ? desvioDominante(cCred, 'numero', headerIdx) : 0;
+
   for(let i=headerIdx+1; i<rawRows.length; i++){
     const row = rawRows[i];
     if(!row || row.every(c=>String(c).trim()==='')) continue;
-    const contaRaw = cConta>=0 ? row[cConta] : '';
-    const conta = String(contaRaw).trim();
+    const conta = cConta>=0 ? celulaFixa(row, cConta, offConta, 'texto') : '';
     if(!conta || !/^\d/.test(conta)) continue; // ignora linhas de totais/cabeçalhos sem código numérico
-    const desc = cDesc>=0 ? String(row[cDesc]||'').trim() : '';
-    const debito = cDeb>=0 ? (parseFloat(row[cDeb]) || 0) : 0;
-    const credito = cCred>=0 ? (parseFloat(row[cCred]) || 0) : 0;
+    const desc = cDesc>=0 ? celulaFixa(row, cDesc, offDesc, 'texto') : '';
+    let debito, credito;
+    if(cSaldo>=0 && cDeb<0 && cCred<0){
+      // coluna Saldo única (convenção: positivo = saldo devedor, negativo = saldo credor)
+      const saldoVal = celulaFixa(row, cSaldo, offSaldo, 'numero');
+      debito = saldoVal > 0 ? saldoVal : 0;
+      credito = saldoVal < 0 ? -saldoVal : 0;
+    } else {
+      debito = cDeb>=0 ? celulaFixa(row, cDeb, offDeb, 'numero') : 0;
+      credito = cCred>=0 ? celulaFixa(row, cCred, offCred, 'numero') : 0;
+    }
     const classe = classeDaConta(conta);
-    parsedAccounts.push({conta, desc, classe, debito, credito, saldo: debito - credito});
+    contasBrutas.push({conta, desc, classe, debito, credito, saldo: debito - credito});
   }
+
+  const nAntes = contasBrutas.length;
+  parsedAccounts = filtrarContasFolha(contasBrutas);
+  const nSubtotaisRemovidos = nAntes - parsedAccounts.length;
+
   renderPreview();
+  if(nSubtotaisRemovidos>0){
+    const aviso = document.createElement('div');
+    aviso.className = 'warn-banner';
+    aviso.style.marginTop = '10px';
+    aviso.innerHTML = `🧮 Detetei ${nSubtotaisRemovidos} linha${nSubtotaisRemovidos!==1?'s':''} de subtotal por classe (ex.: conta "1" quando já existem "11", "12"...) — removida${nSubtotaisRemovidos!==1?'s':''} da soma para não duplicar valores. Usei só o detalhe mais fino disponível.`;
+    document.getElementById('class-summary').appendChild(aviso);
+  }
   prefillFromAccounts();
   document.getElementById('preview-card').style.display = 'block';
 });
@@ -893,18 +1013,15 @@ function renderPreview(){
   });
   document.getElementById('preview-count').textContent = parsedAccounts.length + ' contas';
 
-  // resumo por classe
+  // resumo por classe — soma diretamente o saldo (única fonte usada em todo o apuramento)
   const somas = {};
   parsedAccounts.forEach(a=>{
     if(!a.classe) return;
-    somas[a.classe] = somas[a.classe] || {deb:0, cred:0};
-    somas[a.classe].deb += a.debito;
-    somas[a.classe].cred += a.credito;
+    somas[a.classe] = (somas[a.classe] || 0) + a.saldo;
   });
-  let html = '<table><thead><tr><th>Classe</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>Classe</th><th class="num">Saldo</th></tr></thead><tbody>';
   Object.keys(somas).sort().forEach(c=>{
-    const s = somas[c];
-    html += `<tr class="class-${c}"><td class="desc">${c} · ${CLASSES_SNC[c]}</td><td class="num">${fmt(s.deb)}</td><td class="num">${fmt(s.cred)}</td><td class="num">${fmt(s.deb-s.cred)}</td></tr>`;
+    html += `<tr class="class-${c}"><td class="desc">${c} · ${CLASSES_SNC[c]}</td><td class="num">${fmt(somas[c])}</td></tr>`;
   });
   html += '</tbody></table>';
   document.getElementById('class-summary').innerHTML = html;
@@ -912,12 +1029,12 @@ function renderPreview(){
 
 function somaClasse(classe, prefixo){
   return parsedAccounts.filter(a=>a.classe===classe && (!prefixo || a.conta.startsWith(prefixo)))
-    .reduce((s,a)=>({deb:s.deb+a.debito, cred:s.cred+a.credito}), {deb:0,cred:0});
+    .reduce((s,a)=>s+a.saldo, 0);
 }
 function isContaCompras(conta){ return /^31/.test(conta); }
 function isContaMercMatPrimas(conta){ return /^3[23]/.test(conta); }        // 32 Mercadorias · 33 Matérias-primas
 function isContaProducaoPropria(conta){ return /^3[456]/.test(conta); }     // 34 Prod.acabados · 35 Subprodutos · 36 Prod./trab. em curso
-function saldoConta(a){ return a.debito - a.credito; }
+function saldoConta(a){ return a.saldo; } // regra fixa: só o Saldo conta, nunca recombinar Débito/Crédito
 function somaContas(pred){ return parsedAccounts.filter(a=>pred(a.conta)).reduce((s,a)=>s+saldoConta(a),0); }
 
 // CEVC (conta 611/612) só tem saldo depois de apurado — normalmente só no fecho final
@@ -1113,8 +1230,8 @@ function coletarPrejuizos(){
 
 function calcularTudo(){
   // ── 1. Resultado contabilístico (classe 7 − classe 6, excluindo conta 812 imposto s/ rendimento) ──
-  let rend = parsedAccounts.filter(a=>a.classe===7).reduce((s,a)=>s+a.credito-a.debito, 0);
-  let gastos = parsedAccounts.filter(a=>a.classe===6 && !a.conta.startsWith('812')).reduce((s,a)=>s+a.debito-a.credito, 0);
+  let rend = parsedAccounts.filter(a=>a.classe===7).reduce((s,a)=>s-a.saldo, 0); // rendimento = -saldo (normal credor)
+  let gastos = parsedAccounts.filter(a=>a.classe===6 && !a.conta.startsWith('812')).reduce((s,a)=>s+a.saldo, 0); // gasto = saldo (normal devedor)
 
   // Grupo A — Mercadorias/Matérias-primas: CMVMC já incluído em "gastos" se já apurado (conta 611/612);
   // caso contrário soma-se o valor calculado pela fórmula EI+Compras-EF (ainda não lançado no balancete)
@@ -1160,12 +1277,25 @@ function calcularTudo(){
   const totalImposto = irc + derramaMunicipal + derramaEstadual + totalAutonomas;
   const resultadoLiquidoFinal = resultadoContabilistico - totalImposto;
 
+  // ── 7. Leitura para a banca: EBITDA, EBIT, cobertura de encargos financeiros, meios libertos brutos ──
+  // Juros e gastos de financiamento: conta 691 (Juros suportados, SNC atual). NÃO usar 681 genérico —
+  // em alguns planos de contas essa gama é reutilizada para outras coisas (ex.: 6812 "Impostos indiretos"
+  // numa empresa real testada, que ficaria erradamente contado como juro). A descrição fica como apoio.
+  const juros = parsedAccounts.filter(a=>/^691/.test(a.conta) || /juro/i.test(a.desc)).reduce((s,a)=>s+a.saldo,0);
+  // Amortizações/depreciações do exercício: classe 64 completa (641 Ativos Fixos Tangíveis é a mais comum;
+  // 642 Propriedades de Investimento; 643 Ativos Intangíveis; 644 Ativos Biológicos), com apoio na descrição
+  const amortizacoes = parsedAccounts.filter(a=>/^64[1-4]/.test(a.conta) || /amortiza|deprecia/i.test(a.desc)).reduce((s,a)=>s+a.saldo,0);
+  const ebit = resultadoContabilistico + juros;
+  const ebitda = ebit + amortizacoes;
+  const meiosLibertosBrutos = resultadoLiquidoFinal + amortizacoes;
+
   renderResultado({
     rend: rendAjustado, gastosAjustados, resultadoContabilistico, cmvmc, variacaoProducao,
     correcoes, totalAcrescimos, totalDeducoes, lucroTributavel,
     dedPrej, materiaColetavel, paramsIRC, irc,
     derramaMunicipal, derramaEstadual, autonomas, totalAutonomas, agravamento,
-    totalImposto, resultadoLiquidoFinal
+    totalImposto, resultadoLiquidoFinal,
+    juros, amortizacoes, ebit, ebitda, meiosLibertosBrutos
   });
   goStep(5);
 }
@@ -1287,19 +1417,21 @@ function classifica(v, limBom, limAtencao, ascendente){
 }
 
 function renderRatios(r){
-  const ativo1 = somaClasse(1); const ativo2Receber = parsedAccounts.filter(a=>a.classe===2 && a.saldo>0).reduce((s,a)=>({deb:s.deb+a.debito,cred:s.cred+a.credito}),{deb:0,cred:0});
-  const ativo3 = somaClasse(3); const ativo4 = somaClasse(4);
-  const passivo2Pagar = parsedAccounts.filter(a=>a.classe===2 && a.saldo<0).reduce((s,a)=>s+ (a.credito-a.debito),0);
-  const capitalProprio = parsedAccounts.filter(a=>a.classe===5).reduce((s,a)=>s+(a.credito-a.debito),0);
+  const ativo1 = somaClasse(1); // classe 1, normal devedor — saldo é diretamente o valor do ativo
+  const ativo2Receber = parsedAccounts.filter(a=>a.classe===2 && a.saldo>0).reduce((s,a)=>s+a.saldo,0);
+  const ativo3 = somaClasse(3);
+  const ativo4 = somaClasse(4);
+  const passivo2Pagar = parsedAccounts.filter(a=>a.classe===2 && a.saldo<0).reduce((s,a)=>s-a.saldo,0); // -saldo passa a positivo
+  const capitalProprio = parsedAccounts.filter(a=>a.classe===5).reduce((s,a)=>s-a.saldo,0); // classe 5, normal credor -> -saldo
 
-  const ativoCirculante = (ativo1.deb-ativo1.cred) + (ativo2Receber.deb-ativo2Receber.cred) + (ativo3.deb-ativo3.cred);
+  const ativoCirculante = ativo1 + ativo2Receber + ativo3;
   const passivoCirculante = passivo2Pagar;
-  const ativoTotal = ativoCirculante + (ativo4.deb-ativo4.cred);
+  const ativoTotal = ativoCirculante + ativo4;
   const passivoTotal = passivoCirculante; // aproximação — sem segregar financiamentos não correntes
 
   const liquidezGeral = passivoCirculante!==0 ? ativoCirculante/passivoCirculante : null;
   const autonomiaFinanceira = ativoTotal!==0 ? capitalProprio/ativoTotal : null;
-  const vendas = parsedAccounts.filter(a=>a.conta.startsWith('71')||a.conta.startsWith('72')).reduce((s,a)=>s+a.credito-a.debito,0);
+  const vendas = parsedAccounts.filter(a=>a.conta.startsWith('71')||a.conta.startsWith('72')).reduce((s,a)=>s-a.saldo,0);
   const rendibilidadeVendas = vendas!==0 ? r.resultadoLiquidoFinal/vendas : null;
   const endividamento = ativoTotal!==0 ? passivoTotal/ativoTotal : null;
   const roe = capitalProprio!==0 ? r.resultadoLiquidoFinal/capitalProprio : null;
@@ -1356,20 +1488,63 @@ function renderRatios(r){
         solvabilidade>=0.5 ? `O capital próprio equivale a ${solvabilidade.toFixed(2)}× o passivo — cobertura parcial das dívidas totais, nível intermédio.` :
         `O capital próprio (${solvabilidade.toFixed(2)}× o passivo) cobre apenas uma fração das dívidas totais — solvência apertada a médio prazo.`
     },
+    {
+      grupo:'banca', label:'Margem EBITDA', val: vendas!==0 ? r.ebitda/vendas : null, fmt:v=>fmtPct(v), foot:'EBITDA ÷ Vendas e Prestações de Serviços',
+      status: classifica(vendas!==0 ? r.ebitda/vendas : null, 0.15, 0.05, true),
+      texto: vendas===0 ? 'Sem vendas ou prestações de serviços para calcular a margem.' :
+        (r.ebitda/vendas)>=0.15 ? `A atividade gera ${fmtPct(r.ebitda/vendas)} de EBITDA sobre vendas (${fmt(r.ebitda)} em termos absolutos) — geração operacional de caixa robusta, o indicador que a banca mais valoriza antes de juros, impostos e amortizações.` :
+        (r.ebitda/vendas)>=0.05 ? `Margem EBITDA de ${fmtPct(r.ebitda/vendas)} (${fmt(r.ebitda)}) — geração operacional positiva mas moderada, com pouca folga para absorver choques de custos.` :
+        `Margem EBITDA de ${fmtPct(r.ebitda/vendas)} (${fmt(r.ebitda)}) — a atividade operacional está a gerar pouco ou nenhum excedente antes de juros e amortizações, ponto que a banca tende a penalizar.`
+    },
+    {
+      grupo:'banca', label:'Cobertura de Encargos Financeiros', val: r.juros>0 ? r.ebit/r.juros : null, fmt:v=>v.toFixed(2)+'×', foot:'EBIT ÷ Juros e Gastos de Financiamento',
+      status: classifica(r.juros>0 ? r.ebit/r.juros : null, 4, 2, true),
+      texto: r.juros<=0 ? 'Sem gastos de financiamento (juros) identificados no período — rácio não aplicável ou dívida remunerada residual.' :
+        (r.ebit/r.juros)>=4 ? `O resultado operacional cobre ${(r.ebit/r.juros).toFixed(2)}× os encargos financeiros do período — folga confortável para a banca aceitar ou manter linhas de crédito.` :
+        (r.ebit/r.juros)>=2 ? `Cobertura de ${(r.ebit/r.juros).toFixed(2)}× — os juros já pesam de forma visível no resultado operacional, sem ser ainda crítico.` :
+        `Cobertura de apenas ${(r.ebit/r.juros).toFixed(2)}× — os encargos financeiros consomem grande parte do resultado operacional, o ponto que mais preocupa um analista de crédito bancário.`
+    },
+    {
+      grupo:'banca', label:'Meios Libertos Brutos', val: r.meiosLibertosBrutos, fmt:v=>fmt(v), foot:'Resultado Líquido + Amortizações — capacidade de autofinanciamento',
+      status: r.meiosLibertosBrutos>0 ? 'ok' : 'bad',
+      texto: r.meiosLibertosBrutos>0 ? `A atividade gera ${fmt(r.meiosLibertosBrutos)} de capacidade de autofinanciamento no período — a génese do cash-flow disponível para pagar dívida, reinvestir ou distribuir.` :
+        `Meios libertos brutos negativos (${fmt(r.meiosLibertosBrutos)}) — a atividade, tal como está, não gera por si só capacidade de autofinanciamento; um banco vai olhar para isto antes de qualquer outro rácio.`
+    },
   ];
-  let html = '';
+  let html = '', htmlBanca = '';
   cards.forEach(c=>{
-    html += `<div class="ratio-card ${c.status}">
+    const bloco = `<div class="ratio-card ${c.status}">
       <div class="rv">${c.val!==null ? c.fmt(c.val) : '—'}</div>
       <div class="rl">${c.label}</div>
       <div class="rf">${c.foot}</div>
       <div class="rn">${c.texto}</div>
       <span class="rtag">${statusTexto[c.status]}</span>
     </div>`;
+    if(c.grupo==='banca') htmlBanca += bloco; else html += bloco;
   });
   document.getElementById('ratios-grid').innerHTML = html;
+  document.getElementById('ratios-grid-banca').innerHTML = htmlBanca;
+  renderFinanciamentos();
 
   renderParecer(r, {liquidezGeral, autonomiaFinanceira, rendibilidadeVendas, endividamento, roe, solvabilidade}, cards);
+}
+
+// Mostra cada financiamento (conta 25.x) separadamente — só quando o balancete já traz esse detalhe
+// (mais do que uma conta sob 25). Se só houver o total agregado, o bloco fica escondido, sem confundir.
+function renderFinanciamentos(){
+  const bloco = document.getElementById('financiamentos-block');
+  const financiamentos = parsedAccounts.filter(a=>/^25/.test(a.conta) && a.saldo!==0);
+  if(financiamentos.length <= 1){
+    bloco.style.display = 'none';
+    return;
+  }
+  const total = financiamentos.reduce((s,a)=>s-a.saldo,0); // -saldo: financiamento é normal credor
+  let html = financiamentos.map(a=>`
+    <div class="line"><span class="lbl">${a.conta} — ${a.desc||'(sem descrição)'}</span><span class="val">${fmt(-a.saldo)}</span></div>
+  `).join('');
+  html += `<div class="line total"><span class="lbl">Total de Financiamentos Obtidos</span><span class="val">${fmt(total)}</span></div>`;
+  document.getElementById('financiamentos-body').innerHTML = html;
+  bloco.style.display = 'block';
 }
 
 function renderParecer(r, ratios, cards){
