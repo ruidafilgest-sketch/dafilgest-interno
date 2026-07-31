@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motor de Apuramento — Análise Contabilística e Fiscal</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // Mesmo projeto Firebase já usado no dafilgest-interno / recebimentos.html — coleção própria para não misturar dados
+  const firebaseConfig = {
+    apiKey: "AIzaSyDr7wfBzKbH1VAiXbte4YzkejuvJpQvltE",
+    authDomain: "vizelgolfe-ec270.firebaseapp.com",
+    projectId: "vizelgolfe-ec270",
+    storageBucket: "vizelgolfe-ec270.firebasestorage.app",
+    messagingSenderId: "386073357614",
+    appId: "1:386073357614:web:098f635403f605650e5ebf"
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const COL = 'apuramentos';
+
+  window._fbGuardar = async function(id, dados){
+    try{ await setDoc(doc(db, COL, id), dados); return {ok:true}; }
+    catch(e){ console.error('Firebase guardar:', e); return {ok:false, erro:e.message}; }
+  };
+  window._fbListar = async function(){
+    try{
+      const snap = await getDocs(collection(db, COL));
+      const out = [];
+      snap.forEach(d=>out.push({id:d.id, ...d.data()}));
+      out.sort((a,b)=>(b.guardadoEm||'').localeCompare(a.guardadoEm||''));
+      return {ok:true, dados:out};
+    }catch(e){ console.error('Firebase listar:', e); return {ok:false, erro:e.message, dados:[]}; }
+  };
+  window._fbCarregar = async function(id){
+    try{
+      const snap = await getDoc(doc(db, COL, id));
+      return snap.exists() ? {ok:true, dados:snap.data()} : {ok:false, erro:'não encontrado'};
+    }catch(e){ console.error('Firebase carregar:', e); return {ok:false, erro:e.message}; }
+  };
+  window._fbApagar = async function(id){
+    try{ await deleteDoc(doc(db, COL, id)); return {ok:true}; }
+    catch(e){ console.error('Firebase apagar:', e); return {ok:false, erro:e.message}; }
+  };
+  window._fbPronto = true;
+</script>
+<style>
+  :root{
+    --paper:#F7F6F2;
+    --paper-raised:#FFFFFF;
+    --ink:#1B2027;
+    --ink-soft:#565F6E;
+    --line:#DCD8CE;
+    --line-strong:#B8B2A3;
+    --ledger:#0B5E45;
+    --ledger-soft:#E4EFE9;
+    --alert:#9A5B12;
+    --alert-soft:#F5E8D6;
+    --danger:#9B2F26;
+    --danger-soft:#F7E6E3;
+    --gold:#8A6D1F;
+    --mono: 'IBM Plex Mono', 'Courier New', monospace;
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans: 'IBM Plex Sans', -apple-system, sans-serif;
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:14px; line-height:1.5;
+    padding:0 0 80px 0;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:0 28px;}
+
+  /* ── Header ── */
+  header.hero{
+    background:linear-gradient(180deg, #14201B 0%, #1B2027 100%);
+    color:#F2F0E9; padding:36px 0 30px 0; border-bottom:4px solid var(--ledger);
+  }
+  header.hero .wrap{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap;}
+  .brandmark{display:flex; align-items:baseline; gap:14px;}
+  .brandmark .stamp{
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#8FBFA8;
+    border:1px solid #3E5B4E; padding:4px 8px; border-radius:2px;
+  }
+  header.hero h1{
+    font-family:var(--serif); font-weight:600; font-size:28px; margin:6px 0 4px 0; letter-spacing:-.01em;
+  }
+  header.hero p{margin:0; color:#B7C2BC; font-size:13px; max-width:560px;}
+  .meta-inputs{display:flex; gap:14px; flex-wrap:wrap;}
+  .meta-field{display:flex; flex-direction:column; gap:4px;}
+  .meta-field label{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:#8B968F;}
+  .meta-field input{
+    background:#232B25; border:1px solid #3E4A3F; color:#F2F0E9; padding:7px 10px;
+    border-radius:3px; font-family:var(--sans); font-size:13px; min-width:170px;
+  }
+  .meta-field input:focus{outline:2px solid var(--ledger); outline-offset:1px;}
+  .save-load-group{display:flex; gap:6px;}
+  .btn-io{
+    background:#232B25; border:1px solid #3E4A3F; color:#E4E1D6; padding:7px 11px;
+    border-radius:3px; font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer;
+  }
+  .btn-io:hover{background:#2C362E; border-color:var(--ledger);}
+
+  /* ── Nav / progress ── */
+  nav.steps{
+    background:var(--paper-raised); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+  }
+  nav.steps .wrap{display:flex; gap:2px; overflow-x:auto;}
+  nav.steps button{
+    background:none; border:none; padding:12px 16px; font-family:var(--sans); font-size:12.5px;
+    font-weight:600; color:var(--ink-soft); cursor:pointer; border-bottom:3px solid transparent;
+    white-space:nowrap; display:flex; align-items:center; gap:7px;
+  }
+  nav.steps button .n{
+    width:18px; height:18px; border-radius:50%; background:var(--line); color:#fff;
+    font-size:10px; display:flex; align-items:center; justify-content:center; font-family:var(--mono);
+  }
+  nav.steps button.active{color:var(--ledger); border-bottom-color:var(--ledger);}
+  nav.steps button.active .n{background:var(--ledger);}
+  nav.steps button.done .n{background:var(--ink-soft);}
+
+  section.panel{padding:32px 0; border-bottom:1px solid var(--line);}
+  section.panel.hidden{display:none;}
+  h2.panel-title{
+    font-family:var(--serif); font-size:20px; font-weight:600; margin:0 0 4px 0;
+  }
+  p.panel-sub{color:var(--ink-soft); font-size:13px; margin:0 0 22px 0; max-width:680px;}
+
+  .card{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:6px;
+    padding:20px 22px; margin-bottom:16px;
+  }
+  .card h3{font-family:var(--serif); font-size:15px; font-weight:600; margin:0 0 12px 0; display:flex; align-items:center; gap:8px;}
+  .card h3 .tag{
+    font-family:var(--mono); font-size:10px; background:var(--ledger-soft); color:var(--ledger);
+    padding:2px 6px; border-radius:3px; font-weight:600;
+  }
+
+  /* ── Dropzone ── */
+  .dropzone{
+    border:2px dashed var(--line-strong); border-radius:8px; padding:40px 20px; text-align:center;
+    cursor:pointer; transition:.15s; background:#FCFBF8;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--ledger); background:var(--ledger-soft);}
+  .dropzone .icon{font-size:30px; margin-bottom:8px; opacity:.6;}
+  .dropzone strong{font-family:var(--serif); font-size:16px;}
+  .dropzone span{display:block; color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
+  input[type=file]{display:none;}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th{
+    text-align:left; font-family:var(--sans); font-weight:600; font-size:10.5px; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--ink-soft); padding:8px 10px; border-bottom:2px solid var(--line-strong);
+    position:sticky; top:0; background:var(--paper-raised);
+  }
+  td{padding:6px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); vertical-align:top;}
+  td.desc{font-family:var(--sans);}
+  tr.class-1 td:first-child, tr.class-1 td.desc{border-left:3px solid #4A7BAE;}
+  tr.class-2 td:first-child, tr.class-2 td.desc{border-left:3px solid #7A5EA8;}
+  tr.class-3 td:first-child, tr.class-3 td.desc{border-left:3px solid var(--gold);}
+  tr.class-4 td:first-child, tr.class-4 td.desc{border-left:3px solid #4A9E8F;}
+  tr.class-5 td:first-child, tr.class-5 td.desc{border-left:3px solid #6B6B6B;}
+  tr.class-6 td:first-child, tr.class-6 td.desc{border-left:3px solid var(--danger);}
+  tr.class-7 td:first-child, tr.class-7 td.desc{border-left:3px solid var(--ledger);}
+  .num{text-align:right; font-variant-numeric:tabular-nums;}
+  .table-scroll{max-height:360px; overflow:auto; border:1px solid var(--line); border-radius:4px;}
+
+  .col-map{display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-top:14px;}
+  .col-map label{display:block; font-size:11px; color:var(--ink-soft); margin-bottom:4px; text-transform:uppercase; letter-spacing:.05em;}
+  select, input[type=text], input[type=number]{
+    width:100%; padding:8px 10px; border:1px solid var(--line-strong); border-radius:4px;
+    font-family:var(--sans); font-size:13px; background:#fff; color:var(--ink);
+  }
+  select:focus, input:focus{outline:2px solid var(--ledger); outline-offset:0; border-color:var(--ledger);}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-soft); margin-bottom:5px; font-weight:600;}
+  .field .hint{font-weight:400; color:#9098A3; font-size:11px;}
+  .checkline{display:flex; align-items:center; gap:8px; margin:10px 0;}
+  .checkline input{width:auto;}
+  .checkline label{font-size:13px; font-weight:500;}
+
+  .rowlist .rowline{
+    display:grid; grid-template-columns:100px 1fr 140px 32px; gap:10px; align-items:center; margin-bottom:8px;
+  }
+  .rowlist .rowline.autonomas{grid-template-columns:1.4fr 120px 100px 130px 32px;}
+  .btn-add{
+    background:var(--ledger-soft); color:var(--ledger); border:1px dashed var(--ledger);
+    border-radius:4px; padding:8px 14px; font-size:12.5px; font-weight:600; cursor:pointer; margin-top:4px;
+  }
+  .btn-rm{
+    background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; line-height:1;
+    width:28px; height:28px; border-radius:4px;
+  }
+  .btn-rm:hover{background:var(--danger-soft);}
+
+  .btn-primary{
+    background:var(--ledger); color:#fff; border:none; border-radius:5px; padding:13px 26px;
+    font-size:14px; font-weight:700; cursor:pointer; font-family:var(--sans);
+  }
+  .btn-primary:hover{background:#094B38;}
+  .btn-secondary{
+    background:#fff; color:var(--ink); border:1px solid var(--line-strong); border-radius:5px; padding:11px 20px;
+    font-size:13px; font-weight:600; cursor:pointer;
+  }
+  .actions{display:flex; gap:12px; margin-top:22px; align-items:center;}
+  .warn-banner{
+    background:var(--alert-soft); border:1px solid var(--alert); color:#6B4409; border-radius:5px;
+    padding:10px 14px; font-size:12.5px; margin:14px 0; display:flex; gap:8px;
+  }
+
+  /* ── Results ── */
+  .ledger-block{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; margin-bottom:18px; overflow:hidden;}
+  .ledger-head{
+    background:#14201B; color:#F2F0E9; padding:12px 20px; font-family:var(--serif); font-size:15px; font-weight:600;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .ledger-head .stamp-mini{font-family:var(--mono); font-size:10px; color:#8FBFA8; letter-spacing:.08em;}
+  .ledger-body{padding:4px 0;}
+  .line{
+    display:flex; justify-content:space-between; padding:9px 20px; font-size:13px; border-bottom:1px solid #EFEDE6;
+  }
+  .line:last-child{border-bottom:none;}
+  .line .lbl{color:var(--ink-soft);}
+  .line .val{font-family:var(--mono); font-weight:500; font-variant-numeric:tabular-nums;}
+  .line.sub .lbl{padding-left:18px; font-size:12.5px;}
+  .line.total{background:#F7F6F2; font-weight:700;}
+  .line.total .lbl{color:var(--ink);}
+  .line.total .val{font-size:14.5px;}
+  .line.final{background:var(--ledger-soft);}
+  .line.final .val{color:var(--ledger); font-size:16px; font-weight:700;}
+  .line.negative .val{color:var(--danger);}
+  .badge{
+    font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:3px; margin-left:8px;
+    background:var(--alert-soft); color:var(--alert); font-weight:600;
+  }
+
+  /* ── Letterhead ── */
+  .letterhead{margin:4px 0 22px 0;}
+  .letterhead-rule{height:1px; background:linear-gradient(90deg, var(--ledger) 0%, var(--line-strong) 40%, var(--line-strong) 100%);}
+  .letterhead-rule + .letterhead-rule{margin-top:2px;}
+  .letterhead-main{padding:16px 2px 6px 2px;}
+  .letterhead-name{font-family:var(--serif); font-size:30px; font-weight:700; letter-spacing:-.01em; color:var(--ink);}
+  .letterhead-sub{font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.12em; color:var(--ledger); margin-top:4px;}
+  .letterhead-meta{display:flex; gap:32px; padding:0 2px 14px 2px;}
+  .letterhead-meta div{display:flex; flex-direction:column; gap:2px;}
+  .letterhead-meta span{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft);}
+  .letterhead-meta strong{font-family:var(--mono); font-size:13.5px; color:var(--ink);}
+
+  /* ── KPI strip ── */
+  .kpi-strip{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2px; margin-bottom:22px; background:var(--line); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .kpi-cell{background:var(--paper-raised); padding:18px 20px;}
+  .kpi-cell.emph{background:#14201B; color:#F2F0E9;}
+  .kpi-cell .kv{font-family:var(--serif); font-size:24px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .kpi-cell.emph .kv{color:#7FC9A8;}
+  .kpi-cell .kv.negative{color:var(--danger);}
+  .kpi-cell.emph .kv.negative{color:#E48A7D;}
+  .kpi-cell .kl{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-top:5px;}
+  .kpi-cell.emph .kl{color:#8FA398;}
+
+  .section-h{font-family:var(--serif); margin:30px 0 12px 0; font-size:18px; font-weight:600; padding-bottom:8px; border-bottom:1px solid var(--line);}
+
+  .ratio-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px;}
+  .ratio-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; padding:18px 20px;}
+  .ratio-card .rv{font-family:var(--serif); font-size:28px; font-weight:600; color:var(--ledger);}
+  .ratio-card.bad .rv{color:var(--danger);}
+  .ratio-card.ok .rv{color:var(--ledger);}
+  .ratio-card .rl{font-size:11.5px; color:var(--ink); font-weight:600; margin-top:5px; text-transform:uppercase; letter-spacing:.04em;}
+  .ratio-card .rf{font-size:10.5px; color:#9098A3; margin-top:2px; font-family:var(--mono);}
+  .ratio-card .rn{font-size:12.5px; color:var(--ink-soft); margin-top:10px; line-height:1.55; border-top:1px solid var(--line); padding-top:10px;}
+  .ratio-card .rtag{
+    display:inline-block; font-family:var(--mono); font-size:10px; font-weight:600; letter-spacing:.04em;
+    padding:2px 7px; border-radius:3px; margin-top:8px; text-transform:uppercase;
+  }
+  .ratio-card.ok .rtag{background:var(--ledger-soft); color:var(--ledger);}
+  .ratio-card.warn .rtag{background:var(--alert-soft); color:var(--alert);}
+  .ratio-card.bad .rtag{background:var(--danger-soft); color:var(--danger);}
+
+  /* ── Parecer técnico ── */
+  .parecer-block{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; margin:24px 0; overflow:hidden;}
+  .parecer-body{padding:20px 22px; font-family:var(--serif); font-size:14.5px; line-height:1.75; color:var(--ink);}
+  .parecer-body p{margin:0 0 12px 0;}
+  .parecer-body p:last-child{margin-bottom:0;}
+  .parecer-body strong{color:var(--ledger);}
+
+  .selo-global{
+    display:flex; flex-direction:column; gap:2px; background:var(--ledger-soft); border:1px solid var(--ledger);
+    border-radius:5px; padding:12px 16px; margin-bottom:16px; font-family:var(--sans); font-weight:700; font-size:15px;
+    color:var(--ledger);
+  }
+  .selo-global.warn{background:var(--alert-soft); border-color:var(--alert); color:#6B4409;}
+  .selo-global.bad{background:var(--danger-soft); border-color:var(--danger); color:var(--danger);}
+  .selo-global .selo-detalhe{font-family:var(--mono); font-weight:500; font-size:11px; text-transform:none; letter-spacing:0; opacity:.85;}
+
+  .parecer-sub{font-family:var(--serif); font-size:14.5px; font-weight:700; margin:18px 0 8px 0; color:var(--ink);}
+  .parecer-list{list-style:none; margin:0 0 4px 0; padding:0;}
+  .parecer-list li{
+    position:relative; padding:6px 0 6px 18px; font-size:13.5px; color:var(--ink-soft); line-height:1.6; font-family:var(--sans);
+  }
+  .parecer-list li::before{content:'●'; position:absolute; left:0; top:6px; font-size:9px;}
+  .parecer-list.ok li::before{color:var(--ledger);}
+  .parecer-list.warn li::before{color:var(--alert);}
+  .parecer-list li strong{color:var(--ink); font-weight:600;}
+  .parecer-recomendacao{
+    margin-top:16px !important; padding-top:14px; border-top:1px dashed var(--line-strong);
+    font-style:italic; color:var(--ink-soft) !important; font-size:13.5px !important;
+  }
+
+  .report-footer{
+    display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-top:30px;
+    padding-top:16px; border-top:2px solid var(--ink); flex-wrap:wrap;
+  }
+  .report-footer strong{display:block; font-family:var(--serif); font-size:14px;}
+  .report-footer span{display:block; font-size:11.5px; color:var(--ink-soft); margin-top:2px;}
+  .report-footer-signature{font-family:var(--mono); font-size:11px; color:var(--ink-soft); text-align:right;}
+
+  footer.stripe{padding:26px 0 60px 0;}
+  .disclaimer{
+    font-size:11px; color:#9098A3; border-top:1px solid var(--line); padding-top:16px; margin-top:30px; line-height:1.6;
+  }
+  /* ── Login gate ── */
+  #login-gate{
+    position:fixed; inset:0; z-index:100; background:linear-gradient(180deg,#0D1712 0%,#14201B 100%);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .login-box{
+    background:#1B2621; border:1px solid #33453A; border-radius:8px; padding:36px 34px; max-width:340px; width:100%;
+    text-align:center;
+  }
+  .login-box .stamp{
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#8FBFA8;
+    border:1px solid #3E5B4E; padding:4px 8px; border-radius:2px; display:inline-block;
+  }
+  .login-box h1{font-family:var(--serif); color:#F2F0E9; font-size:22px; margin:14px 0 6px 0;}
+  .login-box p{color:#8FA398; font-size:12.5px; margin:0 0 20px 0; line-height:1.5;}
+  .login-box input{
+    width:100%; background:#232B25; border:1px solid #3E4A3F; color:#F2F0E9; padding:11px 12px;
+    border-radius:4px; font-family:var(--sans); font-size:14px; text-align:center;
+  }
+  .login-box input:focus{outline:2px solid var(--ledger); outline-offset:1px;}
+  #login-erro{color:#E48A7D; font-size:12px; margin-top:10px; min-height:16px;}
+
+  /* ── Painel de análises guardadas ── */
+  .cloud-overlay{
+    position:fixed; inset:0; z-index:90; background:rgba(20,32,27,.72);
+    display:flex; align-items:flex-start; justify-content:center; padding:60px 20px; overflow:auto;
+  }
+  .cloud-overlay.hidden{display:none;}
+  .cloud-panel{background:var(--paper-raised); border-radius:8px; max-width:640px; width:100%; overflow:hidden;}
+  .cloud-panel-head{
+    background:#14201B; color:#F2F0E9; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .cloud-panel-head h3{font-family:var(--serif); margin:0; font-size:17px;}
+  .cloud-panel-head button{background:none; border:none; color:#8FA398; font-size:20px; cursor:pointer;}
+  .cloud-panel-body{padding:8px 0; max-height:60vh; overflow:auto;}
+  .cloud-item{
+    display:flex; justify-content:space-between; align-items:center; padding:13px 22px; border-bottom:1px solid var(--line);
+    cursor:pointer;
+  }
+  .cloud-item:hover{background:var(--ledger-soft);}
+  .cloud-item-info strong{display:block; font-family:var(--serif); font-size:14.5px;}
+  .cloud-item-info span{font-size:11.5px; color:var(--ink-soft); font-family:var(--mono);}
+  .cloud-item-actions button{
+    background:none; border:1px solid var(--line-strong); border-radius:4px; padding:5px 10px; font-size:11.5px;
+    cursor:pointer; margin-left:6px; font-family:var(--sans);
+  }
+  .cloud-item-actions .del{color:var(--danger); border-color:var(--danger-soft);}
+  .cloud-empty{padding:30px 22px; text-align:center; color:var(--ink-soft); font-size:13px;}
+
+  @media print{
+    nav.steps, header.hero .meta-inputs, .actions, .dropzone, .col-map, .btn-add, .btn-rm{display:none !important;}
+    section.panel{display:block !important;}
+    section.panel[data-step="1"], section.panel[data-step="2"], section.panel[data-step="3"], section.panel[data-step="4"]{display:none !important;}
+    .ledger-block, .parecer-block, .ratio-card, .kpi-cell{page-break-inside:avoid;}
+    header.hero{background:#14201B !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    body{padding:0;}
+  }
+  @media (max-width:720px){
+    .grid2, .grid3, .col-map{grid-template-columns:1fr;}
+    header.hero .wrap{flex-direction:column; align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<div id="login-gate">
+  <div class="login-box">
+    <span class="stamp">MOTOR DE APURAMENTO</span>
+    <h1>Acesso Reservado</h1>
+    <p>Entrada independente — os dados ficam guardados na tua conta, fora do Sistema Interno.</p>
+    <input type="password" id="login-pass" placeholder="Senha" autocomplete="current-password">
+    <button class="btn-primary" onclick="verificarLogin()" style="width:100%; margin-top:10px;">Entrar</button>
+    <div id="login-erro"></div>
+  </div>
+</div>
+
+<div id="app-content" style="display:none;">
+
+<div class="cloud-overlay hidden" id="cloud-overlay">
+  <div class="cloud-panel">
+    <div class="cloud-panel-head">
+      <h3>Análises Guardadas</h3>
+      <button onclick="fecharPainelNuvem()">×</button>
+    </div>
+    <div class="cloud-panel-body" id="cloud-panel-body">
+      <div class="cloud-empty">A carregar…</div>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <div class="brandmark">
+        <span class="stamp">MOTOR DE APURAMENTO</span>
+      </div>
+      <h1>Análise Contabilística &amp; Fiscal</h1>
+      <p>Apuramento de resultados, IRC, derramas e rácios a partir de um balancete, a qualquer data do exercício.</p>
+    </div>
+    <div class="meta-inputs">
+      <div class="meta-field">
+        <label for="in-empresa">Empresa</label>
+        <input type="text" id="in-empresa" placeholder="Nome da entidade">
+      </div>
+      <div class="meta-field">
+        <label for="in-data">Data de referência</label>
+        <input type="date" id="in-data">
+      </div>
+      <div class="meta-field">
+        <label for="in-ano">Ano fiscal</label>
+        <input type="number" id="in-ano" value="2026" min="2000" max="2100">
+      </div>
+      <div class="meta-field">
+        <label>&nbsp;</label>
+        <div class="save-load-group">
+          <button class="btn-io" onclick="guardarNaNuvem(this)" title="Guarda esta análise na tua conta, consultável de qualquer sítio">☁️ Guardar</button>
+          <button class="btn-io" onclick="abrirPainelNuvem()" title="Vê e reabre análises guardadas anteriormente">📚 Análises</button>
+          <button class="btn-io" onclick="baixarJSON()" title="Exporta esta análise para um ficheiro .json local">💾 .json</button>
+          <button class="btn-io" onclick="document.getElementById('load-json-input').click()" title="Carrega uma análise a partir de um ficheiro .json">📂</button>
+          <input type="file" id="load-json-input" accept=".json" style="display:none;">
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="steps">
+  <div class="wrap">
+    <button class="step-btn active" data-step="1"><span class="n">1</span> Balancete</button>
+    <button class="step-btn" data-step="2"><span class="n">2</span> Existências</button>
+    <button class="step-btn" data-step="3"><span class="n">3</span> Parâmetros fiscais</button>
+    <button class="step-btn" data-step="4"><span class="n">4</span> Correções &amp; Prejuízos</button>
+    <button class="step-btn" data-step="5"><span class="n">5</span> Resultado</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!-- ═══════════ STEP 1 — UPLOAD ═══════════ -->
+<section class="panel" data-step="1">
+  <h2 class="panel-title">1. Carregar balancete</h2>
+  <p class="panel-sub">Excel exportado do software de contabilidade, com pelo menos: código de conta, descrição, e saldos (devedor/credor ou débito/crédito).</p>
+
+  <div class="card">
+    <div class="dropzone" id="dropzone">
+      <div class="icon">📊</div>
+      <strong>Arraste o ficheiro Excel para aqui</strong>
+      <span>ou clique para escolher — .xlsx / .xls / .csv</span>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv">
+    </div>
+    <div id="sheet-picker" style="margin-top:14px; display:none;">
+      <label style="font-size:12px; color:var(--ink-soft); font-weight:600;">Folha a utilizar</label>
+      <select id="sheet-select"></select>
+    </div>
+  </div>
+
+  <div class="card" id="mapping-card" style="display:none;">
+    <h3>Confirmar colunas <span class="tag">deteção automática</span></h3>
+    <p class="panel-sub" style="margin-bottom:10px;">Confere se identifiquei as colunas certas — ajusta se necessário.</p>
+    <div class="col-map">
+      <div>
+        <label>Código de conta</label>
+        <select id="map-conta"></select>
+      </div>
+      <div>
+        <label>Descrição</label>
+        <select id="map-desc"></select>
+      </div>
+      <div>
+        <label>Saldo devedor / Débito</label>
+        <select id="map-deb"></select>
+      </div>
+      <div>
+        <label>Saldo credor / Crédito</label>
+        <select id="map-cred"></select>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-primary" id="btn-parse">Processar balancete →</button>
+    </div>
+  </div>
+
+  <div class="card" id="preview-card" style="display:none;">
+    <h3>Balancete classificado <span class="tag" id="preview-count"></span></h3>
+    <div class="table-scroll">
+      <table id="preview-table">
+        <thead><tr><th>Conta</th><th>Descrição</th><th>Classe</th><th class="num">Devedor</th><th class="num">Credor</th><th class="num">Saldo</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div id="class-summary" style="margin-top:16px;"></div>
+    <div class="actions">
+      <button class="btn-primary" onclick="goStep(2)">Continuar →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════ STEP 2 — EXISTÊNCIAS ═══════════ -->
+<section class="panel hidden" data-step="2">
+  <h2 class="panel-title">2. Existências</h2>
+  <p class="panel-sub">Duas lógicas diferentes, consoante o tipo de existência — a ferramenta deteta automaticamente se o apuramento já foi feito no balancete (presença de saldo em 611 ou 73x) ou se ainda tem de ser calculado.</p>
+
+  <div class="card">
+    <h3>Mercadorias e Matérias-Primas <span class="tag">contas 32 · 33</span></h3>
+    <p class="panel-sub" style="margin:0 0 12px 0;">CMVMC = Existência Inicial + Compras (conta 31) − Existência Final. A conta 611/612 só tem saldo depois de apurado o CEVC — o que normalmente só acontece no balancete de fecho final.</p>
+    <div id="grupoA-detected"></div>
+    <div class="grid3" style="margin-top:12px;" id="grupoA-fields">
+      <div class="field">
+        <label>Existência inicial<span class="hint" id="lbl-a-ini">saldo contas 32+33</span></label>
+        <input type="number" id="a-iniciais" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label>Compras (conta 31)<span class="hint">detetado do balancete</span></label>
+        <input type="number" id="a-compras" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label>Existência final<span class="hint" id="lbl-a-fin">a indicar manualmente</span></label>
+        <input type="number" id="a-finais" step="0.01" value="0">
+      </div>
+    </div>
+    <div class="line total" style="border-radius:4px; border:1px solid var(--line);">
+      <span class="lbl">CMVMC / CEVC — gasto do período</span>
+      <span class="val" id="a-cmvmc">0,00 €</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Produção Própria <span class="tag">contas 34 · 35 · 36</span></h3>
+    <p class="panel-sub" style="margin:0 0 12px 0;">Produtos acabados e intermédios, subprodutos e produtos/trabalhos em curso não têm "compras" — não se apura CMVMC, apura-se a <strong>Variação da Produção</strong> = Existência Final − Existência Inicial, lançada como rendimento (conta 73), podendo ser negativa.</p>
+    <div id="grupoB-detected"></div>
+    <div class="grid2" style="margin-top:12px;" id="grupoB-fields">
+      <div class="field">
+        <label>Existência inicial<span class="hint" id="lbl-b-ini">saldo contas 34+35+36</span></label>
+        <input type="number" id="b-iniciais" step="0.01" value="0">
+      </div>
+      <div class="field">
+        <label>Existência final<span class="hint" id="lbl-b-fin">a indicar manualmente</span></label>
+        <input type="number" id="b-finais" step="0.01" value="0">
+      </div>
+    </div>
+    <div class="line total" style="border-radius:4px; border:1px solid var(--line);">
+      <span class="lbl">Variação da Produção — rendimento do período</span>
+      <span class="val" id="b-variacao">0,00 €</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-secondary" onclick="goStep(1)">← Voltar</button>
+    <button class="btn-primary" onclick="goStep(3)">Continuar →</button>
+  </div>
+</section>
+
+<!-- ═══════════ STEP 3 — PARÂMETROS FISCAIS ═══════════ -->
+<section class="panel hidden" data-step="3">
+  <h2 class="panel-title">3. Parâmetros fiscais do exercício</h2>
+  <p class="panel-sub">Valores pré-preenchidos com a legislação em vigor para 2026 — confirma e ajusta ao caso concreto (município, regime, taxas negociadas). Estes números mudam todos os anos: revê sempre antes de usar em exercícios diferentes.</p>
+
+  <div class="card">
+    <h3>IRC</h3>
+    <div class="checkline">
+      <input type="checkbox" id="p-ispme" checked>
+      <label for="p-ispme">É PME / Small Mid Cap (taxa reduzida nos primeiros €50.000 de matéria coletável)</label>
+    </div>
+    <div class="grid3">
+      <div class="field"><label>Taxa geral IRC</label><input type="number" id="p-taxageral" step="0.001" value="0.19"></div>
+      <div class="field"><label>Taxa reduzida PME (1.ºs €50.000)</label><input type="number" id="p-taxapme" step="0.001" value="0.15"></div>
+      <div class="field"><label>Limiar da taxa reduzida (€)</label><input type="number" id="p-limiarpme" step="1000" value="50000"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Derramas</h3>
+    <div class="grid2">
+      <div class="field"><label>Derrama municipal<span class="hint">taxa deliberada pelo município, até 1,5%</span></label><input type="number" id="p-derrama-mun" step="0.001" value="0"></div>
+      <div class="field"><label>Base de incidência da derrama municipal</label>
+        <select id="p-derrama-base">
+          <option value="materiaColetavel" selected>Matéria coletável</option>
+          <option value="lucroTributavel">Lucro tributável (antes de prejuízos)</option>
+        </select>
+      </div>
+    </div>
+    <p class="panel-sub" style="margin:6px 0 0 0;">Derrama estadual aplicada automaticamente pelos escalões legais: 3% acima de €1,5M, 5% acima de €7,5M, 9% acima de €35M, sobre o lucro tributável.</p>
+  </div>
+
+  <div class="card">
+    <h3>Dedução de prejuízos fiscais</h3>
+    <div class="grid2">
+      <div class="field"><label>Limite de dedução (% do lucro tributável)</label><input type="number" id="p-limitprej" step="0.01" value="0.65"></div>
+      <div class="field"><label>Majoração para prejuízos de 2020/2021</label>
+        <select id="p-majoracao">
+          <option value="0">Sem majoração</option>
+          <option value="0.10">+10 p.p. (limite 75%)</option>
+        </select>
+      </div>
+    </div>
+    <p class="panel-sub" style="margin:6px 0 0 0;">Sem limitação temporal de reporte desde 2023 — a lista de prejuízos disponíveis define-se no passo seguinte.</p>
+  </div>
+
+  <div class="card">
+    <h3>Tributações autónomas <span class="tag">opcional</span></h3>
+    <div class="checkline">
+      <input type="checkbox" id="p-agravamento">
+      <label for="p-agravamento">Agravar taxas em +10 p.p. por prejuízo fiscal no exercício <span class="hint">(suspenso para 2026 — confirmar OE do ano em causa)</span></label>
+    </div>
+    <div class="rowlist" id="autonomas-list"></div>
+    <button class="btn-add" onclick="addAutonomaRow()">+ Adicionar categoria</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn-secondary" onclick="goStep(2)">← Voltar</button>
+    <button class="btn-primary" onclick="goStep(4)">Continuar →</button>
+  </div>
+</section>
+
+<!-- ═══════════ STEP 4 — CORREÇÕES & PREJUÍZOS ═══════════ -->
+<section class="panel hidden" data-step="4">
+  <h2 class="panel-title">4. Correções fiscais e prejuízos reportáveis</h2>
+  <p class="panel-sub">Ajustamentos ao resultado contabilístico (Quadro 07) e saldo de prejuízos fiscais de anos anteriores.</p>
+
+  <div class="card">
+    <h3>Correções ao resultado contabilístico</h3>
+    <p class="panel-sub" style="margin:0 0 10px 0;">Ex.: tributações autónomas contabilizadas como gasto, multas e coimas não dedutíveis, donativos fora dos limites, mais/menos-valias fiscais vs. contabilísticas, benefícios fiscais (RFAI, SIFIDE, DLRR).</p>
+    <div class="rowlist" id="correcoes-list"></div>
+    <button class="btn-add" onclick="addCorrecaoRow()">+ Adicionar linha</button>
+  </div>
+
+  <div class="card">
+    <h3>Prejuízos fiscais reportáveis</h3>
+    <p class="panel-sub" style="margin:0 0 10px 0;">Um saldo por ano de origem. O motor deduz automaticamente pela ordem FIFO (mais antigos primeiro), respeitando o limite legal.</p>
+    <div class="rowlist" id="prejuizos-list"></div>
+    <button class="btn-add" onclick="addPrejuizoRow()">+ Adicionar ano</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn-secondary" onclick="goStep(3)">← Voltar</button>
+    <button class="btn-primary" onclick="calcularTudo()">Calcular resultado →</button>
+  </div>
+</section>
+
+<!-- ═══════════ STEP 5 — RESULTADO ═══════════ -->
+<section class="panel hidden" data-step="5">
+  <h2 class="panel-title">5. Resultado do apuramento</h2>
+  <p class="panel-sub" id="result-sub"></p>
+
+  <div class="letterhead" id="letterhead">
+    <div class="letterhead-rule"></div>
+    <div class="letterhead-main">
+      <div class="letterhead-name" id="lh-empresa">Entidade não identificada</div>
+      <div class="letterhead-sub">Relatório de Análise Económico-Financeira</div>
+    </div>
+    <div class="letterhead-meta">
+      <div><span>Data de referência</span><strong id="lh-data">—</strong></div>
+      <div><span>Exercício</span><strong id="lh-ano">—</strong></div>
+    </div>
+    <div class="letterhead-rule"></div>
+  </div>
+
+  <div id="warnings"></div>
+
+  <div class="kpi-strip" id="kpi-strip"></div>
+
+  <div class="ledger-block">
+    <div class="ledger-head"><span>Demonstração de Resultados</span><span class="stamp-mini" id="dr-periodo"></span></div>
+    <div class="ledger-body" id="dr-body"></div>
+  </div>
+
+  <div class="ledger-block">
+    <div class="ledger-head"><span>Apuramento do Imposto</span><span class="stamp-mini">CIRC</span></div>
+    <div class="ledger-body" id="irc-body"></div>
+  </div>
+
+  <div class="ledger-block">
+    <div class="ledger-head"><span>Prejuízos Fiscais — Utilização</span><span class="stamp-mini">Art.º 52.º CIRC</span></div>
+    <div class="ledger-body" id="prej-body"></div>
+  </div>
+
+  <h3 class="section-h">Rácios de análise</h3>
+  <div class="ratio-grid" id="ratios-grid"></div>
+
+  <div class="parecer-block" id="parecer-block">
+    <div class="ledger-head"><span>Parecer Técnico</span><span class="stamp-mini" id="parecer-empresa"></span></div>
+    <div class="parecer-body" id="parecer-body"></div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-secondary" onclick="goStep(4)">← Voltar</button>
+    <button class="btn-primary" onclick="window.print()">🖨 Imprimir / Exportar PDF</button>
+  </div>
+
+  <div class="report-footer">
+    <div>
+      <strong id="ft-empresa">—</strong>
+      <span>Análise elaborada com base no balancete fornecido, à data indicada.</span>
+    </div>
+    <div class="report-footer-signature">
+      Contabilista Certificado — Inscrito na OCC 46003
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    Ferramenta de apoio à análise interna. Os valores dependem inteiramente dos dados e parâmetros introduzidos — confirma sempre taxas, derramas e correções fiscais aplicáveis ao caso concreto e ao ano em questão antes de qualquer submissão oficial. Rácios de liquidez calculados por aproximação a partir das classes do balancete (sem segregação corrente/não corrente), a validar caso a caso. O parecer técnico é gerado automaticamente a partir de limiares de referência gerais e não substitui o juízo profissional sobre o caso concreto.
+  </div>
+</section>
+
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ══════════════════════════════════════════════════════════════
+let rawRows = [];        // linhas cruas do ficheiro (arrays)
+let parsedAccounts = [];  // [{conta, desc, classe, debito, credito, saldo}]
+let workbook = null;
+
+// ══════════════════════════════════════════════════════════════
+//  NAVEGAÇÃO
+// ══════════════════════════════════════════════════════════════
+function goStep(n){
+  document.querySelectorAll('section.panel').forEach(s=>{
+    s.classList.toggle('hidden', s.dataset.step != n);
+  });
+  document.querySelectorAll('.step-btn').forEach(b=>{
+    const s = parseInt(b.dataset.step);
+    b.classList.toggle('active', s===n);
+    b.classList.toggle('done', s<n);
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('.step-btn').forEach(b=>{
+  b.addEventListener('click', ()=>goStep(parseInt(b.dataset.step)));
+});
+
+// ══════════════════════════════════════════════════════════════
+//  CLASSIFICAÇÃO SNC
+// ══════════════════════════════════════════════════════════════
+const CLASSES_SNC = {
+  1:'Meios Financeiros Líquidos', 2:'Contas a Receber e Pagar', 3:'Inventários e Ativos Biológicos',
+  4:'Investimentos', 5:'Capital Próprio', 6:'Gastos', 7:'Rendimentos', 8:'Resultados'
+};
+function classeDaConta(codigo){
+  const s = String(codigo).trim();
+  const d = s[0];
+  return CLASSES_SNC[d] ? parseInt(d) : null;
+}
+function fmt(n){
+  if(n===null || n===undefined || isNaN(n)) return '—';
+  return n.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+}
+function fmtPct(n){ return (n*100).toLocaleString('pt-PT',{maximumFractionDigits:1}) + '%'; }
+function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v)?0:v; }
+
+// ══════════════════════════════════════════════════════════════
+//  UPLOAD & PARSING
+// ══════════════════════════════════════════════════════════════
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('file-input');
+dropzone.addEventListener('click', ()=>fileInput.click());
+dropzone.addEventListener('dragover', e=>{e.preventDefault(); dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  if(e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e=>{
+  if(e.target.files.length) handleFile(e.target.files[0]);
+});
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const data = new Uint8Array(e.target.result);
+    workbook = XLSX.read(data, {type:'array'});
+    const picker = document.getElementById('sheet-picker');
+    const sel = document.getElementById('sheet-select');
+    sel.innerHTML = '';
+    workbook.SheetNames.forEach(name=>{
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    });
+    picker.style.display = workbook.SheetNames.length > 1 ? 'block' : 'none';
+    loadSheet(workbook.SheetNames[0]);
+    sel.onchange = ()=>loadSheet(sel.value);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadSheet(sheetName){
+  const ws = workbook.Sheets[sheetName];
+  rawRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
+  // encontrar linha de cabeçalho: a primeira linha com pelo menos 3 células não vazias
+  let headerIdx = rawRows.findIndex(r => r.filter(c=>String(c).trim()!=='').length >= 3);
+  if(headerIdx < 0) headerIdx = 0;
+  const headers = rawRows[headerIdx].map(h=>String(h).trim());
+  buildColumnMapping(headers, headerIdx);
+}
+
+function buildColumnMapping(headers, headerIdx){
+  const card = document.getElementById('mapping-card');
+  card.style.display = 'block';
+  card.dataset.headerIdx = headerIdx;
+
+  const guess = (patterns)=>{
+    for(let i=0;i<headers.length;i++){
+      const h = headers[i].toLowerCase();
+      if(patterns.some(p=>h.includes(p))) return i;
+    }
+    return -1;
+  };
+  const gConta = guess(['conta','código','codigo']);
+  const gDesc  = guess(['descri','designa']);
+  const gDeb   = guess(['devedor','débito','debito']);
+  const gCred  = guess(['credor','crédito','credito']);
+
+  const fillSelect = (id, guessIdx)=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = '<option value="-1">— não existe —</option>';
+    headers.forEach((h,i)=>{
+      const opt = document.createElement('option');
+      opt.value = i; opt.textContent = `Col ${i+1}: ${h || '(sem nome)'}`;
+      sel.appendChild(opt);
+    });
+    sel.value = guessIdx;
+  };
+  fillSelect('map-conta', gConta);
+  fillSelect('map-desc', gDesc);
+  fillSelect('map-deb', gDeb);
+  fillSelect('map-cred', gCred);
+}
+
+document.getElementById('btn-parse').addEventListener('click', ()=>{
+  const headerIdx = parseInt(document.getElementById('mapping-card').dataset.headerIdx);
+  const cConta = parseInt(document.getElementById('map-conta').value);
+  const cDesc  = parseInt(document.getElementById('map-desc').value);
+  const cDeb   = parseInt(document.getElementById('map-deb').value);
+  const cCred  = parseInt(document.getElementById('map-cred').value);
+
+  parsedAccounts = [];
+  for(let i=headerIdx+1; i<rawRows.length; i++){
+    const row = rawRows[i];
+    if(!row || row.every(c=>String(c).trim()==='')) continue;
+    const contaRaw = cConta>=0 ? row[cConta] : '';
+    const conta = String(contaRaw).trim();
+    if(!conta || !/^\d/.test(conta)) continue; // ignora linhas de totais/cabeçalhos sem código numérico
+    const desc = cDesc>=0 ? String(row[cDesc]||'').trim() : '';
+    const debito = cDeb>=0 ? (parseFloat(row[cDeb]) || 0) : 0;
+    const credito = cCred>=0 ? (parseFloat(row[cCred]) || 0) : 0;
+    const classe = classeDaConta(conta);
+    parsedAccounts.push({conta, desc, classe, debito, credito, saldo: debito - credito});
+  }
+  renderPreview();
+  prefillFromAccounts();
+  document.getElementById('preview-card').style.display = 'block';
+});
+
+function renderPreview(){
+  const tbody = document.querySelector('#preview-table tbody');
+  tbody.innerHTML = '';
+  parsedAccounts.forEach(a=>{
+    const tr = document.createElement('tr');
+    tr.className = a.classe ? `class-${a.classe}` : '';
+    tr.innerHTML = `<td>${a.conta}</td><td class="desc">${a.desc}</td><td>${a.classe ? a.classe+' · '+CLASSES_SNC[a.classe] : '?'}</td>
+      <td class="num">${a.debito ? fmt(a.debito) : ''}</td><td class="num">${a.credito ? fmt(a.credito) : ''}</td><td class="num">${fmt(a.saldo)}</td>`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('preview-count').textContent = parsedAccounts.length + ' contas';
+
+  // resumo por classe
+  const somas = {};
+  parsedAccounts.forEach(a=>{
+    if(!a.classe) return;
+    somas[a.classe] = somas[a.classe] || {deb:0, cred:0};
+    somas[a.classe].deb += a.debito;
+    somas[a.classe].cred += a.credito;
+  });
+  let html = '<table><thead><tr><th>Classe</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>';
+  Object.keys(somas).sort().forEach(c=>{
+    const s = somas[c];
+    html += `<tr class="class-${c}"><td class="desc">${c} · ${CLASSES_SNC[c]}</td><td class="num">${fmt(s.deb)}</td><td class="num">${fmt(s.cred)}</td><td class="num">${fmt(s.deb-s.cred)}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  document.getElementById('class-summary').innerHTML = html;
+}
+
+function somaClasse(classe, prefixo){
+  return parsedAccounts.filter(a=>a.classe===classe && (!prefixo || a.conta.startsWith(prefixo)))
+    .reduce((s,a)=>({deb:s.deb+a.debito, cred:s.cred+a.credito}), {deb:0,cred:0});
+}
+function isContaCompras(conta){ return /^31/.test(conta); }
+function isContaMercMatPrimas(conta){ return /^3[23]/.test(conta); }        // 32 Mercadorias · 33 Matérias-primas
+function isContaProducaoPropria(conta){ return /^3[456]/.test(conta); }     // 34 Prod.acabados · 35 Subprodutos · 36 Prod./trab. em curso
+function saldoConta(a){ return a.debito - a.credito; }
+function somaContas(pred){ return parsedAccounts.filter(a=>pred(a.conta)).reduce((s,a)=>s+saldoConta(a),0); }
+
+// CEVC (conta 611/612) só tem saldo depois de apurado — normalmente só no fecho final
+function cevcJaApurado(){ return Math.abs(somaContas(c=>/^61[12]/.test(c))) > 0.005; }
+// Variação nos inventários da produção (conta 73x) só tem saldo depois de apurada
+function variacaoJaApurada(){ return Math.abs(somaContas(c=>/^73/.test(c))) > 0.005; }
+
+function prefillFromAccounts(){
+  // ── Grupo A: Mercadorias e Matérias-Primas ──
+  const saldoA = somaContas(isContaMercMatPrimas);
+  const compras31 = somaContas(isContaCompras);
+  document.getElementById('a-compras').value = compras31.toFixed(2);
+  const detA = document.getElementById('grupoA-detected');
+  const fieldsA = document.getElementById('grupoA-fields');
+
+  if(cevcJaApurado()){
+    const cevcPosto = somaContas(c=>/^61[12]/.test(c));
+    fieldsA.style.opacity = '0.55'; fieldsA.querySelectorAll('input').forEach(i=>i.disabled=true);
+    document.getElementById('a-iniciais').value = '';
+    document.getElementById('a-finais').value = saldoA.toFixed(2);
+    document.getElementById('lbl-a-fin').textContent = 'saldo 32+33, já regularizado';
+    document.getElementById('lbl-a-ini').textContent = '— já fechado, não aplicável';
+    detA.innerHTML = `<div class="warn-banner">✅ CEVC já apurado no balancete (conta 611/612 = €${fmt(cevcPosto)}) — este é o valor de fecho final; a fórmula não é recalculada, uso diretamente o valor já lançado.</div>`;
+  } else {
+    fieldsA.style.opacity = '1'; fieldsA.querySelectorAll('input').forEach(i=>i.disabled=false);
+    document.getElementById('a-iniciais').value = saldoA.toFixed(2);
+    document.getElementById('lbl-a-ini').textContent = 'saldo 32+33 (abertura)';
+    document.getElementById('lbl-a-fin').textContent = 'a indicar manualmente';
+    if(saldoA!==0 || compras31!==0){
+      detA.innerHTML = `<div class="warn-banner">📦 Balancete intercalar — CEVC ainda não apurado (conta 611/612 vazia). O saldo de 32+33 (€${fmt(saldoA)}) é usado como existência inicial e as Compras (conta 31) foram detetadas. Falta indicares a <strong>existência final</strong> à data de referência.</div>`;
+    } else {
+      detA.innerHTML = `<div class="warn-banner" style="background:#EEF0EC; border-color:var(--line-strong); color:var(--ink-soft);">Sem saldos nas contas 31/32/33 — se não há mercadorias/matérias-primas, deixa a zero e avança.</div>`;
+    }
+  }
+
+  // ── Grupo B: Produção Própria ──
+  const saldoB = somaContas(isContaProducaoPropria);
+  const detB = document.getElementById('grupoB-detected');
+  const fieldsB = document.getElementById('grupoB-fields');
+
+  if(variacaoJaApurada()){
+    const variacaoPosta = somaContas(c=>/^73/.test(c));
+    fieldsB.style.opacity = '0.55'; fieldsB.querySelectorAll('input').forEach(i=>i.disabled=true);
+    document.getElementById('b-iniciais').value = '';
+    document.getElementById('b-finais').value = saldoB.toFixed(2);
+    document.getElementById('lbl-b-fin').textContent = 'saldo 34+35+36, já regularizado';
+    document.getElementById('lbl-b-ini').textContent = '— já fechado, não aplicável';
+    detB.innerHTML = `<div class="warn-banner">✅ Variação da produção já apurada no balancete (conta 73x = €${fmt(variacaoPosta)}) — uso diretamente o valor já lançado.</div>`;
+  } else {
+    fieldsB.style.opacity = '1'; fieldsB.querySelectorAll('input').forEach(i=>i.disabled=false);
+    document.getElementById('b-iniciais').value = saldoB.toFixed(2);
+    document.getElementById('lbl-b-ini').textContent = 'saldo 34+35+36 (abertura)';
+    document.getElementById('lbl-b-fin').textContent = 'a indicar manualmente';
+    if(saldoB!==0){
+      detB.innerHTML = `<div class="warn-banner">🏭 Balancete intercalar — variação da produção ainda não apurada (conta 73x vazia). O saldo de 34+35+36 (€${fmt(saldoB)}) é usado como existência inicial. Falta indicares a <strong>existência final</strong> à data de referência (a diferença pode ser positiva ou negativa).</div>`;
+    } else {
+      detB.innerHTML = `<div class="warn-banner" style="background:#EEF0EC; border-color:var(--line-strong); color:var(--ink-soft);">Sem saldos nas contas 34/35/36 — se não há produção própria, deixa a zero e avança.</div>`;
+    }
+  }
+
+  updateCMVMC();
+}
+
+['a-iniciais','a-compras','a-finais','b-iniciais','b-finais'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', updateCMVMC);
+});
+function updateCMVMC(){
+  const cmvmc = cevcJaApurado() ? somaContas(c=>/^61[12]/.test(c)) : (num('a-iniciais') + num('a-compras') - num('a-finais'));
+  document.getElementById('a-cmvmc').textContent = fmt(cmvmc);
+  const variacao = variacaoJaApurada() ? somaContas(c=>/^73/.test(c)) : (num('b-finais') - num('b-iniciais'));
+  document.getElementById('b-variacao').textContent = fmt(variacao);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LINHAS DINÂMICAS — tributações autónomas / correções / prejuízos
+// ══════════════════════════════════════════════════════════════
+function addAutonomaRow(desc='', base=0, taxa=0.10){
+  const list = document.getElementById('autonomas-list');
+  const row = document.createElement('div');
+  row.className = 'rowline autonomas';
+  row.innerHTML = `
+    <input type="text" placeholder="Categoria (ex.: viaturas ligeiras)" value="${desc}">
+    <input type="number" placeholder="Base tributável €" step="0.01" value="${base||''}">
+    <input type="number" placeholder="Taxa" step="0.001" value="${taxa}">
+    <span style="font-size:11px; color:var(--ink-soft); align-self:center;">taxa decimal</span>
+    <button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  list.appendChild(row);
+}
+function addCorrecaoRow(desc='', valor=0, tipo='acrescimo'){
+  const list = document.getElementById('correcoes-list');
+  const row = document.createElement('div');
+  row.className = 'rowline';
+  row.innerHTML = `
+    <select>
+      <option value="acrescimo" ${tipo==='acrescimo'?'selected':''}>Acréscimo (+)</option>
+      <option value="deducao" ${tipo==='deducao'?'selected':''}>Dedução (−)</option>
+    </select>
+    <input type="text" placeholder="Descrição (ex.: multas não dedutíveis)" value="${desc}">
+    <input type="number" placeholder="Valor €" step="0.01" value="${valor||''}">
+    <button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  list.appendChild(row);
+}
+function addPrejuizoRow(ano='', valor=0){
+  const list = document.getElementById('prejuizos-list');
+  const row = document.createElement('div');
+  row.className = 'rowline';
+  row.innerHTML = `
+    <input type="number" placeholder="Ano" value="${ano}">
+    <input type="text" placeholder="Origem (opcional)" value="">
+    <input type="number" placeholder="Valor €" step="0.01" value="${valor||''}">
+    <button class="btn-rm" onclick="this.parentElement.remove()">×</button>`;
+  list.appendChild(row);
+}
+// linha inicial de cada lista
+addAutonomaRow();
+addCorrecaoRow();
+addPrejuizoRow();
+
+// ══════════════════════════════════════════════════════════════
+//  MOTOR DE CÁLCULO (validado em engine_test.js)
+// ══════════════════════════════════════════════════════════════
+function calcularIRC(materiaColetavel, params){
+  if(materiaColetavel <= 0) return 0;
+  if(params.isPME){
+    const base1 = Math.min(materiaColetavel, params.limiarPME);
+    const base2 = Math.max(0, materiaColetavel - params.limiarPME);
+    return base1*params.taxaPME + base2*params.taxaGeral;
+  }
+  return materiaColetavel * params.taxaGeral;
+}
+function calcularDerramaEstadual(lucroTributavel){
+  const escaloes = [{limite:1500000,taxa:0},{limite:7500000,taxa:0.03},{limite:35000000,taxa:0.05},{limite:Infinity,taxa:0.09}];
+  let imposto=0, anterior=0;
+  for(const esc of escaloes){
+    if(lucroTributavel > anterior){
+      const baseAqui = Math.min(lucroTributavel, esc.limite) - anterior;
+      imposto += baseAqui * esc.taxa;
+      anterior = esc.limite;
+    }
+  }
+  return imposto;
+}
+function calcularDeducaoPrejuizos(lucroTributavel, prejuizosDisponiveis, limitePct){
+  if(lucroTributavel <= 0) return {deduzido:0, detalhe:[], tetoTotal:0};
+  const tetoTotal = lucroTributavel * limitePct;
+  let restante = tetoTotal;
+  const detalhe = [];
+  const ordenados = [...prejuizosDisponiveis].sort((a,b)=>a.ano-b.ano);
+  for(const p of ordenados){
+    if(restante<=0) break;
+    const usado = Math.min(p.valor, restante);
+    if(usado>0) detalhe.push({ano:p.ano, valor:p.valor, usado});
+    restante -= usado;
+  }
+  const deduzido = detalhe.reduce((s,d)=>s+d.usado,0);
+  return {deduzido, detalhe, tetoTotal};
+}
+
+function coletarAutonomas(){
+  const rows = document.querySelectorAll('#autonomas-list .rowline');
+  const items = [];
+  rows.forEach(r=>{
+    const inputs = r.querySelectorAll('input');
+    const desc = inputs[0].value.trim();
+    const base = parseFloat(inputs[1].value)||0;
+    const taxa = parseFloat(inputs[2].value)||0;
+    if(base>0) items.push({desc, base, taxa});
+  });
+  return items;
+}
+function coletarCorrecoes(){
+  const rows = document.querySelectorAll('#correcoes-list .rowline');
+  const items = [];
+  rows.forEach(r=>{
+    const tipo = r.querySelector('select').value;
+    const desc = r.querySelectorAll('input')[0].value.trim();
+    const valor = parseFloat(r.querySelectorAll('input')[1].value)||0;
+    if(valor>0) items.push({tipo, desc, valor});
+  });
+  return items;
+}
+function coletarPrejuizos(){
+  const rows = document.querySelectorAll('#prejuizos-list .rowline');
+  const items = [];
+  rows.forEach(r=>{
+    const inputs = r.querySelectorAll('input');
+    const ano = parseInt(inputs[0].value);
+    const valor = parseFloat(inputs[2].value)||0;
+    if(valor>0 && ano) items.push({ano, valor});
+  });
+  return items;
+}
+
+function calcularTudo(){
+  // ── 1. Resultado contabilístico (classe 7 − classe 6, excluindo conta 812 imposto s/ rendimento) ──
+  let rend = parsedAccounts.filter(a=>a.classe===7).reduce((s,a)=>s+a.credito-a.debito, 0);
+  let gastos = parsedAccounts.filter(a=>a.classe===6 && !a.conta.startsWith('812')).reduce((s,a)=>s+a.debito-a.credito, 0);
+
+  // Grupo A — Mercadorias/Matérias-primas: CMVMC já incluído em "gastos" se já apurado (conta 611/612);
+  // caso contrário soma-se o valor calculado pela fórmula EI+Compras-EF (ainda não lançado no balancete)
+  const cmvmc = cevcJaApurado() ? somaContas(c=>/^61[12]/.test(c)) : (num('a-iniciais') + num('a-compras') - num('a-finais'));
+  const gastosAjustados = gastos + (cevcJaApurado() ? 0 : cmvmc);
+
+  // Grupo B — Produção própria: Variação da Produção já incluída em "rend" se já apurada (conta 73x);
+  // caso contrário soma-se (pode ser negativa) o valor calculado EF-EI
+  const variacaoProducao = variacaoJaApurada() ? somaContas(c=>/^73/.test(c)) : (num('b-finais') - num('b-iniciais'));
+  const rendAjustado = rend + (variacaoJaApurada() ? 0 : variacaoProducao);
+
+  const resultadoContabilistico = rendAjustado - gastosAjustados;
+
+  // ── 2. Correções fiscais (Q07) ──
+  const correcoes = coletarCorrecoes();
+  const totalAcrescimos = correcoes.filter(c=>c.tipo==='acrescimo').reduce((s,c)=>s+c.valor,0);
+  const totalDeducoes = correcoes.filter(c=>c.tipo==='deducao').reduce((s,c)=>s+c.valor,0);
+  const lucroTributavel = resultadoContabilistico + totalAcrescimos - totalDeducoes;
+
+  // ── 3. Dedução de prejuízos ──
+  const limitePrej = num('p-limitprej') + parseFloat(document.getElementById('p-majoracao').value);
+  const prejuizos = coletarPrejuizos();
+  const dedPrej = calcularDeducaoPrejuizos(lucroTributavel, prejuizos, limitePrej);
+  const materiaColetavel = Math.max(0, lucroTributavel - dedPrej.deduzido);
+
+  // ── 4. IRC ──
+  const paramsIRC = {
+    isPME: document.getElementById('p-ispme').checked,
+    taxaGeral: num('p-taxageral'), taxaPME: num('p-taxapme'), limiarPME: num('p-limiarpme')
+  };
+  const irc = calcularIRC(materiaColetavel, paramsIRC);
+
+  // ── 5. Derramas ──
+  const baseDerramaMun = document.getElementById('p-derrama-base').value === 'lucroTributavel' ? Math.max(0,lucroTributavel) : materiaColetavel;
+  const derramaMunicipal = baseDerramaMun * num('p-derrama-mun');
+  const derramaEstadual = calcularDerramaEstadual(Math.max(0,lucroTributavel));
+
+  // ── 6. Tributações autónomas ──
+  const agravamento = document.getElementById('p-agravamento').checked && lucroTributavel < 0 ? 0.10 : 0;
+  const autonomas = coletarAutonomas();
+  const totalAutonomas = autonomas.reduce((s,a)=>s + a.base*(a.taxa+agravamento), 0);
+
+  const totalImposto = irc + derramaMunicipal + derramaEstadual + totalAutonomas;
+  const resultadoLiquidoFinal = resultadoContabilistico - totalImposto;
+
+  renderResultado({
+    rend: rendAjustado, gastosAjustados, resultadoContabilistico, cmvmc, variacaoProducao,
+    correcoes, totalAcrescimos, totalDeducoes, lucroTributavel,
+    dedPrej, materiaColetavel, paramsIRC, irc,
+    derramaMunicipal, derramaEstadual, autonomas, totalAutonomas, agravamento,
+    totalImposto, resultadoLiquidoFinal
+  });
+  goStep(5);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RENDER DO RESULTADO
+// ══════════════════════════════════════════════════════════════
+function dataPT(iso){
+  if(!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function renderResultado(r){
+  const empresa = document.getElementById('in-empresa').value || 'Entidade não identificada';
+  const dataIso = document.getElementById('in-data').value;
+  const data = dataIso ? dataPT(dataIso) : '—';
+  const ano = document.getElementById('in-ano').value || '—';
+  document.getElementById('result-sub').textContent = `${empresa} — apuramento à data de ${data}`;
+  document.getElementById('dr-periodo').textContent = data;
+
+  // letterhead — nome da empresa fixo em todo o relatório
+  document.getElementById('lh-empresa').textContent = empresa;
+  document.getElementById('lh-data').textContent = data;
+  document.getElementById('lh-ano').textContent = ano;
+  document.getElementById('parecer-empresa').textContent = empresa;
+  document.getElementById('ft-empresa').textContent = empresa;
+
+  // faixa de KPIs
+  document.getElementById('kpi-strip').innerHTML = `
+    <div class="kpi-cell">
+      <div class="kv ${r.resultadoContabilistico<0?'negative':''}">${fmt(r.resultadoContabilistico)}</div>
+      <div class="kl">Resultado Contabilístico</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kv ${r.materiaColetavel<0?'negative':''}">${fmt(r.materiaColetavel)}</div>
+      <div class="kl">Matéria Coletável</div>
+    </div>
+    <div class="kpi-cell">
+      <div class="kv">${fmt(r.totalImposto)}</div>
+      <div class="kl">Total de Imposto Estimado</div>
+    </div>
+    <div class="kpi-cell emph">
+      <div class="kv ${r.resultadoLiquidoFinal<0?'negative':''}">${fmt(r.resultadoLiquidoFinal)}</div>
+      <div class="kl">Resultado Líquido Estimado</div>
+    </div>
+  `;
+
+  // avisos
+  let warnings = '';
+  if(r.materiaColetavel === 0 && r.lucroTributavel > 0 && r.dedPrej.deduzido < r.lucroTributavel){
+    warnings += `<div class="warn-banner">⚠️ Ainda há prejuízos fiscais reportáveis por utilizar em exercícios futuros (limite de ${fmtPct(num('p-limitprej')+parseFloat(document.getElementById('p-majoracao').value))} atingido neste exercício).</div>`;
+  }
+  if(r.resultadoContabilistico < 0 && r.totalAutonomas > 0){
+    warnings += `<div class="warn-banner">⚠️ Empresa em prejuízo contabilístico mas com tributações autónomas a pagar (€${fmt(r.totalAutonomas)}) — estas incidem independentemente do resultado.</div>`;
+  }
+  if(r.autonomas.length===0 && parsedAccounts.some(a=>a.conta.startsWith('6242')||a.conta.startsWith('6252'))){
+    warnings += `<div class="warn-banner">ℹ️ Detetei possíveis contas de viaturas/deslocações no balancete mas não há tributações autónomas configuradas — confirma se aplicável.</div>`;
+  }
+  document.getElementById('warnings').innerHTML = warnings;
+
+  // demonstração de resultados
+  document.getElementById('dr-body').innerHTML = `
+    <div class="line"><span class="lbl">Rendimentos e ganhos (classe 7, incl. variação da produção)</span><span class="val">${fmt(r.rend)}</span></div>
+    ${r.variacaoProducao ? `<div class="line sub"><span class="lbl">— Variação da Produção (Ex.Final − Ex.Inicial, contas 34-36)</span><span class="val ${r.variacaoProducao<0?'negative':''}">${fmt(r.variacaoProducao)}</span></div>` : ''}
+    <div class="line"><span class="lbl">Gastos e perdas (classe 6, incl. CMVMC/CEVC)</span><span class="val">${fmt(r.gastosAjustados)}</span></div>
+    ${r.cmvmc ? `<div class="line sub"><span class="lbl">— CMVMC / CEVC (Ex.Inicial + Compras − Ex.Final, contas 32-33)</span><span class="val">${fmt(r.cmvmc)}</span></div>` : ''}
+    <div class="line total ${r.resultadoContabilistico<0?'negative':''}"><span class="lbl">Resultado Contabilístico Antes de Impostos</span><span class="val">${fmt(r.resultadoContabilistico)}</span></div>
+  `;
+
+  // apuramento do imposto
+  let correcoesHtml = r.correcoes.map(c=>`<div class="line sub"><span class="lbl">${c.tipo==='acrescimo'?'+ ':'− '}${c.desc||'(sem descrição)'}</span><span class="val">${fmt(c.valor)}</span></div>`).join('');
+  document.getElementById('irc-body').innerHTML = `
+    <div class="line"><span class="lbl">Resultado Contabilístico</span><span class="val">${fmt(r.resultadoContabilistico)}</span></div>
+    ${correcoesHtml}
+    <div class="line total"><span class="lbl">Lucro Tributável / Prejuízo Fiscal</span><span class="val ${r.lucroTributavel<0?'':''}">${fmt(r.lucroTributavel)}</span></div>
+    <div class="line sub"><span class="lbl">− Dedução de prejuízos fiscais (FIFO)</span><span class="val">${fmt(r.dedPrej.deduzido)}</span></div>
+    <div class="line total"><span class="lbl">Matéria Coletável</span><span class="val">${fmt(r.materiaColetavel)}</span></div>
+    <div class="line"><span class="lbl">IRC ${r.paramsIRC.isPME?`(taxa reduzida ${fmtPct(r.paramsIRC.taxaPME)} até €${r.paramsIRC.limiarPME.toLocaleString('pt-PT')} + ${fmtPct(r.paramsIRC.taxaGeral)} restante)`:`(taxa ${fmtPct(r.paramsIRC.taxaGeral)})`}</span><span class="val">${fmt(r.irc)}</span></div>
+    <div class="line"><span class="lbl">Derrama municipal</span><span class="val">${fmt(r.derramaMunicipal)}</span></div>
+    <div class="line"><span class="lbl">Derrama estadual</span><span class="val">${fmt(r.derramaEstadual)}</span></div>
+    <div class="line"><span class="lbl">Tributações autónomas ${r.agravamento?'<span class="badge">agravado +10pp</span>':''}</span><span class="val">${fmt(r.totalAutonomas)}</span></div>
+    <div class="line total"><span class="lbl">Total estimado de imposto</span><span class="val">${fmt(r.totalImposto)}</span></div>
+    <div class="line final"><span class="lbl">Resultado Líquido Estimado (após imposto)</span><span class="val">${fmt(r.resultadoLiquidoFinal)}</span></div>
+  `;
+
+  // prejuízos
+  let prejHtml = '';
+  if(r.dedPrej.detalhe.length===0 && coletarPrejuizos().length===0){
+    prejHtml = `<div class="line"><span class="lbl">Sem prejuízos fiscais reportáveis registados</span><span class="val">—</span></div>`;
+  } else {
+    prejHtml += `<div class="line"><span class="lbl">Teto de dedução (${fmtPct(num('p-limitprej')+parseFloat(document.getElementById('p-majoracao').value))} do lucro tributável)</span><span class="val">${fmt(r.dedPrej.tetoTotal)}</span></div>`;
+    r.dedPrej.detalhe.forEach(d=>{
+      prejHtml += `<div class="line sub"><span class="lbl">Prejuízo de ${d.ano} — utilizado ${fmt(d.usado)} de ${fmt(d.valor)}</span><span class="val">${fmt(d.valor-d.usado)} por reportar</span></div>`;
+    });
+    const naoDeduzidos = coletarPrejuizos().filter(p=>!r.dedPrej.detalhe.find(d=>d.ano===p.ano));
+    naoDeduzidos.forEach(p=>{
+      prejHtml += `<div class="line sub"><span class="lbl">Prejuízo de ${p.ano} — não utilizado neste exercício</span><span class="val">${fmt(p.valor)} por reportar</span></div>`;
+    });
+  }
+  document.getElementById('prej-body').innerHTML = prejHtml;
+
+  // rácios
+  renderRatios(r);
+}
+
+// Classifica um valor em 'ok' / 'warn' / 'bad' consoante limiares (ascendente ou descendente)
+function classifica(v, limBom, limAtencao, ascendente){
+  if(v===null) return 'warn';
+  if(ascendente){ // quanto maior, melhor
+    if(v>=limBom) return 'ok';
+    if(v>=limAtencao) return 'warn';
+    return 'bad';
+  } else { // quanto menor, melhor
+    if(v<=limBom) return 'ok';
+    if(v<=limAtencao) return 'warn';
+    return 'bad';
+  }
+}
+
+function renderRatios(r){
+  const ativo1 = somaClasse(1); const ativo2Receber = parsedAccounts.filter(a=>a.classe===2 && a.saldo>0).reduce((s,a)=>({deb:s.deb+a.debito,cred:s.cred+a.credito}),{deb:0,cred:0});
+  const ativo3 = somaClasse(3); const ativo4 = somaClasse(4);
+  const passivo2Pagar = parsedAccounts.filter(a=>a.classe===2 && a.saldo<0).reduce((s,a)=>s+ (a.credito-a.debito),0);
+  const capitalProprio = parsedAccounts.filter(a=>a.classe===5).reduce((s,a)=>s+(a.credito-a.debito),0);
+
+  const ativoCirculante = (ativo1.deb-ativo1.cred) + (ativo2Receber.deb-ativo2Receber.cred) + (ativo3.deb-ativo3.cred);
+  const passivoCirculante = passivo2Pagar;
+  const ativoTotal = ativoCirculante + (ativo4.deb-ativo4.cred);
+  const passivoTotal = passivoCirculante; // aproximação — sem segregar financiamentos não correntes
+
+  const liquidezGeral = passivoCirculante!==0 ? ativoCirculante/passivoCirculante : null;
+  const autonomiaFinanceira = ativoTotal!==0 ? capitalProprio/ativoTotal : null;
+  const vendas = parsedAccounts.filter(a=>a.conta.startsWith('71')||a.conta.startsWith('72')).reduce((s,a)=>s+a.credito-a.debito,0);
+  const rendibilidadeVendas = vendas!==0 ? r.resultadoLiquidoFinal/vendas : null;
+  const endividamento = ativoTotal!==0 ? passivoTotal/ativoTotal : null;
+  const roe = capitalProprio!==0 ? r.resultadoLiquidoFinal/capitalProprio : null;
+  const solvabilidade = passivoTotal!==0 ? capitalProprio/passivoTotal : null;
+
+  const statusTexto = {ok:'Situação confortável', warn:'A acompanhar', bad:'Situação de risco'};
+
+  const cards = [
+    {
+      label:'Liquidez Geral', val:liquidezGeral, fmt:v=>v.toFixed(2), foot:'Ativo Circulante ÷ Passivo Circulante (aprox.)',
+      status: classifica(liquidezGeral, 1.5, 1.0, true),
+      texto: liquidezGeral===null ? 'Sem passivo circulante identificado no balancete para calcular este rácio.' :
+        liquidezGeral>=1.5 ? `Por cada euro de dívida de curto prazo, a empresa dispõe de ${liquidezGeral.toFixed(2)}€ em ativos circulantes — uma folga confortável para cumprir compromissos correntes sem recorrer a financiamento adicional.` :
+        liquidezGeral>=1.0 ? `O ativo circulante cobre o passivo circulante (${liquidezGeral.toFixed(2)}€ por cada euro em dívida), mas sem margem de segurança relevante — qualquer atraso em recebimentos pode gerar tensão de tesouraria.` :
+        `O ativo circulante (${liquidezGeral.toFixed(2)}€ por cada euro de passivo circulante) não cobre as obrigações de curto prazo — indício de risco de tesouraria que justifica atenção imediata à gestão de fundo de maneio.`
+    },
+    {
+      label:'Autonomia Financeira', val:autonomiaFinanceira, fmt:v=>fmtPct(v), foot:'Capital Próprio ÷ Ativo Total',
+      status: classifica(autonomiaFinanceira, 0.35, 0.20, true),
+      texto: autonomiaFinanceira===null ? 'Não foi possível apurar o ativo total.' :
+        autonomiaFinanceira>=0.35 ? `O capital próprio financia ${fmtPct(autonomiaFinanceira)} do ativo — estrutura de capitais sólida, com baixa dependência de financiamento alheio.` :
+        autonomiaFinanceira>=0.20 ? `O capital próprio cobre ${fmtPct(autonomiaFinanceira)} do ativo — nível moderado, sem ser preocupante, mas com espaço para reforço de capitais próprios.` :
+        `O capital próprio representa apenas ${fmtPct(autonomiaFinanceira)} do ativo total — dependência elevada de capital alheio, que reduz a margem de manobra em cenários adversos.`
+    },
+    {
+      label:'Rendibilidade Líquida das Vendas', val:rendibilidadeVendas, fmt:v=>fmtPct(v), foot:'Resultado Líquido ÷ Vendas e Prestações de Serviços',
+      status: classifica(rendibilidadeVendas, 0.05, 0.00, true),
+      texto: rendibilidadeVendas===null ? 'Sem vendas ou prestações de serviços registadas no período para calcular este rácio.' :
+        rendibilidadeVendas>=0.05 ? `Cada euro vendido gera ${fmtPct(rendibilidadeVendas)} de resultado líquido — margem líquida saudável para a atividade.` :
+        rendibilidadeVendas>=0 ? `A margem líquida sobre vendas é positiva mas reduzida (${fmtPct(rendibilidadeVendas)}) — há pouco amortecedor face a aumentos de custos ou quebras de faturação.` :
+        `A atividade está a gerar prejuízo líquido face às vendas (${fmtPct(rendibilidadeVendas)}) — a estrutura de custos face ao volume de negócios exige revisão.`
+    },
+    {
+      label:'Grau de Endividamento', val:endividamento, fmt:v=>fmtPct(v), foot:'Passivo Total ÷ Ativo Total (aprox.)',
+      status: classifica(endividamento, 0.50, 0.70, false),
+      texto: endividamento===null ? 'Não foi possível apurar o ativo total.' :
+        endividamento<=0.50 ? `O passivo financia ${fmtPct(endividamento)} do ativo — nível de endividamento controlado.` :
+        endividamento<=0.70 ? `O passivo financia ${fmtPct(endividamento)} do ativo — endividamento já significativo, a monitorizar antes de assumir novos compromissos.` :
+        `O passivo financia ${fmtPct(endividamento)} do ativo — endividamento elevado, com peso relevante de capital alheio na estrutura financeira.`
+    },
+    {
+      label:'Rendibilidade do Capital Próprio', val:roe, fmt:v=>fmtPct(v), foot:'Resultado Líquido ÷ Capital Próprio (ROE)',
+      status: classifica(roe, 0.15, 0.00, true),
+      texto: roe===null ? 'Capital próprio nulo ou não apurado — rácio não aplicável.' :
+        roe>=0.15 ? `O capital investido pelos sócios está a gerar um retorno de ${fmtPct(roe)} — desempenho atrativo face a aplicações alternativas.` :
+        roe>=0 ? `O retorno sobre o capital próprio é positivo mas modesto (${fmtPct(roe)}) — vale a pena comparar com o custo de oportunidade do capital.` :
+        `O capital próprio está a ser remunerado negativamente (${fmtPct(roe)}) — os sócios estão, no período, a perder valor investido.`
+    },
+    {
+      label:'Solvabilidade', val:solvabilidade, fmt:v=>v.toFixed(2), foot:'Capital Próprio ÷ Passivo Total (aprox.)',
+      status: classifica(solvabilidade, 1.0, 0.5, true),
+      texto: solvabilidade===null ? 'Sem passivo identificado para calcular este rácio.' :
+        solvabilidade>=1.0 ? `O capital próprio (${solvabilidade.toFixed(2)}× o passivo) cobriria integralmente as dívidas em caso de necessidade — boa almofada de solvência.` :
+        solvabilidade>=0.5 ? `O capital próprio equivale a ${solvabilidade.toFixed(2)}× o passivo — cobertura parcial das dívidas totais, nível intermédio.` :
+        `O capital próprio (${solvabilidade.toFixed(2)}× o passivo) cobre apenas uma fração das dívidas totais — solvência apertada a médio prazo.`
+    },
+  ];
+  let html = '';
+  cards.forEach(c=>{
+    html += `<div class="ratio-card ${c.status}">
+      <div class="rv">${c.val!==null ? c.fmt(c.val) : '—'}</div>
+      <div class="rl">${c.label}</div>
+      <div class="rf">${c.foot}</div>
+      <div class="rn">${c.texto}</div>
+      <span class="rtag">${statusTexto[c.status]}</span>
+    </div>`;
+  });
+  document.getElementById('ratios-grid').innerHTML = html;
+
+  renderParecer(r, {liquidezGeral, autonomiaFinanceira, rendibilidadeVendas, endividamento, roe, solvabilidade}, cards);
+}
+
+function renderParecer(r, ratios, cards){
+  const empresa = document.getElementById('in-empresa').value || 'A entidade';
+  const data = dataPT(document.getElementById('in-data').value);
+
+  // ── Classificação global de saúde financeira, a partir dos 6 rácios ──
+  const avaliaveis = cards.filter(c=>c.val!==null);
+  const nOk = avaliaveis.filter(c=>c.status==='ok').length;
+  const nWarn = avaliaveis.filter(c=>c.status==='warn').length;
+  const nBad = avaliaveis.filter(c=>c.status==='bad').length;
+  let selo, seloClasse;
+  if(nBad>=2 || (nBad>=1 && r.resultadoContabilistico<0)){ selo='Requer Intervenção'; seloClasse='bad'; }
+  else if(nBad===1 || nWarn>=3){ selo='Estável, com Pontos de Atenção'; seloClasse='warn'; }
+  else { selo='Situação Financeira Sólida'; seloClasse='ok'; }
+
+  let html = '';
+  html += `<div class="selo-global ${seloClasse}"><span class="selo-dot"></span>${selo}
+    <span class="selo-detalhe">${nOk} rácio${nOk!==1?'s':''} confortável${nOk!==1?'eis':''} · ${nWarn} a acompanhar · ${nBad} em risco</span></div>`;
+
+  let p = [];
+  // parágrafo 1 — resultado e imposto
+  if(r.resultadoContabilistico >= 0){
+    p.push(`À data de ${data}, <strong>${empresa}</strong> apresenta um resultado contabilístico positivo de ${fmt(r.resultadoContabilistico)}. Após correções fiscais${r.dedPrej.deduzido>0?`, e dedução de ${fmt(r.dedPrej.deduzido)} de prejuízos fiscais reportados`:''}, a matéria coletável apurada é de ${fmt(r.materiaColetavel)}, gerando um imposto total estimado de ${fmt(r.totalImposto)} (IRC, derramas e tributações autónomas).`);
+  } else {
+    p.push(`À data de ${data}, <strong>${empresa}</strong> apresenta um resultado contabilístico negativo de ${fmt(Math.abs(r.resultadoContabilistico))}. ${r.totalAutonomas>0 ? `Ainda assim, há lugar a tributações autónomas de ${fmt(r.totalAutonomas)}, exigíveis independentemente do resultado do período.` : 'Não há matéria coletável no período, pelo que o prejuízo fiscal apurado fica disponível para reporte a exercícios futuros, dentro dos limites legais.'}`);
+  }
+
+  // parágrafo 2 — liquidez e solvência
+  const liqStatus = classifica(ratios.liquidezGeral, 1.5, 1.0, true);
+  const autStatus = classifica(ratios.autonomiaFinanceira, 0.35, 0.20, true);
+  let frase2 = 'Em termos de estrutura financeira, ';
+  if(liqStatus==='ok' && autStatus==='ok'){
+    frase2 += `a empresa combina liquidez confortável com uma estrutura de capitais sólida, o que lhe confere margem de manobra financeira.`;
+  } else if(liqStatus==='bad' || autStatus==='bad'){
+    frase2 += `identificam-se sinais de fragilidade${liqStatus==='bad'?' na liquidez de curto prazo':''}${liqStatus==='bad'&&autStatus==='bad'?' e':''}${autStatus==='bad'?' na autonomia face a capital alheio':''}, o que recomenda acompanhamento próximo da tesouraria e da política de financiamento.`;
+  } else {
+    frase2 += `a posição é intermédia — sem sinais de alarme imediato, mas também sem folga suficiente para dispensar monitorização regular.`;
+  }
+  p.push(frase2);
+
+  // parágrafo 3 — rendibilidade
+  if(ratios.rendibilidadeVendas!==null){
+    const rendStatus = classifica(ratios.rendibilidadeVendas, 0.05, 0.00, true);
+    if(rendStatus==='ok') p.push(`Do ponto de vista da rendibilidade, a atividade gera uma margem líquida sobre vendas de ${fmtPct(ratios.rendibilidadeVendas)}${ratios.roe!==null?`, com um retorno sobre o capital próprio de ${fmtPct(ratios.roe)}`:''} — indicadores que sustentam a continuidade da atividade nos moldes atuais.`);
+    else if(rendStatus==='warn') p.push(`A rendibilidade sobre vendas é positiva mas reduzida (${fmtPct(ratios.rendibilidadeVendas)}), pelo que ganhos de eficiência operacional ou de margem devem ser considerados.`);
+    else p.push(`A atividade não está, no período, a gerar rendibilidade positiva sobre as vendas — recomenda-se uma revisão da estrutura de custos e/ou da política comercial.`);
+  }
+
+  html += p.map(t=>`<p>${t}</p>`).join('');
+
+  // ── Pontos Fortes / Pontos de Atenção — extraídos dos rácios já classificados ──
+  const fortes = avaliaveis.filter(c=>c.status==='ok');
+  const atencao = avaliaveis.filter(c=>c.status!=='ok');
+
+  if(fortes.length){
+    html += `<h4 class="parecer-sub">Pontos Fortes</h4><ul class="parecer-list ok">
+      ${fortes.map(c=>`<li><strong>${c.label}</strong> (${c.fmt(c.val)}) — ${c.texto}</li>`).join('')}
+    </ul>`;
+  }
+  if(atencao.length){
+    html += `<h4 class="parecer-sub">Pontos de Atenção</h4><ul class="parecer-list warn">
+      ${atencao.map(c=>`<li><strong>${c.label}</strong> (${c.fmt(c.val)}) — ${c.texto}</li>`).join('')}
+    </ul>`;
+  }
+
+  // ── Recomendação de fecho ──
+  let recomendacao;
+  if(seloClasse==='ok') recomendacao = `Não se identificam ações corretivas urgentes. Recomenda-se manter a monitorização periódica dos indicadores e a disciplina orçamental que sustenta os resultados atuais.`;
+  else if(seloClasse==='warn') recomendacao = `Recomenda-se acompanhamento reforçado dos indicadores assinalados nos próximos períodos, com particular atenção a eventuais desvios face aos limiares de referência, antes de se agravarem.`;
+  else recomendacao = `Recomenda-se uma revisão próxima e prioritária da situação financeira, com plano de ação sobre os pontos identificados — a espera de mais um período de reporte pode reduzir a margem de manobra disponível.`;
+  html += `<p class="parecer-recomendacao">${recomendacao}</p>`;
+
+  document.getElementById('parecer-body').innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GUARDAR / CARREGAR ANÁLISE (.json) — sem dependências externas
+// ══════════════════════════════════════════════════════════════
+function coletarAutonomasRaw(){
+  const rows = document.querySelectorAll('#autonomas-list .rowline');
+  return Array.from(rows).map(r=>{
+    const inputs = r.querySelectorAll('input');
+    return {desc:inputs[0].value.trim(), base:parseFloat(inputs[1].value)||0, taxa:parseFloat(inputs[2].value)||0};
+  }).filter(a=>a.desc||a.base);
+}
+function coletarCorrecoesRaw(){
+  const rows = document.querySelectorAll('#correcoes-list .rowline');
+  return Array.from(rows).map(r=>{
+    const tipo = r.querySelector('select').value;
+    const inputs = r.querySelectorAll('input');
+    return {tipo, desc:inputs[0].value.trim(), valor:parseFloat(inputs[1].value)||0};
+  }).filter(c=>c.desc||c.valor);
+}
+function coletarPrejuizosRaw(){
+  const rows = document.querySelectorAll('#prejuizos-list .rowline');
+  return Array.from(rows).map(r=>{
+    const inputs = r.querySelectorAll('input');
+    return {ano:parseInt(inputs[0].value)||'', valor:parseFloat(inputs[2].value)||0};
+  }).filter(p=>p.ano || p.valor);
+}
+
+function serializeState(){
+  return {
+    ferramenta:'motor-apuramento', versao:1, guardadoEm:new Date().toISOString(),
+    empresa: document.getElementById('in-empresa').value,
+    data: document.getElementById('in-data').value,
+    ano: document.getElementById('in-ano').value,
+    parsedAccounts,
+    existencias:{
+      aIniciais:num('a-iniciais'), aCompras:num('a-compras'), aFinais:num('a-finais'),
+      bIniciais:num('b-iniciais'), bFinais:num('b-finais')
+    },
+    parametros:{
+      isPME: document.getElementById('p-ispme').checked,
+      taxaGeral: num('p-taxageral'), taxaPME: num('p-taxapme'), limiarPME: num('p-limiarpme'),
+      derramaMun: num('p-derrama-mun'), derramaBase: document.getElementById('p-derrama-base').value,
+      limitPrej: num('p-limitprej'), majoracao: document.getElementById('p-majoracao').value,
+      agravamento: document.getElementById('p-agravamento').checked
+    },
+    autonomas: coletarAutonomasRaw(),
+    correcoes: coletarCorrecoesRaw(),
+    prejuizos: coletarPrejuizosRaw()
+  };
+}
+
+function baixarJSON(){
+  const state = serializeState();
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const empresaSlug = (state.empresa || 'analise').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').toLowerCase();
+  const dataSlug = state.data || 'sem-data';
+  a.href = url; a.download = `analise_${empresaSlug}_${dataSlug}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('load-json-input').addEventListener('change', (e)=>{
+  if(!e.target.files.length) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const state = JSON.parse(ev.target.result);
+      restaurarEstado(state);
+    }catch(err){
+      alert('Não foi possível ler este ficheiro — confirma que é um .json gerado por esta ferramenta.\n' + err.message);
+    }
+  };
+  reader.readAsText(e.target.files[0]);
+  e.target.value = '';
+});
+
+function restaurarEstado(state){
+  document.getElementById('in-empresa').value = state.empresa || '';
+  document.getElementById('in-data').value = state.data || '';
+  document.getElementById('in-ano').value = state.ano || 2026;
+
+  parsedAccounts = state.parsedAccounts || [];
+  document.getElementById('preview-card').style.display = parsedAccounts.length ? 'block' : 'none';
+  if(parsedAccounts.length) renderPreview();
+
+  const ex = state.existencias || {};
+  document.getElementById('a-iniciais').value = ex.aIniciais ?? 0;
+  document.getElementById('a-compras').value = ex.aCompras ?? 0;
+  document.getElementById('a-finais').value = ex.aFinais ?? 0;
+  document.getElementById('b-iniciais').value = ex.bIniciais ?? 0;
+  document.getElementById('b-finais').value = ex.bFinais ?? 0;
+  // reaplica o estado de campos bloqueados (CEVC/Variação já apurados) consoante o balancete carregado
+  if(parsedAccounts.length){ prefillFromAccounts(); } else { updateCMVMC(); }
+
+  const p = state.parametros || {};
+  document.getElementById('p-ispme').checked = p.isPME ?? true;
+  document.getElementById('p-taxageral').value = p.taxaGeral ?? 0.19;
+  document.getElementById('p-taxapme').value = p.taxaPME ?? 0.15;
+  document.getElementById('p-limiarpme').value = p.limiarPME ?? 50000;
+  document.getElementById('p-derrama-mun').value = p.derramaMun ?? 0;
+  document.getElementById('p-derrama-base').value = p.derramaBase ?? 'materiaColetavel';
+  document.getElementById('p-limitprej').value = p.limitPrej ?? 0.65;
+  document.getElementById('p-majoracao').value = p.majoracao ?? '0';
+  document.getElementById('p-agravamento').checked = p.agravamento ?? false;
+
+  document.getElementById('autonomas-list').innerHTML = '';
+  const autonomas = state.autonomas || [];
+  if(autonomas.length) autonomas.forEach(a=>addAutonomaRow(a.desc, a.base, a.taxa)); else addAutonomaRow();
+
+  document.getElementById('correcoes-list').innerHTML = '';
+  const correcoes = state.correcoes || [];
+  if(correcoes.length) correcoes.forEach(c=>addCorrecaoRow(c.desc, c.valor, c.tipo)); else addCorrecaoRow();
+
+  document.getElementById('prejuizos-list').innerHTML = '';
+  const prejuizos = state.prejuizos || [];
+  if(prejuizos.length) prejuizos.forEach(pr=>addPrejuizoRow(pr.ano, pr.valor)); else addPrejuizoRow();
+
+  goStep(1);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  LOGIN — entrada independente, própria desta ferramenta
+// ══════════════════════════════════════════════════════════════
+const PASS_ANALISE = 'Dafilgest2026!'; // igual à senha de admin do Sistema Interno — muda aqui se quiseres uma só para isto
+function verificarLogin(){
+  const pass = document.getElementById('login-pass').value;
+  const erro = document.getElementById('login-erro');
+  if(pass === PASS_ANALISE){
+    document.getElementById('login-gate').style.display = 'none';
+    document.getElementById('app-content').style.display = 'block';
+  } else {
+    erro.textContent = 'Senha incorreta.';
+  }
+}
+document.getElementById('login-pass').addEventListener('keydown', e=>{ if(e.key==='Enter') verificarLogin(); });
+
+// ══════════════════════════════════════════════════════════════
+//  GUARDAR / LISTAR / CARREGAR NA NUVEM (Firebase — coleção 'apuramentos')
+// ══════════════════════════════════════════════════════════════
+function idAnalise(empresa, data){
+  const slug = (empresa||'sem-nome').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'_').toLowerCase();
+  return `${slug}__${data||'sem-data'}`;
+}
+
+async function guardarNaNuvem(btn){
+  if(!window._fbGuardar){ alert('A ligação à nuvem ainda não está pronta — tenta novamente em 1-2 segundos.'); return; }
+  const state = serializeState();
+  const id = idAnalise(state.empresa, state.data);
+  const textoOriginal = btn.textContent;
+  btn.textContent = '⏳ A guardar...'; btn.disabled = true;
+  const res = await window._fbGuardar(id, state);
+  btn.disabled = false;
+  if(res.ok){
+    btn.textContent = '✅ Guardado';
+    setTimeout(()=>{ btn.textContent = textoOriginal; }, 1800);
+  } else {
+    btn.textContent = textoOriginal;
+    alert('Não foi possível guardar na nuvem: ' + (res.erro || 'erro desconhecido') + '\n\nA análise continua disponível — usa o botão .json como alternativa.');
+  }
+}
+
+async function abrirPainelNuvem(){
+  document.getElementById('cloud-overlay').classList.remove('hidden');
+  const body = document.getElementById('cloud-panel-body');
+  body.innerHTML = '<div class="cloud-empty">A carregar…</div>';
+  if(!window._fbListar){ body.innerHTML = '<div class="cloud-empty">Ligação à nuvem ainda não está pronta — tenta novamente em instantes.</div>'; return; }
+  const res = await window._fbListar();
+  if(!res.ok){ body.innerHTML = `<div class="cloud-empty">Não foi possível ligar à nuvem: ${res.erro||'erro desconhecido'}</div>`; return; }
+  if(!res.dados.length){ body.innerHTML = '<div class="cloud-empty">Ainda não há análises guardadas. Calcula um resultado e clica em ☁️ Guardar.</div>'; return; }
+  body.innerHTML = res.dados.map(item=>`
+    <div class="cloud-item">
+      <div class="cloud-item-info" onclick="carregarDaNuvem('${item.id}')">
+        <strong>${item.empresa || 'Sem nome'}</strong>
+        <span>${item.data ? dataPT(item.data) : '—'} · ano ${item.ano||'—'} · guardado em ${item.guardadoEm ? new Date(item.guardadoEm).toLocaleDateString('pt-PT') : '—'}</span>
+      </div>
+      <div class="cloud-item-actions">
+        <button onclick="carregarDaNuvem('${item.id}')">Abrir</button>
+        <button class="del" onclick="apagarDaNuvem('${item.id}')">Apagar</button>
+      </div>
+    </div>
+  `).join('');
+}
+function fecharPainelNuvem(){ document.getElementById('cloud-overlay').classList.add('hidden'); }
+
+async function carregarDaNuvem(id){
+  const res = await window._fbCarregar(id);
+  if(!res.ok){ alert('Não foi possível carregar esta análise: ' + res.erro); return; }
+  restaurarEstado(res.dados);
+  fecharPainelNuvem();
+}
+async function apagarDaNuvem(id){
+  if(!confirm('Apagar esta análise da nuvem? Não é possível desfazer.')) return;
+  const res = await window._fbApagar(id);
+  if(res.ok) abrirPainelNuvem();
+  else alert('Não foi possível apagar: ' + res.erro);
+}
+
+// Data por defeito: hoje
+document.getElementById('in-data').valueAsDate = new Date();
+</script>
+</div>
+</body>
+</html>
