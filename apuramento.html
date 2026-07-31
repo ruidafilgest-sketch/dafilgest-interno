@@ -5,45 +5,45 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Motor de Apuramento — Análise Contabilística e Fiscal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, getDocs, collection, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-  // Mesmo projeto Firebase já usado no dafilgest-interno / recebimentos.html — coleção própria para não misturar dados
-  const firebaseConfig = {
-    apiKey: "AIzaSyDr7wfBzKbH1VAiXbte4YzkejuvJpQvltE",
-    authDomain: "vizelgolfe-ec270.firebaseapp.com",
-    projectId: "vizelgolfe-ec270",
-    storageBucket: "vizelgolfe-ec270.firebasestorage.app",
-    messagingSenderId: "386073357614",
-    appId: "1:386073357614:web:098f635403f605650e5ebf"
-  };
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const COL = 'apuramentos';
+<script>
+  // Mesmo Firebase do dafilgest-interno (Realtime Database, REST — sem SDK) — prefixo próprio para não misturar com /dafilgest
+  const FB_URL = 'https://dafilgest-interno-default-rtdb.europe-west1.firebasedatabase.app';
+  const FB_PREFIX = '/apuramento';
+  const FB_SECRET = 'NLehfqIr5GqKyyKaIGg8YPSloZVo3qrrxcgboG2x';
 
   window._fbGuardar = async function(id, dados){
-    try{ await setDoc(doc(db, COL, id), dados); return {ok:true}; }
-    catch(e){ console.error('Firebase guardar:', e); return {ok:false, erro:e.message}; }
+    try{
+      const r = await fetch(`${FB_URL}${FB_PREFIX}/${encodeURIComponent(id)}.json?auth=${FB_SECRET}`, {
+        method:'PUT', body: JSON.stringify(dados), headers:{'Content-Type':'application/json'}
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return {ok:true};
+    }catch(e){ console.error('Firebase guardar:', e); return {ok:false, erro:e.message}; }
   };
   window._fbListar = async function(){
     try{
-      const snap = await getDocs(collection(db, COL));
-      const out = [];
-      snap.forEach(d=>out.push({id:d.id, ...d.data()}));
+      const r = await fetch(`${FB_URL}${FB_PREFIX}.json?auth=${FB_SECRET}`, {cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const obj = await r.json();
+      const out = obj ? Object.keys(obj).map(id=>({id, ...obj[id]})) : [];
       out.sort((a,b)=>(b.guardadoEm||'').localeCompare(a.guardadoEm||''));
       return {ok:true, dados:out};
     }catch(e){ console.error('Firebase listar:', e); return {ok:false, erro:e.message, dados:[]}; }
   };
   window._fbCarregar = async function(id){
     try{
-      const snap = await getDoc(doc(db, COL, id));
-      return snap.exists() ? {ok:true, dados:snap.data()} : {ok:false, erro:'não encontrado'};
+      const r = await fetch(`${FB_URL}${FB_PREFIX}/${encodeURIComponent(id)}.json?auth=${FB_SECRET}`, {cache:'no-store'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const dados = await r.json();
+      return dados ? {ok:true, dados} : {ok:false, erro:'não encontrado'};
     }catch(e){ console.error('Firebase carregar:', e); return {ok:false, erro:e.message}; }
   };
   window._fbApagar = async function(id){
-    try{ await deleteDoc(doc(db, COL, id)); return {ok:true}; }
-    catch(e){ console.error('Firebase apagar:', e); return {ok:false, erro:e.message}; }
+    try{
+      const r = await fetch(`${FB_URL}${FB_PREFIX}/${encodeURIComponent(id)}.json?auth=${FB_SECRET}`, {method:'DELETE'});
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return {ok:true};
+    }catch(e){ console.error('Firebase apagar:', e); return {ok:false, erro:e.message}; }
   };
   window._fbPronto = true;
 </script>
