@@ -238,6 +238,8 @@
   .line.final{background:var(--ledger-soft);}
   .line.final .val{color:var(--ledger); font-size:16px; font-weight:700;}
   .line.negative .val{color:var(--danger);}
+  .delta-pos{color:var(--ledger); font-weight:700; font-size:12px;}
+  .delta-neg{color:var(--danger); font-weight:700; font-size:12px;}
   .badge{
     font-family:var(--mono); font-size:10px; padding:2px 7px; border-radius:3px; margin-left:8px;
     background:var(--alert-soft); color:var(--alert); font-weight:600;
@@ -522,6 +524,26 @@
       </table>
     </div>
     <div id="class-summary" style="margin-top:16px;"></div>
+
+    <div class="card" id="comparativo-card" style="margin-top:16px; background:#FCFBF8;">
+      <h3>Comparativo com o Ano Anterior <span class="tag">opcional</span></h3>
+      <p class="panel-sub" style="margin-bottom:10px;">Carrega o balancete do ano anterior para comparar automaticamente — a ferramenta deteta as colunas sozinha, tal como fez com o balancete principal.</p>
+      <div class="grid2">
+        <div class="field">
+          <label>Tipo de comparação</label>
+          <select id="comp-modo">
+            <option value="mesmoperiodo">Mesmo período do ano anterior (comparação direta — mais rigorosa)</option>
+            <option value="duodecimos">Duodécimos, a partir do balancete final de dezembro (só Rendimentos/Gastos; assume atividade linear)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Ficheiro</label>
+          <input type="file" id="file-input2" accept=".xlsx,.xls,.csv">
+        </div>
+      </div>
+      <div id="comparativo-status"></div>
+    </div>
+
     <div class="actions">
       <button class="btn-primary" onclick="goStep(2)">Continuar →</button>
     </div>
@@ -707,6 +729,11 @@
     <div class="ledger-body" id="prej-body"></div>
   </div>
 
+  <div class="ledger-block" id="comparativo-block" style="display:none;">
+    <div class="ledger-head"><span>Comparativo com o Ano Anterior</span><span class="stamp-mini" id="comparativo-modo-label"></span></div>
+    <div class="ledger-body" id="comparativo-body"></div>
+  </div>
+
   <h3 class="section-h">Rácios de análise</h3>
   <div class="ratio-grid" id="ratios-grid"></div>
 
@@ -753,6 +780,8 @@
 let rawRows = [];        // linhas cruas do ficheiro (arrays)
 let parsedAccounts = [];  // [{conta, desc, classe, debito, credito, saldo}]
 let workbook = null;
+let parsedAccounts2 = []; // balancete do ano anterior (comparativo), opcional
+let resumo2 = null;       // resumo financeiro já calculado do ano anterior
 
 // ══════════════════════════════════════════════════════════════
 //  NAVEGAÇÃO
@@ -830,22 +859,24 @@ function handleFile(file){
 function loadSheet(sheetName){
   const ws = workbook.Sheets[sheetName];
   rawRows = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
-
-  // 1ª tentativa: linha que tenha, em simultâneo, uma célula "conta" e uma célula "designação/descrição"
-  // — mais fiável do que "primeira linha com 3+ células", que em exports tipo CentralGest apanha
-  // a linha de metadados ("Período de / Até / Conta de") em vez do cabeçalho real, 2-3 linhas abaixo.
-  let headerIdx = rawRows.findIndex(r=>{
-    const cells = r.map(c=>String(c).trim().toLowerCase());
-    const temConta = cells.some(c=>c==='conta' || c==='código' || c==='codigo');
-    const temDesc = cells.some(c=>c.includes('designa') || c.includes('descri'));
-    return temConta && temDesc;
-  });
-  // 2ª tentativa (fallback): primeira linha com pelo menos 3 células não vazias
-  if(headerIdx < 0) headerIdx = rawRows.findIndex(r => r.filter(c=>String(c).trim()!=='').length >= 3);
-  if(headerIdx < 0) headerIdx = 0;
-
+  const headerIdx = detetarHeaderIdx(rawRows);
   const headers = rawRows[headerIdx].map(h=>String(h).trim());
   buildColumnMapping(headers, headerIdx);
+}
+
+// Escolhe a MELHOR correspondência entre várias colunas candidatas: penaliza colunas "do mês"
+// (movimento mensal) e valoriza "acumulado" — para um balancete à data, queremos o acumulado, não o mês isolado.
+function guessBestColuna(headers, patterns, evitar){
+  let melhor = -1, melhorPontos = -1;
+  headers.forEach((h,i)=>{
+    const hl = h.toLowerCase();
+    if(!patterns.some(p=>hl.includes(p))) return;
+    let pontos = 1;
+    if(evitar && evitar.some(p=>hl.includes(p))) pontos -= 2;
+    if(hl.includes('acum')) pontos += 2;
+    if(pontos > melhorPontos){ melhorPontos = pontos; melhor = i; }
+  });
+  return melhor;
 }
 
 function buildColumnMapping(headers, headerIdx){
@@ -853,25 +884,11 @@ function buildColumnMapping(headers, headerIdx){
   card.style.display = 'block';
   card.dataset.headerIdx = headerIdx;
 
-  // Escolhe a MELHOR correspondência entre várias colunas candidatas: penaliza colunas "do mês"
-  // (movimento mensal) e valoriza "acumulado" — para um balancete à data, queremos o acumulado, não o mês isolado.
-  const guessBest = (patterns, evitar)=>{
-    let melhor = -1, melhorPontos = -1;
-    headers.forEach((h,i)=>{
-      const hl = h.toLowerCase();
-      if(!patterns.some(p=>hl.includes(p))) return;
-      let pontos = 1;
-      if(evitar && evitar.some(p=>hl.includes(p))) pontos -= 2;
-      if(hl.includes('acum')) pontos += 2;
-      if(pontos > melhorPontos){ melhorPontos = pontos; melhor = i; }
-    });
-    return melhor;
-  };
-  const gConta = guessBest(['conta','código','codigo']);
-  const gDesc  = guessBest(['descri','designa']);
-  const gSaldo = guessBest(['saldo'], ['mês','mes','período','periodo']);
-  const gDeb   = guessBest(['devedor','débito','debito'], ['mês','mes','período','periodo']);
-  const gCred  = guessBest(['credor','crédito','credito'], ['mês','mes','período','periodo']);
+  const gConta = guessBestColuna(headers, ['conta','código','codigo']);
+  const gDesc  = guessBestColuna(headers, ['descri','designa']);
+  const gSaldo = guessBestColuna(headers, ['saldo'], ['mês','mes','período','periodo']);
+  const gDeb   = guessBestColuna(headers, ['devedor','débito','debito'], ['mês','mes','período','periodo']);
+  const gCred  = guessBestColuna(headers, ['credor','crédito','credito'], ['mês','mes','período','periodo']);
 
   const fillSelect = (id, guessIdx)=>{
     const sel = document.getElementById(id);
@@ -905,11 +922,13 @@ function buildColumnMapping(headers, headerIdx){
 // com células fundidas, como o CentralGest). Em vez de procurar célula a célula em cada linha — o que
 // arrisca apanhar por engano um valor de outra coluna quando o valor certo é legitimamente zero/vazio —
 // determina-se o desvio UMA VEZ, pela maioria das primeiras linhas de dados, e aplica-se sempre o mesmo.
-function desvioDominante(colBase, tipo, headerIdx){
+// Recebe `rows` como parâmetro (em vez de usar sempre a variável global) para poder ser reutilizada
+// com um segundo balancete (comparativo anual), sem misturar os dois.
+function desvioDominante(rows, colBase, tipo, headerIdx){
   const contagem = {};
   let amostras = 0;
-  for(let i=headerIdx+1; i<rawRows.length && amostras<15; i++){
-    const row = rawRows[i];
+  for(let i=headerIdx+1; i<rows.length && amostras<15; i++){
+    const row = rows[i];
     if(!row || row.every(c=>String(c).trim()==='')) continue;
     amostras++;
     const offsets = [0,1,-1,2,-2,3,-3,4,-4];
@@ -939,6 +958,20 @@ function celulaFixa(row, colBase, offset, tipo){
   return String(v||'').trim();
 }
 
+// Deteta a linha de cabeçalho de um balancete (Conta + Designação juntas), com fallback para a
+// primeira linha com 3+ células — reutilizável para o balancete principal e o comparativo.
+function detetarHeaderIdx(rows){
+  let headerIdx = rows.findIndex(r=>{
+    const cells = r.map(c=>String(c).trim().toLowerCase());
+    const temConta = cells.some(c=>c==='conta' || c==='código' || c==='codigo');
+    const temDesc = cells.some(c=>c.includes('designa') || c.includes('descri'));
+    return temConta && temDesc;
+  });
+  if(headerIdx < 0) headerIdx = rows.findIndex(r => r.filter(c=>String(c).trim()!=='').length >= 3);
+  if(headerIdx < 0) headerIdx = 0;
+  return headerIdx;
+}
+
 // Remove linhas de SUBTOTAL: quando o balancete mostra tanto o total de uma classe (ex.: "1") como o
 // detalhe das suas subcontas (ex.: "11","12"), o total já está implícito no detalhe — somar os dois
 // duplica os valores. Considera-se subtotal qualquer código que seja prefixo estrito de outro presente.
@@ -950,6 +983,95 @@ function filtrarContasFolha(contas){
   });
 }
 
+// Pipeline completo automático (deteção de cabeçalho + colunas + desvio + folhas), usado tanto para
+// o balancete principal como para o comparativo. Devolve {contas, erro}.
+function processarBalanceteAutomatico(rows){
+  const headerIdx = detetarHeaderIdx(rows);
+  const headers = rows[headerIdx].map(h=>String(h).trim());
+  const cConta = guessBestColuna(headers, ['conta','código','codigo']);
+  const cDesc  = guessBestColuna(headers, ['descri','designa']);
+  const cSaldo = guessBestColuna(headers, ['saldo'], ['mês','mes','período','periodo']);
+  const cDeb   = guessBestColuna(headers, ['devedor','débito','debito'], ['mês','mes','período','periodo']);
+  const cCred  = guessBestColuna(headers, ['credor','crédito','credito'], ['mês','mes','período','periodo']);
+  if(cConta<0){ return {contas:[], erro:'Não consegui identificar a coluna de código de conta.'}; }
+
+  const usarSaldo = cSaldo>=0;
+  const offConta = desvioDominante(rows, cConta, 'texto', headerIdx);
+  const offDesc  = cDesc>=0 ? desvioDominante(rows, cDesc, 'texto', headerIdx) : 0;
+  const offSaldo = usarSaldo ? desvioDominante(rows, cSaldo, 'numero', headerIdx) : 0;
+  const offDeb   = (!usarSaldo && cDeb>=0) ? desvioDominante(rows, cDeb, 'numero', headerIdx) : 0;
+  const offCred  = (!usarSaldo && cCred>=0) ? desvioDominante(rows, cCred, 'numero', headerIdx) : 0;
+
+  let brutas = [];
+  for(let i=headerIdx+1; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.every(c=>String(c).trim()==='')) continue;
+    const conta = celulaFixa(row, cConta, offConta, 'texto');
+    if(!conta || !/^\d/.test(conta)) continue;
+    const desc = cDesc>=0 ? celulaFixa(row, cDesc, offDesc, 'texto') : '';
+    let saldo;
+    if(usarSaldo){
+      saldo = celulaFixa(row, cSaldo, offSaldo, 'numero');
+    } else {
+      const debito = cDeb>=0 ? celulaFixa(row, cDeb, offDeb, 'numero') : 0;
+      const credito = cCred>=0 ? celulaFixa(row, cCred, offCred, 'numero') : 0;
+      saldo = debito - credito;
+    }
+    const classe = classeDaConta(conta);
+    brutas.push({conta, desc, classe, saldo});
+  }
+  return {contas: filtrarContasFolha(brutas), erro: null};
+}
+
+// Resumo financeiro simplificado — usado para comparar dois balancetes (atual vs. ano anterior) de
+// forma consistente, com as mesmas regras de saldo (nunca Débito/Crédito) em ambos.
+function calcularResumoFinanceiro(contas){
+  const rend = contas.filter(a=>a.classe===7).reduce((s,a)=>s-a.saldo,0);
+  const gastos = contas.filter(a=>a.classe===6 && !a.conta.startsWith('812')).reduce((s,a)=>s+a.saldo,0);
+  const resultado = rend - gastos;
+  const ativo1 = contas.filter(a=>a.classe===1).reduce((s,a)=>s+a.saldo,0);
+  const ativo2Receber = contas.filter(a=>a.classe===2 && a.saldo>0).reduce((s,a)=>s+a.saldo,0);
+  const ativo3 = contas.filter(a=>a.classe===3).reduce((s,a)=>s+a.saldo,0);
+  const ativo4 = contas.filter(a=>a.classe===4).reduce((s,a)=>s+a.saldo,0);
+  const passivoTotal = contas.filter(a=>a.classe===2 && a.saldo<0).reduce((s,a)=>s-a.saldo,0);
+  const capitalProprio = contas.filter(a=>a.classe===5).reduce((s,a)=>s-a.saldo,0);
+  const ativoCirculante = ativo1 + ativo2Receber + ativo3;
+  const ativoTotal = ativoCirculante + ativo4;
+  return {
+    rend, gastos, resultado, ativoTotal, passivoTotal, capitalProprio,
+    liquidezGeral: passivoTotal!==0 ? ativoCirculante/passivoTotal : null,
+    autonomiaFinanceira: ativoTotal!==0 ? capitalProprio/ativoTotal : null
+  };
+}
+
+document.getElementById('file-input2').addEventListener('change', (e)=>{
+  if(!e.target.files.length) return;
+  const status = document.getElementById('comparativo-status');
+  status.innerHTML = `<div class="warn-banner">⏳ A processar...</div>`;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const data = new Uint8Array(ev.target.result);
+      const wb2 = XLSX.read(data, {type:'array'});
+      const ws2 = wb2.Sheets[wb2.SheetNames[0]];
+      const rows2 = XLSX.utils.sheet_to_json(ws2, {header:1, raw:true, defval:''});
+      const resultado = processarBalanceteAutomatico(rows2);
+      if(resultado.erro || resultado.contas.length===0){
+        status.innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ ${resultado.erro || 'Não foram encontradas contas neste ficheiro.'} Podes tentar noutro formato, ou avançar sem comparativo.</div>`;
+        parsedAccounts2 = []; resumo2 = null;
+        return;
+      }
+      parsedAccounts2 = resultado.contas;
+      resumo2 = calcularResumoFinanceiro(parsedAccounts2);
+      status.innerHTML = `<div class="warn-banner">✅ ${parsedAccounts2.length} contas carregadas do ano anterior — Resultado desse período: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
+    }catch(err){
+      status.innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ Erro a ler o ficheiro: ${err.message}</div>`;
+      parsedAccounts2 = []; resumo2 = null;
+    }
+  };
+  reader.readAsArrayBuffer(e.target.files[0]);
+});
+
 document.getElementById('btn-parse').addEventListener('click', ()=>{
   const headerIdx = parseInt(document.getElementById('mapping-card').dataset.headerIdx);
   const cConta = parseInt(document.getElementById('map-conta').value);
@@ -959,11 +1081,11 @@ document.getElementById('btn-parse').addEventListener('click', ()=>{
   const cCred  = parseInt(document.getElementById('map-cred').value);
 
   let contasBrutas = [];
-  const offConta = cConta>=0 ? desvioDominante(cConta, 'texto', headerIdx) : 0;
-  const offDesc  = cDesc>=0  ? desvioDominante(cDesc, 'texto', headerIdx) : 0;
-  const offSaldo = cSaldo>=0 ? desvioDominante(cSaldo, 'numero', headerIdx) : 0;
-  const offDeb   = cDeb>=0   ? desvioDominante(cDeb, 'numero', headerIdx) : 0;
-  const offCred  = cCred>=0  ? desvioDominante(cCred, 'numero', headerIdx) : 0;
+  const offConta = cConta>=0 ? desvioDominante(rawRows, cConta, 'texto', headerIdx) : 0;
+  const offDesc  = cDesc>=0  ? desvioDominante(rawRows, cDesc, 'texto', headerIdx) : 0;
+  const offSaldo = cSaldo>=0 ? desvioDominante(rawRows, cSaldo, 'numero', headerIdx) : 0;
+  const offDeb   = cDeb>=0   ? desvioDominante(rawRows, cDeb, 'numero', headerIdx) : 0;
+  const offCred  = cCred>=0  ? desvioDominante(rawRows, cCred, 'numero', headerIdx) : 0;
 
   for(let i=headerIdx+1; i<rawRows.length; i++){
     const row = rawRows[i];
@@ -1398,8 +1520,56 @@ function renderResultado(r){
   }
   document.getElementById('prej-body').innerHTML = prejHtml;
 
+  // comparativo anual (opcional)
+  renderComparativo(r);
+
   // rácios
   renderRatios(r);
+}
+
+// Comparativo com o ano anterior — só aparece se um segundo balancete foi carregado no Passo 1.
+// Rendimentos/Gastos podem ser escalados em duodécimos (se o utilizador escolher esse modo); os
+// valores de Balanço (Ativo, Passivo, Capital Próprio) NUNCA são escalados — comparam-se sempre diretos.
+function renderComparativo(r){
+  const bloco = document.getElementById('comparativo-block');
+  if(!resumo2 || parsedAccounts2.length===0){
+    bloco.style.display = 'none';
+    return;
+  }
+  const modo = document.getElementById('comp-modo').value;
+  const dataIso = document.getElementById('in-data').value;
+  const mes = dataIso ? parseInt(dataIso.split('-')[1]) : 12;
+  const fator = modo==='duodecimos' ? mes/12 : 1;
+
+  // recalcula o resumo do ano atual pela mesma via simplificada do ano anterior, para comparação consistente
+  const atual = calcularResumoFinanceiro(parsedAccounts);
+
+  const linha = (label, vAtual, vAnteriorBruto, escalavel, formato)=>{
+    const vAnterior = (escalavel ? vAnteriorBruto*fator : vAnteriorBruto);
+    const delta = vAnterior!==0 ? (vAtual-vAnterior)/Math.abs(vAnterior) : null;
+    const deltaTxt = delta===null ? '' : ` <span class="${delta>=0?'delta-pos':'delta-neg'}">${delta>=0?'▲':'▼'} ${fmtPct(Math.abs(delta))}</span>`;
+    return `<div class="line"><span class="lbl">${label}</span><span class="val">${formato(vAtual)} <span style="color:var(--ink-soft); font-weight:400;">vs.</span> ${formato(vAnterior)}${deltaTxt}</span></div>`;
+  };
+
+  let html = '';
+  html += linha('Rendimentos', r.rend, resumo2.rend, true, fmt);
+  html += linha('Gastos', r.gastosAjustados, resumo2.gastos, true, fmt);
+  html += linha('Resultado Contabilístico', r.resultadoContabilistico, resumo2.resultado, true, fmt);
+  html += `<div class="line" style="border-top:1px dashed var(--line); margin-top:4px; padding-top:12px;"><span class="lbl" style="font-style:italic; color:#9098A3;">Valores de Balanço — sempre comparação direta, nunca em duodécimos</span><span></span></div>`;
+  html += linha('Ativo Total', atual.ativoTotal, resumo2.ativoTotal, false, fmt);
+  html += linha('Passivo Total', atual.passivoTotal, resumo2.passivoTotal, false, fmt);
+  html += linha('Capital Próprio', atual.capitalProprio, resumo2.capitalProprio, false, fmt);
+  if(atual.liquidezGeral!==null && resumo2.liquidezGeral!==null){
+    html += linha('Liquidez Geral', atual.liquidezGeral, resumo2.liquidezGeral, false, v=>v.toFixed(2));
+  }
+  if(atual.autonomiaFinanceira!==null && resumo2.autonomiaFinanceira!==null){
+    html += linha('Autonomia Financeira', atual.autonomiaFinanceira, resumo2.autonomiaFinanceira, false, fmtPct);
+  }
+
+  document.getElementById('comparativo-body').innerHTML = html;
+  document.getElementById('comparativo-modo-label').textContent =
+    modo==='duodecimos' ? `Duodécimos · ${mes}/12 meses` : 'Mesmo período, ano anterior';
+  bloco.style.display = 'block';
 }
 
 // Classifica um valor em 'ok' / 'warn' / 'bad' consoante limiares (ascendente ou descendente)
