@@ -1044,6 +1044,24 @@ function calcularResumoFinanceiro(contas){
   };
 }
 
+// Deteção de fecho: um balancete fechado tem a conta de Resultados (classe 8) com saldo real
+// (não zero por Débito=Crédito) e o CEVC já apurado (611/612). Isto é essencial em Duodécimos —
+// sem o fecho, falta o CEVC do ano inteiro e a comparação sai distorcida.
+function atualizarAvisoComparativo(){
+  const status = document.getElementById('comparativo-status');
+  if(!resumo2 || parsedAccounts2.length===0){ status.innerHTML=''; return; }
+  const pareceFechado = parsedAccounts2.some(a=>/^8/.test(a.conta) && a.saldo!==0)
+    || parsedAccounts2.some(a=>/^61[12]/.test(a.conta) && a.saldo!==0);
+  const modo = document.getElementById('comp-modo').value;
+
+  let aviso = `<div class="warn-banner">✅ ${parsedAccounts2.length} contas carregadas do ano anterior — Resultado desse período: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
+  if(modo==='duodecimos' && !pareceFechado){
+    aviso = `<div class="warn-banner" style="background:var(--alert-soft); border-color:var(--alert); color:#6B4409;">⚠️ Este balancete não parece estar fechado (sem CEVC apurado nem resultado líquido lançado) — em modo Duodécimos precisas do balancete FINAL de dezembro, já fechado, ou os duodécimos vão sair distorcidos. Se tens só este, muda para "Mesmo Período" ou carrega a versão de fecho.</div>` + aviso;
+  }
+  status.innerHTML = aviso;
+}
+document.getElementById('comp-modo').addEventListener('change', atualizarAvisoComparativo);
+
 document.getElementById('file-input2').addEventListener('change', (e)=>{
   if(!e.target.files.length) return;
   const status = document.getElementById('comparativo-status');
@@ -1063,7 +1081,7 @@ document.getElementById('file-input2').addEventListener('change', (e)=>{
       }
       parsedAccounts2 = resultado.contas;
       resumo2 = calcularResumoFinanceiro(parsedAccounts2);
-      status.innerHTML = `<div class="warn-banner">✅ ${parsedAccounts2.length} contas carregadas do ano anterior — Resultado desse período: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
+      atualizarAvisoComparativo();
     }catch(err){
       status.innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ Erro a ler o ficheiro: ${err.message}</div>`;
       parsedAccounts2 = []; resumo2 = null;
