@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Motor de Apuramento — Análise Contabilística e Fiscal</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
   // Mesmo Firebase do dafilgest-interno (Realtime Database, REST — sem SDK) — prefixo próprio para não misturar com /dafilgest
   const FB_URL = 'https://dafilgest-interno-default-rtdb.europe-west1.firebasedatabase.app';
@@ -49,19 +50,21 @@
 </script>
 <style>
   :root{
-    --paper:#F7F6F2;
+    --paper:#F5F6F8;
     --paper-raised:#FFFFFF;
     --ink:#1B2027;
     --ink-soft:#565F6E;
-    --line:#DCD8CE;
-    --line-strong:#B8B2A3;
-    --ledger:#0B5E45;
-    --ledger-soft:#E4EFE9;
-    --alert:#9A5B12;
-    --alert-soft:#F5E8D6;
-    --danger:#9B2F26;
-    --danger-soft:#F7E6E3;
-    --gold:#8A6D1F;
+    --line:#D8DCE3;
+    --line-strong:#AEB6C4;
+    --ledger:#14243D;
+    --ledger-soft:#E8ECF2;
+    --alert:#8C6D22;
+    --alert-soft:#F4EEDC;
+    --danger:#5C4A18;
+    --danger-soft:#EDE4CC;
+    --gold:#B8983B;
+    --gold-light:#C8A84B;
+    --navy2:#1A3A5C;
     --mono: 'IBM Plex Mono', 'Courier New', monospace;
     --serif: 'Source Serif 4', Georgia, serif;
     --sans: 'IBM Plex Sans', -apple-system, sans-serif;
@@ -78,14 +81,14 @@
 
   /* ── Header ── */
   header.hero{
-    background:linear-gradient(180deg, #14201B 0%, #1B2027 100%);
+    background:linear-gradient(180deg, #0F1D30 0%, #1B2027 100%);
     color:#F2F0E9; padding:36px 0 30px 0; border-bottom:4px solid var(--ledger);
   }
   header.hero .wrap{display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap;}
   .brandmark{display:flex; align-items:baseline; gap:14px;}
   .brandmark .stamp{
-    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#8FBFA8;
-    border:1px solid #3E5B4E; padding:4px 8px; border-radius:2px;
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#D4B65E;
+    border:1px solid #3A4A61; padding:4px 8px; border-radius:2px;
   }
   header.hero h1{
     font-family:var(--serif); font-weight:600; font-size:28px; margin:6px 0 4px 0; letter-spacing:-.01em;
@@ -95,16 +98,16 @@
   .meta-field{display:flex; flex-direction:column; gap:4px;}
   .meta-field label{font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:#8B968F;}
   .meta-field input{
-    background:#232B25; border:1px solid #3E4A3F; color:#F2F0E9; padding:7px 10px;
+    background:#1E2A3D; border:1px solid #33415A; color:#F2F0E9; padding:7px 10px;
     border-radius:3px; font-family:var(--sans); font-size:13px; min-width:170px;
   }
   .meta-field input:focus{outline:2px solid var(--ledger); outline-offset:1px;}
   .save-load-group{display:flex; gap:6px;}
   .btn-io{
-    background:#232B25; border:1px solid #3E4A3F; color:#E4E1D6; padding:7px 11px;
+    background:#1E2A3D; border:1px solid #33415A; color:#DCE1E8; padding:7px 11px;
     border-radius:3px; font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer;
   }
-  .btn-io:hover{background:#2C362E; border-color:var(--ledger);}
+  .btn-io:hover{background:#253347; border-color:var(--ledger);}
 
   /* ── Nav / progress ── */
   nav.steps{
@@ -161,10 +164,10 @@
   }
   td{padding:6px 10px; border-bottom:1px solid var(--line); font-family:var(--mono); vertical-align:top;}
   td.desc{font-family:var(--sans);}
-  tr.class-1 td:first-child, tr.class-1 td.desc{border-left:3px solid #4A7BAE;}
-  tr.class-2 td:first-child, tr.class-2 td.desc{border-left:3px solid #7A5EA8;}
+  tr.class-1 td:first-child, tr.class-1 td.desc{border-left:3px solid var(--navy2);}
+  tr.class-2 td:first-child, tr.class-2 td.desc{border-left:3px solid #6B7A99;}
   tr.class-3 td:first-child, tr.class-3 td.desc{border-left:3px solid var(--gold);}
-  tr.class-4 td:first-child, tr.class-4 td.desc{border-left:3px solid #4A9E8F;}
+  tr.class-4 td:first-child, tr.class-4 td.desc{border-left:3px solid #7B92B0;}
   tr.class-5 td:first-child, tr.class-5 td.desc{border-left:3px solid #6B6B6B;}
   tr.class-6 td:first-child, tr.class-6 td.desc{border-left:3px solid var(--danger);}
   tr.class-7 td:first-child, tr.class-7 td.desc{border-left:3px solid var(--ledger);}
@@ -220,10 +223,10 @@
   /* ── Results ── */
   .ledger-block{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; margin-bottom:18px; overflow:hidden;}
   .ledger-head{
-    background:#14201B; color:#F2F0E9; padding:12px 20px; font-family:var(--serif); font-size:15px; font-weight:600;
+    background:#0F1D30; color:#F2F0E9; padding:12px 20px; font-family:var(--serif); font-size:15px; font-weight:600;
     display:flex; justify-content:space-between; align-items:center;
   }
-  .ledger-head .stamp-mini{font-family:var(--mono); font-size:10px; color:#8FBFA8; letter-spacing:.08em;}
+  .ledger-head .stamp-mini{font-family:var(--mono); font-size:10px; color:#D4B65E; letter-spacing:.08em;}
   .ledger-body{padding:4px 0;}
   .line{
     display:flex; justify-content:space-between; padding:9px 20px; font-size:13px; border-bottom:1px solid #EFEDE6;
@@ -260,15 +263,22 @@
   /* ── KPI strip ── */
   .kpi-strip{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2px; margin-bottom:22px; background:var(--line); border:1px solid var(--line); border-radius:6px; overflow:hidden;}
   .kpi-cell{background:var(--paper-raised); padding:18px 20px;}
-  .kpi-cell.emph{background:#14201B; color:#F2F0E9;}
+  .kpi-cell.emph{background:#0F1D30; color:#F2F0E9;}
   .kpi-cell .kv{font-family:var(--serif); font-size:24px; font-weight:700; font-variant-numeric:tabular-nums;}
-  .kpi-cell.emph .kv{color:#7FC9A8;}
+  .kpi-cell.emph .kv{color:var(--gold-light);}
   .kpi-cell .kv.negative{color:var(--danger);}
-  .kpi-cell.emph .kv.negative{color:#E48A7D;}
+  .kpi-cell.emph .kv.negative{color:#D4A24C;}
   .kpi-cell .kl{font-size:10.5px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-top:5px;}
-  .kpi-cell.emph .kl{color:#8FA398;}
+  .kpi-cell.emph .kl{color:#94A3B8;}
 
   .section-h{font-family:var(--serif); margin:30px 0 12px 0; font-size:18px; font-weight:600; padding-bottom:8px; border-bottom:1px solid var(--line);}
+
+  .chart-grid{display:grid; grid-template-columns:1.3fr 1fr; gap:14px;}
+  @media (max-width:720px){ .chart-grid{grid-template-columns:1fr;} }
+  .chart-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; padding:16px 18px 10px 18px;}
+  .chart-title{font-family:var(--serif); font-size:13.5px; font-weight:600; color:var(--ink); margin-bottom:10px;}
+  .chart-legend{display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:8px; font-size:11px; color:var(--ink-soft);}
+  .chart-legend span.dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle;}
 
   .ratio-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px;}
   .ratio-card{background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; padding:18px 20px;}
@@ -330,25 +340,25 @@
   }
   /* ── Login gate ── */
   #login-gate{
-    position:fixed; inset:0; z-index:100; background:linear-gradient(180deg,#0D1712 0%,#14201B 100%);
+    position:fixed; inset:0; z-index:100; background:linear-gradient(180deg,#0A1420 0%,#0F1D30 100%);
     display:flex; align-items:center; justify-content:center; padding:20px;
   }
   .login-box{
-    background:#1B2621; border:1px solid #33453A; border-radius:8px; padding:36px 34px; max-width:340px; width:100%;
+    background:#16233A; border:1px solid #2A3B52; border-radius:8px; padding:36px 34px; max-width:340px; width:100%;
     text-align:center;
   }
   .login-box .stamp{
-    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#8FBFA8;
-    border:1px solid #3E5B4E; padding:4px 8px; border-radius:2px; display:inline-block;
+    font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:#D4B65E;
+    border:1px solid #3A4A61; padding:4px 8px; border-radius:2px; display:inline-block;
   }
   .login-box h1{font-family:var(--serif); color:#F2F0E9; font-size:22px; margin:14px 0 6px 0;}
-  .login-box p{color:#8FA398; font-size:12.5px; margin:0 0 20px 0; line-height:1.5;}
+  .login-box p{color:#94A3B8; font-size:12.5px; margin:0 0 20px 0; line-height:1.5;}
   .login-box input{
-    width:100%; background:#232B25; border:1px solid #3E4A3F; color:#F2F0E9; padding:11px 12px;
+    width:100%; background:#1E2A3D; border:1px solid #33415A; color:#F2F0E9; padding:11px 12px;
     border-radius:4px; font-family:var(--sans); font-size:14px; text-align:center;
   }
   .login-box input:focus{outline:2px solid var(--ledger); outline-offset:1px;}
-  #login-erro{color:#E48A7D; font-size:12px; margin-top:10px; min-height:16px;}
+  #login-erro{color:#D4A24C; font-size:12px; margin-top:10px; min-height:16px;}
 
   /* ── Painel de análises guardadas ── */
   .cloud-overlay{
@@ -358,10 +368,10 @@
   .cloud-overlay.hidden{display:none;}
   .cloud-panel{background:var(--paper-raised); border-radius:8px; max-width:640px; width:100%; overflow:hidden;}
   .cloud-panel-head{
-    background:#14201B; color:#F2F0E9; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;
+    background:#0F1D30; color:#F2F0E9; padding:16px 22px; display:flex; justify-content:space-between; align-items:center;
   }
   .cloud-panel-head h3{font-family:var(--serif); margin:0; font-size:17px;}
-  .cloud-panel-head button{background:none; border:none; color:#8FA398; font-size:20px; cursor:pointer;}
+  .cloud-panel-head button{background:none; border:none; color:#94A3B8; font-size:20px; cursor:pointer;}
   .cloud-panel-body{padding:8px 0; max-height:60vh; overflow:auto;}
   .cloud-item{
     display:flex; justify-content:space-between; align-items:center; padding:13px 22px; border-bottom:1px solid var(--line);
@@ -382,7 +392,7 @@
     section.panel{display:block !important;}
     section.panel[data-step="1"], section.panel[data-step="2"], section.panel[data-step="3"], section.panel[data-step="4"]{display:none !important;}
     .ledger-block, .parecer-block, .ratio-card, .kpi-cell{page-break-inside:avoid;}
-    header.hero{background:#14201B !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    header.hero{background:#0F1D30 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
     body{padding:0;}
   }
   @media (max-width:720px){
@@ -527,9 +537,16 @@
 
     <div class="card" id="comparativo-card" style="margin-top:16px; background:#FCFBF8;">
       <h3>Comparativo com o Ano Anterior <span class="tag">opcional</span></h3>
-      <p class="panel-sub" style="margin-bottom:10px;">Carrega o balancete do ano anterior para comparar automaticamente — a ferramenta deteta as colunas sozinha, tal como fez com o balancete principal.</p>
-      <div class="grid2">
+      <p class="panel-sub" style="margin-bottom:10px;">Carrega o balancete do ano anterior, ou a própria IES entregue — a ferramenta lê qualquer um dos dois sozinha.</p>
+      <div class="grid3">
         <div class="field">
+          <label>Fonte do ano anterior</label>
+          <select id="comp-fonte">
+            <option value="balancete">Balancete (Excel)</option>
+            <option value="ies">IES entregue (PDF)</option>
+          </select>
+        </div>
+        <div class="field" id="comp-modo-field">
           <label>Tipo de comparação</label>
           <select id="comp-modo">
             <option value="mesmoperiodo">Mesmo período do ano anterior (comparação direta — mais rigorosa)</option>
@@ -541,6 +558,7 @@
           <input type="file" id="file-input2" accept=".xlsx,.xls,.csv">
         </div>
       </div>
+      <p class="panel-sub" id="comp-fonte-nota" style="margin:2px 0 0 0;"></p>
       <div id="comparativo-status"></div>
     </div>
 
@@ -714,6 +732,22 @@
 
   <div class="kpi-strip" id="kpi-strip"></div>
 
+  <h3 class="section-h">Visão Gráfica</h3>
+  <div class="chart-grid">
+    <div class="chart-card" id="chart-comparativo-card">
+      <div class="chart-title">Rendimentos, Gastos e Resultado</div>
+      <div id="chart-comparativo"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Estrutura de Gastos</div>
+      <div id="chart-estrutura"></div>
+    </div>
+  </div>
+  <div class="chart-card" style="margin-top:14px;">
+    <div class="chart-title">Rácios vs. Limiares de Referência</div>
+    <div id="chart-racios"></div>
+  </div>
+
   <div class="ledger-block">
     <div class="ledger-head"><span>Demonstração de Resultados</span><span class="stamp-mini" id="dr-periodo"></span></div>
     <div class="ledger-body" id="dr-body"></div>
@@ -818,6 +852,148 @@ function fmt(n){
   return n.toLocaleString('pt-PT', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
 }
 function fmtPct(n){ return (n*100).toLocaleString('pt-PT',{maximumFractionDigits:1}) + '%'; }
+
+// ══════════════════════════════════════════════════════════════
+//  GRÁFICOS SVG NATIVOS — sem dependências externas, tema ledger
+// ══════════════════════════════════════════════════════════════
+function fmtCompacto(n){
+  const abs = Math.abs(n);
+  const sinal = n<0 ? '-' : '';
+  if(abs>=1000000) return sinal+(abs/1000000).toFixed(1)+'M';
+  if(abs>=1000) return sinal+(abs/1000).toFixed(1)+'k';
+  return sinal+abs.toFixed(0);
+}
+
+// Barras comparativas (atual vs. ano anterior, quando houver) — Rendimentos/Gastos/Resultado
+function svgBarrasComparativas(grupos){
+  const temAnterior = grupos.some(g=>g.anterior!==null && g.anterior!==undefined);
+  const w=560, h=250, padL=16, padR=16, padT=16, padB=44;
+  const chartW=w-padL-padR, chartH=h-padT-padB;
+  const todos = grupos.flatMap(g=> temAnterior ? [g.atual, g.anterior] : [g.atual]).filter(v=>v!==null && v!==undefined);
+  const maxV = Math.max(...todos.map(v=>Math.abs(v)), 1);
+  const escala = v => padT + chartH/2 - (v/maxV)*(chartH/2 - 10);
+  const zeroLine = escala(0);
+  const gap = chartW/grupos.length;
+  const largura = temAnterior ? gap*0.30 : gap*0.44;
+  let svg = '';
+  grupos.forEach((g,i)=>{
+    const cx = padL + i*gap + gap/2;
+    if(temAnterior && g.anterior!==null && g.anterior!==undefined){
+      const xA = cx - largura - 3, xB = cx + 3;
+      const yA = escala(g.atual), hA = Math.abs(yA-zeroLine);
+      const yB = escala(g.anterior), hB = Math.abs(yB-zeroLine);
+      svg += `<rect x="${xA}" y="${Math.min(yA,zeroLine)}" width="${largura}" height="${hA}" fill="${g.atual<0?'#8C6D22':'#14243D'}" rx="2"/>`;
+      svg += `<rect x="${xB}" y="${Math.min(yB,zeroLine)}" width="${largura}" height="${hB}" fill="#C8A84B" rx="2"/>`;
+      svg += `<text x="${xA+largura/2}" y="${Math.min(yA,zeroLine)-5}" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#1B2027">${fmtCompacto(g.atual)}</text>`;
+      svg += `<text x="${xB+largura/2}" y="${Math.min(yB,zeroLine)-5}" text-anchor="middle" font-size="9.5" font-family="IBM Plex Mono" fill="#8C6D22">${fmtCompacto(g.anterior)}</text>`;
+    } else {
+      const xA = cx - largura/2;
+      const yA = escala(g.atual), hA = Math.abs(yA-zeroLine);
+      svg += `<rect x="${xA}" y="${Math.min(yA,zeroLine)}" width="${largura}" height="${hA}" fill="${g.atual<0?'#8C6D22':'#14243D'}" rx="2"/>`;
+      svg += `<text x="${cx}" y="${Math.min(yA,zeroLine)-5}" text-anchor="middle" font-size="10.5" font-family="IBM Plex Mono" fill="#1B2027">${fmtCompacto(g.atual)}</text>`;
+    }
+    svg += `<text x="${cx}" y="${h-padB+18}" text-anchor="middle" font-size="11.5" font-family="IBM Plex Sans" fill="#565F6E">${g.label}</text>`;
+  });
+  svg += `<line x1="${padL}" y1="${zeroLine}" x2="${w-padR}" y2="${zeroLine}" stroke="#AEB6C4" stroke-width="1"/>`;
+  const legenda = temAnterior
+    ? `<div class="chart-legend"><span><span class="dot" style="background:#14243D;"></span>Atual</span><span><span class="dot" style="background:#C8A84B;"></span>Ano anterior</span></div>`
+    : '';
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto;">${svg}</svg>${legenda}`;
+}
+
+// Donut da estrutura de gastos, por categoria (classe 6)
+function svgDonut(fatias){
+  const total = fatias.reduce((s,f)=>s+f.value,0);
+  if(total<=0.005) return '<div style="padding:30px 10px; text-align:center; color:#9098A3; font-size:12px;">Sem gastos suficientes para o gráfico.</div>';
+  const cx=90, cy=90, rOut=80, rIn=48;
+  let anguloAtual = -90;
+  let paths = '';
+  const toRad = a => a*Math.PI/180;
+  fatias.forEach(f=>{
+    const fracao = f.value/total;
+    const anguloFim = anguloAtual + fracao*360;
+    const largeArc = (anguloFim-anguloAtual)>180 ? 1 : 0;
+    const x1o=cx+rOut*Math.cos(toRad(anguloAtual)), y1o=cy+rOut*Math.sin(toRad(anguloAtual));
+    const x2o=cx+rOut*Math.cos(toRad(anguloFim)), y2o=cy+rOut*Math.sin(toRad(anguloFim));
+    const x1i=cx+rIn*Math.cos(toRad(anguloFim)), y1i=cy+rIn*Math.sin(toRad(anguloFim));
+    const x2i=cx+rIn*Math.cos(toRad(anguloAtual)), y2i=cy+rIn*Math.sin(toRad(anguloAtual));
+    if(fracao>0.0005){
+      paths += `<path d="M ${x1o} ${y1o} A ${rOut} ${rOut} 0 ${largeArc} 1 ${x2o} ${y2o} L ${x1i} ${y1i} A ${rIn} ${rIn} 0 ${largeArc} 0 ${x2i} ${y2i} Z" fill="${f.color}"/>`;
+    }
+    anguloAtual = anguloFim;
+  });
+  const legenda = fatias.map(f=>`<span><span class="dot" style="background:${f.color};"></span>${f.label} (${fmtPct(f.value/total)})</span>`).join('');
+  return `<div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+    <svg viewBox="0 0 180 180" style="width:140px; height:140px; flex-shrink:0;">${paths}</svg>
+    <div class="chart-legend" style="flex-direction:column; gap:7px;">${legenda}</div>
+  </div>`;
+}
+
+// Barras horizontais dos rácios vs. o respetivo limiar de referência ("bom")
+const LIMIARES_GRAFICO = {
+  'Liquidez Geral': 1.5, 'Autonomia Financeira': 0.35, 'Rendibilidade Líquida das Vendas': 0.05,
+  'Grau de Endividamento': 0.50, 'Rendibilidade do Capital Próprio': 0.15, 'Solvabilidade': 1.0,
+  'Margem EBITDA': 0.15, 'Cobertura de Encargos Financeiros': 4
+};
+function svgBarrasRacios(cards){
+  const validos = cards.filter(c=>c.val!==null && LIMIARES_GRAFICO[c.label]!==undefined);
+  if(!validos.length) return '<div style="padding:20px; text-align:center; color:#9098A3; font-size:12px;">Sem rácios suficientes para o gráfico.</div>';
+  const rowH=32, w=640, padL=210, padR=70;
+  const h = validos.length*rowH + 16;
+  let svg = '';
+  validos.forEach((c,i)=>{
+    const limBom = LIMIARES_GRAFICO[c.label];
+    const y = 10 + i*rowH;
+    const frac = Math.min(Math.abs(c.val)/(limBom*2), 1);
+    const larguraMax = w-padL-padR;
+    const barW = Math.max(frac*larguraMax, 2);
+    const cor = c.status==='ok' ? '#14243D' : c.status==='warn' ? '#B8983B' : '#5C4A18';
+    svg += `<text x="${padL-10}" y="${y+15}" text-anchor="end" font-size="11.5" font-family="IBM Plex Sans" fill="#1B2027">${c.label}</text>`;
+    svg += `<rect x="${padL}" y="${y+3}" width="${larguraMax}" height="16" fill="#EFEDE6" rx="3"/>`;
+    svg += `<rect x="${padL}" y="${y+3}" width="${barW}" height="16" fill="${cor}" rx="3"/>`;
+    svg += `<line x1="${padL+larguraMax/2}" y1="${y}" x2="${padL+larguraMax/2}" y2="${y+22}" stroke="#565F6E" stroke-width="1" stroke-dasharray="2,2"/>`;
+    svg += `<text x="${w-padR+8}" y="${y+15}" font-size="11" font-family="IBM Plex Mono" fill="#1B2027">${c.fmt(c.val)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%; height:auto;">${svg}</svg>
+    <div class="chart-legend"><span><span class="dot" style="background:#14243D;"></span>Confortável</span><span><span class="dot" style="background:#B8983B;"></span>A acompanhar</span><span><span class="dot" style="background:#5C4A18;"></span>Risco</span><span style="color:#9098A3;">┊ linha tracejada = limiar de referência</span></div>`;
+}
+
+function renderChartPrincipal(r){
+  const grupos = [
+    {label:'Rendimentos', atual:r.rend, anterior:null},
+    {label:'Gastos', atual:r.gastosAjustados, anterior:null},
+    {label:'Resultado', atual:r.resultadoContabilistico, anterior:null},
+  ];
+  if(resumo2 && parsedAccounts2.length){
+    const modo = document.getElementById('comp-modo').value;
+    const dataIso = document.getElementById('in-data').value;
+    const mes = dataIso ? parseInt(dataIso.split('-')[1]) : 12;
+    const fator = modo==='duodecimos' ? mes/12 : 1;
+    grupos[0].anterior = resumo2.rend*fator;
+    grupos[1].anterior = resumo2.gastos*fator;
+    grupos[2].anterior = resumo2.resultado*fator;
+  }
+  document.getElementById('chart-comparativo').innerHTML = svgBarrasComparativas(grupos);
+}
+
+function renderChartEstrutura(){
+  const grupos = {
+    '61':{label:'CMVMC/CEVC', cor:'#14243D'}, '62':{label:'Fornec. e Serviços Externos', cor:'#B8983B'},
+    '63':{label:'Gastos com Pessoal', cor:'#1A3A5C'}, '64':{label:'Amortizações', cor:'#C8A84B'},
+    '68':{label:'Outros Gastos', cor:'#8A93A3'}, '69':{label:'Gastos de Financiamento', cor:'#C7CDD6'},
+  };
+  const somas = {};
+  parsedAccounts.filter(a=>a.classe===6).forEach(a=>{
+    const p2 = a.conta.slice(0,2);
+    const chave = grupos[p2] ? p2 : 'outros';
+    somas[chave] = (somas[chave]||0) + a.saldo;
+  });
+  const fatias = Object.keys(somas).filter(k=>somas[k]>0.005).map(k=>({
+    label: grupos[k] ? grupos[k].label : 'Outros',
+    value: somas[k], color: grupos[k] ? grupos[k].cor : '#9098A3'
+  })).sort((a,b)=>b.value-a.value);
+  document.getElementById('chart-estrutura').innerHTML = svgDonut(fatias);
+}
 function num(id){ const v = parseFloat(document.getElementById(id).value); return isNaN(v)?0:v; }
 
 // ══════════════════════════════════════════════════════════════
@@ -974,13 +1150,39 @@ function detetarHeaderIdx(rows){
 
 // Remove linhas de SUBTOTAL: quando o balancete mostra tanto o total de uma classe (ex.: "1") como o
 // detalhe das suas subcontas (ex.: "11","12"), o total já está implícito no detalhe — somar os dois
-// duplica os valores. Considera-se subtotal qualquer código que seja prefixo estrito de outro presente.
+// duplica os valores. MAS um export analítico real pode ter ramos com profundidade incompleta: uma
+// conta-mãe cujo saldo só é PARCIALMENTE explicado pelos filhos presentes no ficheiro (ex.: "62511
+// Alojamentos" = 2.904,06 €, mas o único filho no ficheiro, "6251111", só tem 1.757,76 € — faltam
+// 1.146,30 € sem linha própria). Excluir a mãe por completo, nesses casos, PERDE dinheiro real.
+// Por isso: para cada conta, calcula-se o resíduo (saldo próprio − soma dos filhos DIRETOS presentes);
+// se esse resíduo for ≈0, a conta é mesmo um subtotal puro e é excluída; caso contrário, mantém-se
+// só o resíduo (o que não está explicado por nenhum filho), nunca o saldo bruto duplicado.
 function filtrarContasFolha(contas){
   const codigos = contas.map(a=>a.conta);
-  return contas.filter(a=>{
-    const temFilho = codigos.some(c => c!==a.conta && c.startsWith(a.conta) && c.length>a.conta.length);
-    return !temFilho;
+  const saldoMap = {};
+  contas.forEach(a=>{ saldoMap[a.conta] = a.saldo; });
+
+  function filhosDiretos(codigo){
+    const candidatos = codigos.filter(c => c!==codigo && c.startsWith(codigo) && c.length>codigo.length);
+    // um candidato é filho DIRETO se não houver outro candidato entre ele e a conta-mãe (nível imediato)
+    return candidatos.filter(y => !candidatos.some(z => z!==y && y.startsWith(z) && z.length>codigo.length));
+  }
+
+  const resultado = [];
+  contas.forEach(a=>{
+    const filhos = filhosDiretos(a.conta);
+    if(filhos.length===0){
+      resultado.push({...a});
+      return;
+    }
+    const somaFilhos = filhos.reduce((s,f)=>s+saldoMap[f], 0);
+    const residual = a.saldo - somaFilhos;
+    if(Math.abs(residual) > 0.005){
+      resultado.push({...a, desc: a.desc + ' (saldo direto, não descriminado)', saldo: residual});
+    }
+    // se o resíduo for ~0, a conta é um subtotal puro — excluída, como antes
   });
+  return resultado;
 }
 
 // Pipeline completo automático (deteção de cabeçalho + colunas + desvio + folhas), usado tanto para
@@ -1062,8 +1264,27 @@ function atualizarAvisoComparativo(){
 }
 document.getElementById('comp-modo').addEventListener('change', atualizarAvisoComparativo);
 
+function atualizarFonteComparativo(){
+  const fonte = document.getElementById('comp-fonte').value;
+  const fileInput = document.getElementById('file-input2');
+  const nota = document.getElementById('comp-fonte-nota');
+  if(fonte==='ies'){
+    fileInput.accept = '.pdf';
+    nota.textContent = 'A IES é sempre um exercício fechado — os duodécimos podem ser usados sem qualquer aviso de "balancete por fechar".';
+  } else {
+    fileInput.accept = '.xlsx,.xls,.csv';
+    nota.textContent = '';
+  }
+  fileInput.value = '';
+  parsedAccounts2 = []; resumo2 = null;
+  document.getElementById('comparativo-status').innerHTML = '';
+}
+document.getElementById('comp-fonte').addEventListener('change', atualizarFonteComparativo);
+
 document.getElementById('file-input2').addEventListener('change', (e)=>{
   if(!e.target.files.length) return;
+  const fonte = document.getElementById('comp-fonte').value;
+  if(fonte==='ies'){ processarFicheiroIES(e.target.files[0]); return; }
   const status = document.getElementById('comparativo-status');
   status.innerHTML = `<div class="warn-banner">⏳ A processar...</div>`;
   const reader = new FileReader();
@@ -1089,6 +1310,185 @@ document.getElementById('file-input2').addEventListener('change', (e)=>{
   };
   reader.readAsArrayBuffer(e.target.files[0]);
 });
+
+// ══════════════════════════════════════════════════════════════
+//  LEITOR DE IES (PDF) — comparativo a partir da declaração entregue
+// ══════════════════════════════════════════════════════════════
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// Reconhece um token como número em formato português (1.234,56 ou 0,00)
+function ehNumeroPT(tok){ return /^-?\d{1,3}(\.\d{3})*,\d{2}$/.test(tok) || /^-?\d+,\d{2}$/.test(tok); }
+function paraNumero(tok){ return parseFloat(tok.replace(/\./g,'').replace(',','.')); }
+
+async function extrairPaginasTexto(file){
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({data: new Uint8Array(buf)}).promise;
+  const paginas = [];
+  for(let i=1;i<=doc.numPages;i++){
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    paginas.push(content.items.map(it=>it.str).join('|'));
+  }
+  return paginas;
+}
+
+// Bloco da Demonstração de Resultados (03-A): tal como no Balanço, campos opcionais podem faltar
+// consoante o regime contabilístico do declarante (NIC's/NCRF's/NCRF-PE/NC-ME) — por isso não se lê
+// por posição fixa. Testam-se combinações de quais campos "incertos" estão presentes (só ~11, rápido)
+// e só se aceita a combinação cujos checkpoints (A5017, A5020, A5023, A5025) batem com as fórmulas
+// oficiais do próprio impresso.
+const DR_SCHEMA = [
+  {c:'A5001', certo:true}, {c:'A5002', certo:true},
+  {c:'A5003', certo:false}, {c:'A5004', certo:false}, {c:'A5005', certo:false},
+  {c:'A5006', certo:true}, {c:'A5007', certo:true}, {c:'A5008', certo:true},
+  {c:'A5009', certo:false}, {c:'A5010', certo:false}, {c:'A5011', certo:false},
+  {c:'A5012', certo:false}, {c:'A5013', certo:false}, {c:'A5014', certo:false}, {c:'A5015', certo:false},
+  {c:'A5016', certo:true},
+  {c:'A5017', checkpoint:true},
+  {c:'A5018', certo:true}, {c:'A5019', certo:false},
+  {c:'A5020', checkpoint:true},
+  {c:'A5021', certo:true}, {c:'A5022', certo:true},
+  {c:'A5023', checkpoint:true},
+  {c:'A5024', certo:true}, {c:'A5025', certo:true}, {c:'A5026', certo:true},
+];
+const DR_INCERTOS = DR_SCHEMA.filter(f=>f.certo===false);
+
+function drTentarCombinacao(valores, presentes){
+  let i = 0;
+  const campo = {};
+  for(const f of DR_SCHEMA){
+    if(f.checkpoint){
+      const v = valores[i++];
+      if(v===undefined) return null;
+      campo[f.c] = v;
+      i++; // salta sempre o zero extra (placeholder N-1) que o impresso injeta em toda a linha checkpoint
+      if(f.c==='A5017'){
+        const esperado = (campo.A5001||0)+(campo.A5002||0)+(campo.A5003||0)+(campo.A5004||0)+(campo.A5005||0)
+          -(campo.A5006||0)-(campo.A5007||0)-(campo.A5008||0)-(campo.A5009||0)-(campo.A5010||0)
+          -(campo.A5011||0)-(campo.A5012||0)-(campo.A5013||0)+(campo.A5014||0)+(campo.A5015||0)-(campo.A5016||0);
+        if(Math.abs(esperado-v)>0.02) return null;
+      }
+      if(f.c==='A5020'){
+        const esperado = campo.A5017-(campo.A5018||0)-(campo.A5019||0);
+        if(Math.abs(esperado-v)>0.02) return null;
+      }
+      if(f.c==='A5023'){
+        const esperado = campo.A5020+(campo.A5021||0)-(campo.A5022||0);
+        if(Math.abs(esperado-v)>0.02) return null;
+      }
+    } else if(f.certo){
+      const v = valores[i++];
+      if(v===undefined) return null;
+      campo[f.c] = v;
+    } else {
+      if(presentes.has(f.c)){
+        const v = valores[i++];
+        if(v===undefined) return null;
+        campo[f.c] = v;
+      } else {
+        campo[f.c] = 0;
+      }
+    }
+  }
+  if(Math.abs((campo.A5023-campo.A5024)-campo.A5025) > 0.02) return null;
+  if(i !== valores.length) return null; // tem de consumir TODOS os valores da página, nem mais nem menos
+  return campo;
+}
+
+function lerBlocoDR(paginas){
+  const pagina = paginas.find(p=>p.includes('A5001') && p.includes('A5025'));
+  if(!pagina) return {erro:'Não encontrei a Demonstração de Resultados (Anexo A, quadro 03-A) na IES.'};
+  const tokens = pagina.split('|');
+  const valores = tokens.filter(ehNumeroPT).map(paraNumero);
+  if(valores.length < 17) return {erro:'A página da Demonstração de Resultados tem menos valores do que o mínimo esperado.'};
+
+  const n = DR_INCERTOS.length;
+  let campo = null;
+  for(let mask=0; mask < (1<<n) && !campo; mask++){
+    const presentes = new Set();
+    for(let k=0;k<n;k++) if(mask & (1<<k)) presentes.add(DR_INCERTOS[k].c);
+    campo = drTentarCombinacao(valores, presentes);
+  }
+  if(!campo) return {erro:'Os valores da Demonstração de Resultados da IES não reconciliam com as fórmulas oficiais do impresso, em nenhuma combinação testada — não vou usar números que não batem certo.'};
+
+  const dr = {
+    vendasPS: campo.A5001, subsidios: campo.A5002, cmvmc: campo.A5006, fse: campo.A5007, pessoal: campo.A5008,
+    outrosGastos: campo.A5016, ebitda: campo.A5017, amortizacao: campo.A5018, ebit: campo.A5020,
+    jurosObtidos: campo.A5021, juros: campo.A5022, resultAntesImp: campo.A5023, imposto: campo.A5024, resultadoLiquido: campo.A5025
+  };
+  return {dr};
+}
+
+// Bloco do Balanço (04-A): identificado por soma de pares (checkpoint search), não por posição
+// fixa — resiliente a campos opcionais que a IES omite consoante o regime contabilístico do
+// declarante (NIC's / NCRF's / NCRF-PE / NC-ME).
+function lerBlocoBalanco(paginas){
+  const pagina = paginas.find(p=>p.includes('A5127') && p.includes('A5161'));
+  if(!pagina) return {erro:'Não encontrei o Balanço (Anexo A, quadro 04-A) na IES.'};
+  const tokens = pagina.split('|');
+  const valores = tokens.filter(ehNumeroPT).map(paraNumero);
+
+  function encontrarPar(inicio, fim, alvo){
+    for(let i=inicio;i<fim;i++) for(let j=i+1;j<fim;j++)
+      if(Math.abs(valores[i]+valores[j]-alvo)<0.02) return [i,j];
+    return null;
+  }
+  const contagem = {};
+  valores.forEach(v=>{ if(v>0) contagem[v]=(contagem[v]||0)+1; });
+  const candidatos = Object.keys(contagem).filter(v=>contagem[v]>=2).map(Number);
+  if(!candidatos.length) return {erro:'Não consegui identificar o Total do Ativo no Balanço da IES (nenhum valor repetido como seria esperado).'};
+  const ativoTotal = Math.max(...candidatos);
+  const pos1 = valores.indexOf(ativoTotal), pos2 = valores.indexOf(ativoTotal, pos1+1);
+  if(pos2<0) return {erro:'O Balanço da IES não reconcilia (Total do Ativo não aparece duas vezes, como seria de esperar por Ativo = Capital Próprio + Passivo).'};
+
+  const parAtivo = encontrarPar(0, pos1, ativoTotal);
+  const parCPPassivo = encontrarPar(pos1+1, pos2, ativoTotal);
+  if(!parAtivo || !parCPPassivo) return {erro:'Não consegui reconciliar os totais do Balanço da IES com confiança — não vou usar números que não batem certo. Confirma manualmente ou usa antes um balancete.'};
+  const ativoCorrente = valores[parAtivo[1]];
+  const capitalProprio = valores[parCPPassivo[0]];
+  const passivoTotal = valores[parCPPassivo[1]];
+  const parPassivo = encontrarPar(parCPPassivo[0]+2, parCPPassivo[1], passivoTotal);
+  const passivoCorrente = parPassivo ? valores[parPassivo[1]] : passivoTotal;
+
+  return { balanco: { ativoTotal, ativoCorrente, capitalProprio, passivoTotal, passivoCorrente } };
+}
+
+async function processarFicheiroIES(file){
+  const status = document.getElementById('comparativo-status');
+  status.innerHTML = `<div class="warn-banner">⏳ A ler a IES (PDF)...</div>`;
+  try{
+    if(!window.pdfjsLib) throw new Error('Biblioteca de leitura de PDF não carregou — confirma a ligação à internet e tenta de novo.');
+    const paginas = await extrairPaginasTexto(file);
+    const rDR = lerBlocoDR(paginas);
+    if(rDR.erro) throw new Error(rDR.erro);
+    const rBal = lerBlocoBalanco(paginas);
+    if(rBal.erro) throw new Error(rBal.erro);
+
+    // validação final: Ativo = Capital Próprio + Passivo (identidade contabilística fundamental)
+    const {ativoTotal, ativoCorrente, capitalProprio, passivoTotal, passivoCorrente} = rBal.balanco;
+    if(Math.abs(ativoTotal - (capitalProprio+passivoTotal)) > 0.05){
+      throw new Error('O Balanço extraído da IES não fecha (Ativo ≠ Capital Próprio + Passivo) — não vou usar estes números.');
+    }
+
+    const dr = rDR.dr;
+    resumo2 = {
+      rend: dr.vendasPS + dr.subsidios,
+      gastos: dr.cmvmc + dr.fse + dr.pessoal + dr.outrosGastos,
+      resultado: dr.resultAntesImp,
+      ativoTotal, passivoTotal, capitalProprio,
+      liquidezGeral: passivoCorrente!==0 ? ativoCorrente/passivoCorrente : null,
+      autonomiaFinanceira: ativoTotal!==0 ? capitalProprio/ativoTotal : null
+    };
+    parsedAccounts2 = [{conta:'8', desc:'Resultado (via IES — fechado)', classe:8, saldo:-dr.resultadoLiquido}]; // sinaliza "fechado" ao aviso de duodécimos
+    atualizarAvisoComparativo();
+    status.innerHTML = `<div class="warn-banner">✅ IES lida e validada (Ativo = Capital Próprio + Passivo confere) — Resultado do ano: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
+  }catch(err){
+    status.innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ ${err.message}</div>`;
+    parsedAccounts2 = []; resumo2 = null;
+  }
+}
 
 document.getElementById('btn-parse').addEventListener('click', ()=>{
   const headerIdx = parseInt(document.getElementById('mapping-card').dataset.headerIdx);
@@ -1538,6 +1938,10 @@ function renderResultado(r){
   }
   document.getElementById('prej-body').innerHTML = prejHtml;
 
+  // gráficos
+  renderChartPrincipal(r);
+  renderChartEstrutura();
+
   // comparativo anual (opcional)
   renderComparativo(r);
 
@@ -1712,6 +2116,7 @@ function renderRatios(r){
   });
   document.getElementById('ratios-grid').innerHTML = html;
   document.getElementById('ratios-grid-banca').innerHTML = htmlBanca;
+  document.getElementById('chart-racios').innerHTML = svgBarrasRacios(cards);
   renderFinanciamentos();
 
   renderParecer(r, {liquidezGeral, autonomiaFinanceira, rendibilidadeVendas, endividamento, roe, solvabilidade}, cards);
