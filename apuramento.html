@@ -154,7 +154,7 @@
   .dropzone .icon{font-size:30px; margin-bottom:8px; opacity:.6;}
   .dropzone strong{font-family:var(--serif); font-size:16px;}
   .dropzone span{display:block; color:var(--ink-soft); font-size:12.5px; margin-top:4px;}
-  input[type=file]{display:none;}
+  #file-input{display:none;} /* só o da dropzone do Passo 1 — tem caixa própria a substituí-lo visualmente */
 
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
   th{
@@ -181,6 +181,15 @@
     font-family:var(--sans); font-size:13px; background:#fff; color:var(--ink);
   }
   select:focus, input:focus{outline:2px solid var(--ledger); outline-offset:0; border-color:var(--ledger);}
+  #file-input2{
+    width:100%; padding:7px 8px; border:1px solid var(--line-strong); border-radius:4px;
+    font-family:var(--sans); font-size:12.5px; background:#fff; color:var(--ink); cursor:pointer;
+  }
+  #file-input2::file-selector-button{
+    background:var(--ledger); color:#fff; border:none; border-radius:3px; padding:6px 12px;
+    font-family:var(--sans); font-size:12px; font-weight:600; cursor:pointer; margin-right:10px;
+  }
+  #file-input2::file-selector-button:hover{background:var(--navy2);}
 
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
   .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;}
@@ -387,13 +396,43 @@
   .cloud-item-actions .del{color:var(--danger); border-color:var(--danger-soft);}
   .cloud-empty{padding:30px 22px; text-align:center; color:var(--ink-soft); font-size:13px;}
 
+  @page{ size: A4; margin: 14mm 12mm; }
   @media print{
-    nav.steps, header.hero .meta-inputs, .actions, .dropzone, .col-map, .btn-add, .btn-rm{display:none !important;}
+    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; color-adjust:exact !important; box-sizing:border-box !important; }
+    html, body{ width:100%; max-width:100%; overflow-x:hidden; }
+    nav.steps, header.hero, .actions, .dropzone, .col-map, .btn-add, .btn-rm, .save-load-group{display:none !important;}
     section.panel{display:block !important;}
     section.panel[data-step="1"], section.panel[data-step="2"], section.panel[data-step="3"], section.panel[data-step="4"]{display:none !important;}
-    .ledger-block, .parecer-block, .ratio-card, .kpi-cell{page-break-inside:avoid;}
-    header.hero{background:#0F1D30 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
-    body{padding:0;}
+    body{padding:0; font-size:12.5px;}
+    .wrap{max-width:100%; width:100%; padding:0; margin:0;}
+
+    /* nunca cortar uma linha, cartão ou bloco a meio entre páginas */
+    .line, .ledger-block, .parecer-block, .ratio-card, .kpi-cell, .kpi-strip,
+    .chart-card, .cloud-item, tr, .selo-global{ break-inside:avoid; page-break-inside:avoid; }
+
+    /* títulos nunca ficam sozinhos no fundo da página, sem o que vem a seguir */
+    h1, h2, h3, .section-h, .letterhead-name{ break-after:avoid; page-break-after:avoid; }
+
+    /* respiro antes de cada grande secção, para não colar ao que veio antes */
+    .section-h{ break-before:auto; margin-top:22px; }
+
+    /* tabelas: cabeçalho repete em cada página, larguras de coluna fixas para alinhar a sério */
+    table{ break-inside:auto; }
+    thead{ display:table-header-group; }
+    tr{ break-inside:avoid; }
+
+    /* rácios e gráficos em grelha ficam a par mesmo impressos, sem esticar de forma desalinhada */
+    .ratio-grid, .chart-grid{ break-inside:auto; }
+    .ratio-grid{ grid-template-columns: 1fr 1fr !important; gap:10px !important; }
+    .chart-grid{ grid-template-columns: 1fr !important; }
+    .ratio-card{ break-inside:avoid; page-break-inside:avoid; }
+    .kpi-strip{ grid-template-columns: repeat(4, 1fr) !important; }
+
+    .ledger-head{background:#0F1D30 !important;}
+    .kpi-cell.emph{background:#0F1D30 !important;}
+    .letterhead-rule{background:linear-gradient(90deg, var(--ledger) 0%, var(--line-strong) 40%, var(--line-strong) 100%) !important;}
+
+    a[href]:after{ content:""; } /* não imprimir URLs dos links */
   }
   @media (max-width:720px){
     .grid2, .grid3, .col-map{grid-template-columns:1fr;}
@@ -1258,19 +1297,19 @@ function calcularResumoFinanceiro(contas){
   };
 }
 
-// Deteção de fecho: um balancete fechado tem a conta de Resultados (classe 8) com saldo real
-// (não zero por Débito=Crédito) e o CEVC já apurado (611/612). Isto é essencial em Duodécimos —
-// sem o fecho, falta o CEVC do ano inteiro e a comparação sai distorcida.
+// Deteção de fecho: baseia-se só no CEVC apurado (611/612) — é o único sinal inequívoco.
+// A conta de Resultados (81) NÃO serve para isto: fica saldada (Débito=Crédito, saldo zero) assim
+// que o resultado do ano anterior é transferido para Resultados Transitados em janeiro seguinte —
+// nesse estado, saldo zero é o normal e esperado num intercalar, não um sinal de "por fechar".
 function atualizarAvisoComparativo(){
   const status = document.getElementById('comparativo-status');
   if(!resumo2 || parsedAccounts2.length===0){ status.innerHTML=''; return; }
-  const pareceFechado = parsedAccounts2.some(a=>/^8/.test(a.conta) && a.saldo!==0)
-    || parsedAccounts2.some(a=>/^61[12]/.test(a.conta) && a.saldo!==0);
+  const pareceFechado = parsedAccounts2.some(a=>/^61[12]/.test(a.conta) && a.saldo!==0);
   const modo = document.getElementById('comp-modo').value;
 
   let aviso = `<div class="warn-banner">✅ ${parsedAccounts2.length} contas carregadas do ano anterior — Resultado desse período: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
   if(modo==='duodecimos' && !pareceFechado){
-    aviso = `<div class="warn-banner" style="background:var(--alert-soft); border-color:var(--alert); color:#6B4409;">⚠️ Este balancete não parece estar fechado (sem CEVC apurado nem resultado líquido lançado) — em modo Duodécimos precisas do balancete FINAL de dezembro, já fechado, ou os duodécimos vão sair distorcidos. Se tens só este, muda para "Mesmo Período" ou carrega a versão de fecho.</div>` + aviso;
+    aviso = `<div class="warn-banner" style="background:var(--alert-soft); border-color:var(--alert); color:#6B4409;">⚠️ Este balancete não parece ter o CEVC apurado (conta 611/612 vazia) — em modo Duodécimos precisas do balancete FINAL de dezembro, já fechado, ou os duodécimos vão sair distorcidos. Se tens só este, muda para "Mesmo Período" ou carrega a versão de fecho.</div>` + aviso;
   }
   status.innerHTML = aviso;
 }
@@ -1508,8 +1547,7 @@ async function processarFicheiroIES(file){
       liquidezGeral: passivoCorrente!==0 ? ativoCorrente/passivoCorrente : null,
       autonomiaFinanceira: ativoTotal!==0 ? capitalProprio/ativoTotal : null
     };
-    parsedAccounts2 = [{conta:'8', desc:'Resultado (via IES — fechado)', classe:8, saldo:-dr.resultadoLiquido}]; // sinaliza "fechado" ao aviso de duodécimos
-    atualizarAvisoComparativo();
+    parsedAccounts2 = [{conta:'8', desc:'Resultado (via IES — fechado)', classe:8, saldo:-dr.resultadoLiquido}]; // mantém o comparativo com dados para o resultado final
     status.innerHTML = `<div class="warn-banner">✅ IES lida e validada (Ativo = Capital Próprio + Passivo confere) — Resultado do ano: ${fmt(resumo2.resultado)}. O comparativo vai aparecer no resultado final.</div>`;
   }catch(err){
     status.innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ ${err.message}</div>`;
