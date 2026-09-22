@@ -555,7 +555,7 @@
         </div>
         <div class="field">
           <label>Ficheiro</label>
-          <input type="file" id="file-input2" accept=".xlsx,.xls,.csv">
+          <input type="file" id="file-input2" accept=".xlsx,.xls,.csv,.pdf">
         </div>
       </div>
       <p class="panel-sub" id="comp-fonte-nota" style="margin:2px 0 0 0;"></p>
@@ -614,6 +614,18 @@
     <div class="line total" style="border-radius:4px; border:1px solid var(--line);">
       <span class="lbl">Variação da Produção — rendimento do período</span>
       <span class="val" id="b-variacao">0,00 €</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Amortizações do Exercício <span class="tag">classe 64</span></h3>
+    <p class="panel-sub" style="margin:0 0 12px 0;">Só têm saldo lançado quando o exercício já está fechado. Num balancete intercalar têm de vir de fora (mapa de amortizações), senão o Resultado Contabilístico e o IRC ficam sobrestimados — a ferramenta nunca inventa este valor.</p>
+    <div id="grupoC-detected"></div>
+    <div class="grid3" style="margin-top:12px;" id="grupoC-fields">
+      <div class="field">
+        <label>Amortizações do exercício<span class="hint" id="lbl-c-amort">a indicar manualmente</span></label>
+        <input type="number" id="c-amortizacao" step="0.01" value="0">
+      </div>
     </div>
   </div>
 
@@ -1268,12 +1280,14 @@ function atualizarFonteComparativo(){
   const fonte = document.getElementById('comp-fonte').value;
   const fileInput = document.getElementById('file-input2');
   const nota = document.getElementById('comp-fonte-nota');
+  // O accept fica sempre a aceitar Excel e PDF — mudar isto dinamicamente por vezes bloqueia
+  // o seletor de ficheiros do sistema operativo mesmo depois de trocar a fonte. A distinção
+  // entre balancete/IES faz-se pelo próprio JS ao processar o ficheiro, não pelo accept.
+  fileInput.accept = '.xlsx,.xls,.csv,.pdf';
   if(fonte==='ies'){
-    fileInput.accept = '.pdf';
-    nota.textContent = 'A IES é sempre um exercício fechado — os duodécimos podem ser usados sem qualquer aviso de "balancete por fechar".';
+    nota.textContent = 'A IES é sempre um exercício fechado — os duodécimos podem ser usados sem qualquer aviso de "balancete por fechar". Escolhe um ficheiro .pdf.';
   } else {
-    fileInput.accept = '.xlsx,.xls,.csv';
-    nota.textContent = '';
+    nota.textContent = 'Escolhe um ficheiro .xlsx, .xls ou .csv.';
   }
   fileInput.value = '';
   parsedAccounts2 = []; resumo2 = null;
@@ -1283,8 +1297,21 @@ document.getElementById('comp-fonte').addEventListener('change', atualizarFonteC
 
 document.getElementById('file-input2').addEventListener('change', (e)=>{
   if(!e.target.files.length) return;
-  const fonte = document.getElementById('comp-fonte').value;
-  if(fonte==='ies'){ processarFicheiroIES(e.target.files[0]); return; }
+  const ficheiro = e.target.files[0];
+  const nomeMin = ficheiro.name.toLowerCase();
+  const fonteSel = document.getElementById('comp-fonte');
+  const ehPDF = nomeMin.endsWith('.pdf');
+  const ehExcel = /\.(xlsx|xls|csv)$/.test(nomeMin);
+  // corrige sozinha a "Fonte" se o ficheiro escolhido não bater com o que estava selecionado —
+  // mais robusto do que confiar só no accept do sistema operativo, que por vezes fica desatualizado
+  if(ehPDF && fonteSel.value!=='ies') fonteSel.value = 'ies';
+  if(ehExcel && fonteSel.value==='ies') fonteSel.value = 'balancete';
+  const fonte = fonteSel.value;
+  if(!ehPDF && !ehExcel){
+    document.getElementById('comparativo-status').innerHTML = `<div class="warn-banner" style="background:var(--danger-soft); border-color:var(--danger); color:var(--danger);">❌ "${ficheiro.name}" não é um .xlsx/.xls/.csv nem um .pdf — escolhe outro ficheiro.</div>`;
+    return;
+  }
+  if(fonte==='ies'){ processarFicheiroIES(ficheiro); return; }
   const status = document.getElementById('comparativo-status');
   status.innerHTML = `<div class="warn-banner">⏳ A processar...</div>`;
   const reader = new FileReader();
@@ -1581,6 +1608,9 @@ function somaContas(pred){ return parsedAccounts.filter(a=>pred(a.conta)).reduce
 function cevcJaApurado(){ return Math.abs(somaContas(c=>/^61[12]/.test(c))) > 0.005; }
 // Variação nos inventários da produção (conta 73x) só tem saldo depois de apurada
 function variacaoJaApurada(){ return Math.abs(somaContas(c=>/^73/.test(c))) > 0.005; }
+// Amortizações do exercício: só têm saldo depois de apuradas (fecho) — classe 64 completa
+function amortizacaoJaApurada(){ return Math.abs(somaContas(c=>/^64[1-4]/.test(c))) > 0.005; }
+function amortizacaoDetetada(){ return somaContas(c=>/^64[1-4]/.test(c)); }
 
 function prefillFromAccounts(){
   // ── Grupo A: Mercadorias e Matérias-Primas ──
@@ -1635,10 +1665,25 @@ function prefillFromAccounts(){
     }
   }
 
+  // ── Grupo C: Amortizações do Exercício ──
+  const detC = document.getElementById('grupoC-detected');
+  const fieldsC = document.getElementById('grupoC-fields');
+  if(amortizacaoJaApurada()){
+    const amortPosta = amortizacaoDetetada();
+    fieldsC.style.opacity = '0.55'; fieldsC.querySelectorAll('input').forEach(i=>i.disabled=true);
+    document.getElementById('c-amortizacao').value = amortPosta.toFixed(2);
+    document.getElementById('lbl-c-amort').textContent = 'já lançado (classe 64)';
+    detC.innerHTML = `<div class="warn-banner">✅ Amortizações já apuradas no balancete (classe 64 = €${fmt(amortPosta)}) — uso diretamente o valor já lançado.</div>`;
+  } else {
+    fieldsC.style.opacity = '1'; fieldsC.querySelectorAll('input').forEach(i=>i.disabled=false);
+    document.getElementById('lbl-c-amort').textContent = 'a indicar manualmente';
+    detC.innerHTML = `<div class="warn-banner">📐 Balancete intercalar — sem amortizações lançadas (classe 64 vazia). Indica o valor do mapa de amortizações para o período, ou deixa a zero só se genuinamente não houver ativos a amortizar.</div>`;
+  }
+
   updateCMVMC();
 }
 
-['a-iniciais','a-compras','a-finais','b-iniciais','b-finais'].forEach(id=>{
+['a-iniciais','a-compras','a-finais','b-iniciais','b-finais','c-amortizacao'].forEach(id=>{
   document.getElementById(id).addEventListener('input', updateCMVMC);
 });
 function updateCMVMC(){
@@ -1776,7 +1821,11 @@ function calcularTudo(){
   // Grupo A — Mercadorias/Matérias-primas: CMVMC já incluído em "gastos" se já apurado (conta 611/612);
   // caso contrário soma-se o valor calculado pela fórmula EI+Compras-EF (ainda não lançado no balancete)
   const cmvmc = cevcJaApurado() ? somaContas(c=>/^61[12]/.test(c)) : (num('a-iniciais') + num('a-compras') - num('a-finais'));
-  const gastosAjustados = gastos + (cevcJaApurado() ? 0 : cmvmc);
+
+  // Grupo C — Amortizações: já incluídas em "gastos" se já lançadas na classe 64; caso contrário
+  // soma-se o valor indicado manualmente no Passo 2, para o Resultado e o IRC não ficarem sobrestimados.
+  const amortizacao = amortizacaoJaApurada() ? amortizacaoDetetada() : num('c-amortizacao');
+  const gastosAjustados = gastos + (cevcJaApurado() ? 0 : cmvmc) + (amortizacaoJaApurada() ? 0 : amortizacao);
 
   // Grupo B — Produção própria: Variação da Produção já incluída em "rend" se já apurada (conta 73x);
   // caso contrário soma-se (pode ser negativa) o valor calculado EF-EI
@@ -1822,20 +1871,17 @@ function calcularTudo(){
   // em alguns planos de contas essa gama é reutilizada para outras coisas (ex.: 6812 "Impostos indiretos"
   // numa empresa real testada, que ficaria erradamente contado como juro). A descrição fica como apoio.
   const juros = parsedAccounts.filter(a=>/^691/.test(a.conta) || /juro/i.test(a.desc)).reduce((s,a)=>s+a.saldo,0);
-  // Amortizações/depreciações do exercício: classe 64 completa (641 Ativos Fixos Tangíveis é a mais comum;
-  // 642 Propriedades de Investimento; 643 Ativos Intangíveis; 644 Ativos Biológicos), com apoio na descrição
-  const amortizacoes = parsedAccounts.filter(a=>/^64[1-4]/.test(a.conta) || /amortiza|deprecia/i.test(a.desc)).reduce((s,a)=>s+a.saldo,0);
   const ebit = resultadoContabilistico + juros;
-  const ebitda = ebit + amortizacoes;
-  const meiosLibertosBrutos = resultadoLiquidoFinal + amortizacoes;
+  const ebitda = ebit + amortizacao;
+  const meiosLibertosBrutos = resultadoLiquidoFinal + amortizacao;
 
   renderResultado({
-    rend: rendAjustado, gastosAjustados, resultadoContabilistico, cmvmc, variacaoProducao,
+    rend: rendAjustado, gastosAjustados, resultadoContabilistico, cmvmc, variacaoProducao, amortizacao, amortizacaoJaLancada: amortizacaoJaApurada(),
     correcoes, totalAcrescimos, totalDeducoes, lucroTributavel,
     dedPrej, materiaColetavel, paramsIRC, irc,
     derramaMunicipal, derramaEstadual, autonomas, totalAutonomas, agravamento,
     totalImposto, resultadoLiquidoFinal,
-    juros, amortizacoes, ebit, ebitda, meiosLibertosBrutos
+    juros, ebit, ebitda, meiosLibertosBrutos
   });
   goStep(5);
 }
@@ -1901,8 +1947,9 @@ function renderResultado(r){
   document.getElementById('dr-body').innerHTML = `
     <div class="line"><span class="lbl">Rendimentos e ganhos (classe 7, incl. variação da produção)</span><span class="val">${fmt(r.rend)}</span></div>
     ${r.variacaoProducao ? `<div class="line sub"><span class="lbl">— Variação da Produção (Ex.Final − Ex.Inicial, contas 34-36)</span><span class="val ${r.variacaoProducao<0?'negative':''}">${fmt(r.variacaoProducao)}</span></div>` : ''}
-    <div class="line"><span class="lbl">Gastos e perdas (classe 6, incl. CMVMC/CEVC)</span><span class="val">${fmt(r.gastosAjustados)}</span></div>
+    <div class="line"><span class="lbl">Gastos e perdas (classe 6, incl. CMVMC/CEVC e amortizações)</span><span class="val">${fmt(r.gastosAjustados)}</span></div>
     ${r.cmvmc ? `<div class="line sub"><span class="lbl">— CMVMC / CEVC (Ex.Inicial + Compras − Ex.Final, contas 32-33)</span><span class="val">${fmt(r.cmvmc)}</span></div>` : ''}
+    ${r.amortizacao ? `<div class="line sub"><span class="lbl">— Amortizações do exercício ${r.amortizacaoJaLancada?'(já lançadas, classe 64)':'(indicadas manualmente — não lançadas no balancete)'}</span><span class="val">${fmt(r.amortizacao)}</span></div>` : ''}
     <div class="line total ${r.resultadoContabilistico<0?'negative':''}"><span class="lbl">Resultado Contabilístico Antes de Impostos</span><span class="val">${fmt(r.resultadoContabilistico)}</span></div>
   `;
 
