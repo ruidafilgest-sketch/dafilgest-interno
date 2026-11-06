@@ -130,22 +130,22 @@
 
   <div class="stepline">
     <span class="steplabel">1. Processar salários</span>
-    <span class="steplabel">2. DRI (AT)</span>
-    <span class="steplabel">3. DMR (Seg. Social)</span>
+    <span class="steplabel">2. DMR (AT)</span>
+    <span class="steplabel">3. DRI (Seg. Social)</span>
     <span class="steplabel">4. Guias de pagamento SS</span>
     <span class="steplabel">5. Folhas de férias/remunerações</span>
     <span class="steplabel">6. Faturas de avenças (fim do mês)</span>
   </div>
 
   <div class="tabs">
-    <div class="tab active" data-tab="dri">DRI — AT <span class="tag">Pastas</span></div>
-    <div class="tab" data-tab="dmr">DMR — Seg. Social <span class="tag">Soltos</span></div>
+    <div class="tab active" data-tab="dri">DMR — AT <span class="tag">Pastas</span></div>
+    <div class="tab" data-tab="dmr">DRI — Seg. Social <span class="tag">Soltos</span></div>
     <div class="tab" data-tab="guias">Guias Pagamento SS <span class="tag">PDF</span></div>
     <div class="tab" data-tab="folhas">Folhas de Férias/Remun. <span class="tag">PDF</span></div>
     <div class="tab" data-tab="faturas">Faturas de Avenças <span class="tag">PDF</span></div>
   </div>
 
-  <!-- ================= DRI (AT) ================= -->
+  <!-- ================= DMR (AT) ================= -->
 
   <div class="panel active" id="panel-dri">
     <div class="card">
@@ -167,7 +167,7 @@
     </div>
   </div>
 
-  <!-- ================= DMR (SS soltos) ================= -->
+  <!-- ================= DRI (SS soltos) ================= -->
   <div class="panel" id="panel-dmr">
     <div class="card">
       <div class="note">
@@ -287,7 +287,7 @@ function triggerDownload(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
-// ================= DRI (AT) LOGIC =================
+// ================= DMR (AT) LOGIC =================
 let atFiles = [];
 
 document.getElementById('at-input').addEventListener('change', (e) => {
@@ -355,10 +355,10 @@ document.getElementById('at-clear').addEventListener('click', () => {
 document.getElementById('at-download').addEventListener('click', async () => {
   const zip = new JSZip();
   for (const item of atFiles) zip.file(item.newName, await item.file.arrayBuffer());
-  triggerDownload(await zip.generateAsync({ type: 'blob' }), 'DRI_AT_ficheiros_prontos.zip');
+  triggerDownload(await zip.generateAsync({ type: 'blob' }), 'DMR_AT_ficheiros_prontos.zip');
 });
 
-// ================= DMR (SS soltos) LOGIC =================
+// ================= DRI (SS soltos) LOGIC =================
 let ssFiles = [];
 document.getElementById('ss-input').addEventListener('change', (e) => {
   ssFiles = Array.from(e.target.files).map(f => ({ file: f, oldName: f.name }));
@@ -400,7 +400,7 @@ document.getElementById('ss-clear').addEventListener('click', () => {
 document.getElementById('ss-download').addEventListener('click', async () => {
   const zip = new JSZip();
   for (const item of ssFiles) zip.file(item.newName, await item.file.arrayBuffer());
-  triggerDownload(await zip.generateAsync({ type: 'blob' }), 'DMR_SS_ficheiros_prontos.zip');
+  triggerDownload(await zip.generateAsync({ type: 'blob' }), 'DRI_SS_ficheiros_prontos.zip');
 });
 
 // ================= PDF-BASED PANELS (Guias SS / Folhas / Faturas) =================
