@@ -2120,7 +2120,7 @@ function renderPlanosAT(){
         <div class="form-group"><label>Cliente</label>
           <select id="planoCliente" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none">
             <option value="">— Seleccionar —</option>
-            ${state.clientes.map(c=>`<option value="${c.nome.replace(/"/g,'&quot;')}">${c.nome}</option>`).join('')}
+            ${(()=>{const nk=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');const mp=new Map();[...state.clientes.map(c=>c.nome),...state.empresasIVA.map(e=>e.nome)].forEach(n=>{if(n&&!mp.has(nk(n)))mp.set(nk(n),n);});return [...mp.values()].sort((a,b)=>a.localeCompare(b,'pt',{sensitivity:'base'})).map(n=>`<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');})()}
           </select></div>
         <div class="form-group"><label>Declaração (ex: IVA T1 2026)</label>
           <input type="text" id="planoDecl" placeholder="IVA T1 2026" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:var(--r);font-size:13px;outline:none"></div>
@@ -2167,6 +2167,14 @@ function previewPlanoAT(){
   }
   prev.style.display='block';
   prev.innerHTML=html;
+}
+
+function toast(msg,tipo){
+  const t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;bottom:20px;right:20px;z-index:99999;padding:10px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.25);background:'+(tipo==='success'?'#16a34a':tipo==='error'?'#dc2626':'#1a2a3d');
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
 }
 
 function abrirModalPlanoAT(){
