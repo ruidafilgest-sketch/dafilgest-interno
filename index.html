@@ -1741,7 +1741,7 @@ function renderSS(){
   const dadosAno=state.ss[ssAno]||{};
   const TRIM_KEYS=['jan','abr','jul','out'];
   const TRIM_LABELS={jan:'1º (Jan)',abr:'2º (Abr)',jul:'3º (Jul)',out:'4º (Out)'};
-  const TRIM_MESES={jan:['Fev','Mar','Abr'],abr:['Mai','Jun','Jul'],jul:['Ago','Set','Out'],out:['Nov','Dez','Jan']};
+  const TRIM_MESES={jan:['Jan','Fev','Mar'],abr:['Abr','Mai','Jun'],jul:['Jul','Ago','Set'],out:['Out','Nov','Dez']};
 
   const totPag=Math.ceil(state.trabalhadores.length/SS_PP)||1;
   if(ssPag>totPag)ssPag=1;
@@ -1755,7 +1755,7 @@ function renderSS(){
     </div>
   </div>
   <div style="background:var(--blue-light);border:1px solid var(--blue-mid);border-radius:var(--r);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue);">
-    ℹ️ Insere o valor calculado pela Segurança Social nos <strong>meses de enquadramento</strong> (Jan, Abr, Jul, Out). O valor propaga automaticamente para os 3 meses seguintes.
+    ℹ️ Insere o valor calculado pela Segurança Social nos <strong>meses de enquadramento</strong> (Jan, Abr, Jul, Out). O valor vale para as contribuições desse mês e dos 2 seguintes (ex.: Out → Out, Nov, Dez; o mapa de outubro paga-se até 20/11).
   </div>
   <div class="table-wrap">
     <div class="toolbar">
@@ -1861,23 +1861,23 @@ function renderSSPrint(){
   const el=document.getElementById('sec-ssprint');
   const MESES_FULL_PT=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-  // Mapeamento mês → trimestre e valor
-  // Jan=enquadramento jan→meses fev,mar,abr
-  // Abr=enquadramento abr→meses mai,jun,jul
-  // Jul=enquadramento jul→meses ago,set,out
-  // Out=enquadramento out→meses nov,dez,jan(ano seguinte)
+  // Mapeamento mês da contribuição → enquadramento (corrigido)
+  // O enquadramento comunicado em Jan vale para as contribuições de Jan, Fev e Mar;
+  // Abr → Abr, Mai, Jun; Jul → Jul, Ago, Set; Out → Out, Nov, Dez.
+  // O mapa de cada mês paga-se até ao dia 20 do mês seguinte (ex.: mapa de outubro → até 20/11).
   const MES_TRIM = {
-    2:'jan',3:'jan',4:'jan',
-    5:'abr',6:'abr',7:'abr',
-    8:'jul',9:'jul',10:'jul',
-    11:'out',12:'out',1:'out'
+    1:'jan',2:'jan',3:'jan',
+    4:'abr',5:'abr',6:'abr',
+    7:'jul',8:'jul',9:'jul',
+    10:'out',11:'out',12:'out'
   };
 
   const dadosSS=state.ss[ssPrintAno]||{};
   const trimKey=MES_TRIM[ssPrintMes];
-  // O enquadramento de Outubro cobre Nov+Dez do mesmo ano e Janeiro do ano SEGUINTE.
-  // Por isso, ao imprimir a folha de Janeiro, o valor declarado está no ano ANTERIOR.
-  const anoDecl = (ssPrintMes===1) ? String(+ssPrintAno-1) : ssPrintAno;
+  // Cada enquadramento cobre meses do próprio ano (Out cobre Out, Nov e Dez).
+  const anoDecl = ssPrintAno;
+  // Prazo de pagamento: dia 20 do mês seguinte ao mês do mapa
+  const prazoSS = ssPrintMes===12 ? `20/01/${+ssPrintAno+1}` : `20/${String(ssPrintMes+1).padStart(2,'0')}/${ssPrintAno}`;
   const dadosDecl=state.ssdecl[anoDecl]||{};
 
   // Construir lista de CANDIDATOS (todos os que têm valor>0 declarado para este trimestre)
@@ -1909,7 +1909,7 @@ function renderSSPrint(){
   const mesStr=`${ssPrintAno}/${String(ssPrintMes).padStart(2,'0')}`;
 
   let h=`<div class="ph">
-    <div class="ph-left"><h1>Relação SS para Impressão</h1><p>${MESES_FULL_PT[ssPrintMes-1]} ${ssPrintAno}</p></div>
+    <div class="ph-left"><h1>Relação SS para Impressão</h1><p>Contribuições de ${MESES_FULL_PT[ssPrintMes-1]} ${ssPrintAno} · enquadramento de ${({jan:'janeiro',abr:'abril',jul:'julho',out:'outubro'})[trimKey]} · pagar até ${prazoSS}</p></div>
     <div class="ph-right">
       <select class="ctrl-sel" onchange="ssPrintAno=this.value;renderSSPrint()">${ANOS.filter(a=>+a>=2026).map(a=>`<option value="${a}"${a===ssPrintAno?' selected':''}>${a}</option>`).join('')}</select>
       <select class="ctrl-sel" onchange="ssPrintMes=parseInt(this.value);renderSSPrint()">${MESES.map((m,i)=>`<option value="${i+1}"${i+1===ssPrintMes?' selected':''}>${m}</option>`).join('')}</select>
@@ -1961,7 +1961,7 @@ function renderSSPrint(){
           </div>
           <div style="text-align:right">
             <div style="font-size:14px;font-weight:700;color:var(--blue)">MÊS DE ${MESES_FULL_PT[ssPrintMes-1].toUpperCase()}</div>
-            <div style="font-size:12px;font-weight:600;color:var(--text3)">${ssPrintAno}</div>
+            <div style="font-size:12px;font-weight:600;color:var(--text3)">${ssPrintAno} · pagar até ${prazoSS}</div>
           </div>
         </div>
       </div>
